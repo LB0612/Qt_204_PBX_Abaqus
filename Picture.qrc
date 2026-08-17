@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/new/prefix1">
+        <file>toolbar_picture/back.png</file>
+        <file>toolbar_picture/cailiaocanshu.png</file>
+        <file>toolbar_picture/check.png</file>
+        <file>toolbar_picture/close.png</file>
+        <file>toolbar_picture/closeall.png</file>
+        <file>toolbar_picture/create.png</file>
+        <file>toolbar_picture/fangzhenshezhi.png</file>
+        <file>toolbar_picture/file.png</file>
+        <file>toolbar_picture/help.png</file>
+        <file>toolbar_picture/information.png</file>
+        <file>toolbar_picture/jiegoucanshu.png</file>
+        <file>toolbar_picture/open.png</file>
+        <file>toolbar_picture/report.png</file>
+        <file>toolbar_picture/save.png</file>
+        <file>toolbar_picture/setup.png</file>
+        <file>toolbar_picture/start.png</file>
+    </qresource>
+
+</RCC>
