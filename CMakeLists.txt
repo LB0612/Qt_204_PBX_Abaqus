@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Qt_Simulate_Project VERSION 1.0 LANGUAGES CXX)
+project(QT_PBX_204_ABAQUS VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,15 +32,15 @@ set(PROJECT_SOURCES
 
 qt_standard_project_setup()
 
-qt_add_executable(Qt_Simulate_Project
+qt_add_executable(QT_PBX_204_ABAQUS
     MANUAL_FINALIZATION
     ${PROJECT_SOURCES}
 )
 
-target_link_libraries(Qt_Simulate_Project PRIVATE
+target_link_libraries(QT_PBX_204_ABAQUS PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
 )
 
-qt_finalize_executable(Qt_Simulate_Project)
+qt_finalize_executable(QT_PBX_204_ABAQUS)
