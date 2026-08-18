@@ -32,7 +32,7 @@ void NewProjectDialog::setupUi()
     mainLayout->setContentsMargins(30, 30, 30, 30);
     mainLayout->setSpacing(20);
 
-    titleLabel = new QLabel(QStringLiteral("创建浇注XX固化仿真项目"));
+    titleLabel = new QLabel(QStringLiteral("浇注XX固化仿真分析工程"));
     titleLabel->setObjectName(QStringLiteral("HeaderLabel"));
     titleLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(titleLabel);
