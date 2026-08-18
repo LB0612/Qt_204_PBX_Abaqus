@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QRegularExpression>
 #include <QSaveFile>
 
@@ -110,8 +111,24 @@ bool ProjectManager::loadProject(
         return false;
     }
 
-    const QJsonObject jsonObj = QJsonDocument::fromJson(file.readAll()).object();
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        return false;
+    }
+
+    if (!document.isObject()) {
+        return false;
+    }
+
+    const QJsonObject jsonObj = document.object();
     if (jsonObj.value(QStringLiteral("projectType")).toString() != PROJECT_TYPE_PBX) {
+        return false;
+    }
+
+    const int schemaVersion = jsonObj.value(QStringLiteral("schemaVersion")).toInt(-1);
+    if (schemaVersion != 1) {
         return false;
     }
 
@@ -120,7 +137,7 @@ bool ProjectManager::loadProject(
     config.projectType = jsonObj.value(QStringLiteral("projectType")).toString(PROJECT_TYPE_PBX);
     config.createdDate = jsonObj.value(QStringLiteral("createdDate")).toString();
     config.softwareVersion = jsonObj.value(QStringLiteral("softwareVersion")).toString(QStringLiteral("1.0"));
-    config.schemaVersion = jsonObj.value(QStringLiteral("schemaVersion")).toInt(1);
+    config.schemaVersion = schemaVersion;
     return true;
 }
 
