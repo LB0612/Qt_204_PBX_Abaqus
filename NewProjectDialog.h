@@ -3,7 +3,6 @@
 
 #include <QDialog>
 #include <QLineEdit>
-#include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
 
@@ -15,10 +14,7 @@ public:
 
     QString getProjectName() const;
     QString getProjectPath() const;
-    int getProcessType() const;
-    QString getTypeName() const;
-    
-    // 覆盖 QDialog 的 accept() 方法
+
     void accept() override;
 
 private slots:
@@ -27,10 +23,10 @@ private slots:
 private:
     void setupUi();
     void applyStyles();
+    void updateOkButtonState();
 
     QLineEdit *nameEdit;
     QLineEdit *pathEdit;
-    QComboBox *typeCombo;
     QPushButton *browseBtn;
     QPushButton *okBtn;
     QPushButton *cancelBtn;

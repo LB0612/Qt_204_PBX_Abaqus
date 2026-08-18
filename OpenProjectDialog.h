@@ -2,11 +2,10 @@
 #define OPENPROJECTDIALOG_H
 
 #include <QDialog>
-#include <QTableWidget>
-#include <QComboBox>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QLabel>
+#include <QTableWidget>
+
 #include "ProjectManager.h"
 
 class OpenProjectDialog : public QDialog
@@ -15,6 +14,7 @@ class OpenProjectDialog : public QDialog
 
 public:
     explicit OpenProjectDialog(QWidget *parent = nullptr);
+
     QStringList getSelectedPaths() const;
 
 private:
@@ -24,13 +24,10 @@ private:
 
     QLineEdit *rootPathEdit;
     QPushButton *browseBtn;
-    QComboBox *typeFilterCombo;
     QTableWidget *projectTable;
     QPushButton *openBtn;
     QPushButton *cancelBtn;
-    QLabel *titleLabel;
 
-    QString selectedProjectPath;
     QList<ProjectConfig> allProjects;
 };
 

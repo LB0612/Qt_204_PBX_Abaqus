@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-# 项目名称
 project(Qt_Simulate_Project VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -8,14 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-# -----------------------------------------------------------------------------
-# 1. 寻找 Qt6 组件
-# -----------------------------------------------------------------------------
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Quick Quick3D)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
-# -----------------------------------------------------------------------------
-# 3. 添加所有源文件
-# -----------------------------------------------------------------------------
 set(PROJECT_SOURCES
     main.cpp
     mainwindow.cpp
@@ -28,40 +21,15 @@ set(PROJECT_SOURCES
     ProjectInfoWidget.h
     SimulationManager.cpp
     SimulationManager.h
-    # 弹窗
     NewProjectDialog.cpp
     NewProjectDialog.h
     OpenProjectDialog.cpp
     OpenProjectDialog.h
     SettingsDialog.cpp
     SettingsDialog.h
-    # 捏合工艺
-    KneadingExplosiveWidget.cpp
-    KneadingExplosiveWidget.h
-    KneadingBladeWidget.cpp
-    KneadingBladeWidget.h
-    KneadingBoundaryWidget.cpp
-    KneadingBoundaryWidget.h
-    KneadingSimulationWidget.cpp
-    KneadingSimulationWidget.h
-    # 挤压工艺
-    ExtrusionExplosiveWidget.cpp
-    ExtrusionExplosiveWidget.h
-    ExtrusionScrewWidget.cpp
-    ExtrusionScrewWidget.h
-    ExtrusionBoundaryWidget.cpp
-    ExtrusionBoundaryWidget.h
-    ExtrusionSimulationWidget.cpp
-    ExtrusionSimulationWidget.h
-
-
-    # 资源文件
     Picture.qrc
 )
 
-# -----------------------------------------------------------------------------
-# 4. 创建可执行文件
-# -----------------------------------------------------------------------------
 qt_standard_project_setup()
 
 qt_add_executable(Qt_Simulate_Project
@@ -69,15 +37,10 @@ qt_add_executable(Qt_Simulate_Project
     ${PROJECT_SOURCES}
 )
 
-# -----------------------------------------------------------------------------
-# 5. 链接库
-# -----------------------------------------------------------------------------
 target_link_libraries(Qt_Simulate_Project PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
 )
-
-
 
 qt_finalize_executable(Qt_Simulate_Project)
