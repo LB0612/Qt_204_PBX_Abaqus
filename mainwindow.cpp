@@ -144,6 +144,11 @@ void MainWindow::createPureStyleToolBar()
         }
     };
 
+    auto addPlaceholderBtn = [&](const QString &txt, const QString &icon) {
+        QAction *act = new QAction(QIcon(icon), txt, this);
+        toolBar->addAction(act);
+    };
+
     addBtn(QStringLiteral("新建工程"), QStringLiteral(":/new/prefix1/toolbar_picture/create.png"), &MainWindow::newProject, false);
     addBtn(QStringLiteral("打开工程"), QStringLiteral(":/new/prefix1/toolbar_picture/open.png"), &MainWindow::openProject, false);
 
@@ -156,8 +161,30 @@ void MainWindow::createPureStyleToolBar()
 
     toolBar->addSeparator();
 
-    addBtn(QStringLiteral("设置"), QStringLiteral(":/new/prefix1/toolbar_picture/setup.png"), &MainWindow::settings, false);
-    addBtn(QStringLiteral("帮助"), QStringLiteral(":/new/prefix1/toolbar_picture/help.png"), &MainWindow::help, false);
+    addPlaceholderBtn(QStringLiteral("工程信息"), QStringLiteral(":/new/prefix1/toolbar_picture/information.png"));
+    addPlaceholderBtn(QStringLiteral("炸药参数"), QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"));
+    addPlaceholderBtn(QStringLiteral("结构参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"));
+    addPlaceholderBtn(QStringLiteral("边界条件"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
+    addPlaceholderBtn(QStringLiteral("仿真设置"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
+
+    toolBar->addSeparator();
+
+    addPlaceholderBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"));
+    addPlaceholderBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"));
+    addPlaceholderBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"));
+    addPlaceholderBtn(QStringLiteral("生成报告"), QStringLiteral(":/new/prefix1/toolbar_picture/report.png"));
+
+    toolBar->addSeparator();
+
+    addBtn(QStringLiteral("系统设置"), QStringLiteral(":/new/prefix1/toolbar_picture/setup.png"), &MainWindow::settings, false);
+    addBtn(QStringLiteral("帮助文档"), QStringLiteral(":/new/prefix1/toolbar_picture/help.png"), &MainWindow::help, false);
+
+    QAction *closeAppAct = new QAction(QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/closeall.png")), QStringLiteral("关闭"), this);
+    if (closeAppAct->icon().isNull()) {
+        closeAppAct->setIcon(QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/close.png")));
+    }
+    connect(closeAppAct, &QAction::triggered, this, &MainWindow::close);
+    toolBar->addAction(closeAppAct);
 }
 
 void MainWindow::createTreeWidget()
