@@ -147,6 +147,7 @@ void MainWindow::createPureStyleToolBar()
     auto addPlaceholderBtn = [&](const QString &txt, const QString &icon) {
         QAction *act = new QAction(QIcon(icon), txt, this);
         toolBar->addAction(act);
+        projectDependentActions.append(act);
     };
 
     addBtn(QStringLiteral("新建工程"), QStringLiteral(":/new/prefix1/toolbar_picture/create.png"), &MainWindow::newProject, false);
