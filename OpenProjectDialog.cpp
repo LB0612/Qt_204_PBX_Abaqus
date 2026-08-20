@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QSettings>
 #include <QVBoxLayout>
 
 OpenProjectDialog::OpenProjectDialog(QWidget *parent)
@@ -29,7 +30,19 @@ void OpenProjectDialog::setupUi()
 
     QLabel *pathLabel = new QLabel(QStringLiteral("工程位置:"));
     rootPathEdit = new QLineEdit();
-    rootPathEdit->setText(QDir::homePath());
+
+    QSettings settings(
+        QStringLiteral("PBXSimulationSoftware"),
+        QStringLiteral("OpenProjectDialog")
+    );
+    QString lastOpenProjectPath = settings.value(
+        QStringLiteral("lastOpenProjectPath"),
+        QDir::homePath()
+    ).toString();
+    if (!QDir(lastOpenProjectPath).exists()) {
+        lastOpenProjectPath = QDir::homePath();
+    }
+    rootPathEdit->setText(lastOpenProjectPath);
     rootPathEdit->setReadOnly(true);
 
     browseBtn = new QPushButton(QStringLiteral("浏览工作区"));
@@ -38,6 +51,16 @@ void OpenProjectDialog::setupUi()
         const QString dir = QFileDialog::getExistingDirectory(this, QStringLiteral("选择工程所在的父级文件夹"), rootPathEdit->text());
         if (!dir.isEmpty()) {
             rootPathEdit->setText(dir);
+
+            QSettings settings(
+                QStringLiteral("PBXSimulationSoftware"),
+                QStringLiteral("OpenProjectDialog")
+            );
+            settings.setValue(
+                QStringLiteral("lastOpenProjectPath"),
+                dir
+            );
+
             scanProjects();
         }
     });
