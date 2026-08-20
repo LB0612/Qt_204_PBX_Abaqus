@@ -19,7 +19,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("PBX浇注固化仿真分析软件"));
+    setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程"));
     setMinimumSize(1300, 800);
     resize(1300, 800);
     setupUi();
@@ -76,7 +76,7 @@ void MainWindow::setupUi()
     stackedWidget = new QStackedWidget(rightWidget);
     stackedWidget->setAttribute(Qt::WA_TranslucentBackground);
 
-    titleLabel = new QLabel(QStringLiteral("PBX浇注固化仿真分析软件"), stackedWidget);
+    titleLabel = new QLabel(QStringLiteral("浇注XX固化仿真分析工程"), stackedWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setWordWrap(true);
     titleLabel->setStyleSheet(QStringLiteral("font-family: 'Microsoft YaHei'; font-size: 60px; color: #333; font-weight: bold; background: transparent; padding: 20px;"));
@@ -205,7 +205,7 @@ void MainWindow::createTreeWidget()
     connect(treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
 
     QTreeWidgetItem *rootItem = new QTreeWidgetItem(treeWidget);
-    rootItem->setText(0, QStringLiteral("PBX浇注固化工程"));
+    rootItem->setText(0, QStringLiteral("浇注XX固化仿真分析工程"));
     rootItem->setData(0, Qt::UserRole, QStringLiteral("CATEGORY_ROOT"));
     rootItem->setExpanded(true);
 
@@ -287,7 +287,7 @@ void MainWindow::selectTreeItem(const QString &itemName)
 void MainWindow::loadProjectToUi()
 {
     infoWidget->setProjectData(currentProject);
-    setWindowTitle(QStringLiteral("PBX浇注固化仿真分析软件 - %1").arg(currentProject.projectName));
+    setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程 - %1").arg(currentProject.projectName));
     selectTreeItem(QStringLiteral("工程信息"));
     stackedWidget->setCurrentWidget(infoWidget);
     updateUIStates();
@@ -395,7 +395,7 @@ void MainWindow::exitProject()
         isProjectLoaded = false;
         currentProject = ProjectConfig();
         stackedWidget->setCurrentIndex(0);
-        setWindowTitle(QStringLiteral("PBX浇注固化仿真分析软件"));
+        setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程"));
         treeWidget->clearSelection();
     } else if (root && root->childCount() > 0) {
         QTreeWidgetItem *nextProject = root->child(0);
@@ -565,7 +565,7 @@ void MainWindow::onProjectDirectoryChanged()
         isProjectLoaded = false;
         currentProject = ProjectConfig();
         stackedWidget->setCurrentIndex(0);
-        setWindowTitle(QStringLiteral("PBX浇注固化仿真分析软件"));
+        setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程"));
         updateUIStates();
         startWatchingProject();
     }
