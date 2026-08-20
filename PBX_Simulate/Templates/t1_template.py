@@ -94,17 +94,17 @@ session.aviOptions.setValues(compressionMethod=CODEC,
     codecOptions='[12]:ejfjfffgbiaaaaaaaaaaaaaa')
 session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF, 
     compass=OFF)
-session.writeImageAnimation(fileName='C:/Users/DELL/Desktop/yingli', 
+session.writeImageAnimation(fileName='{{RESULT_STRESS_PATH}}', 
     format=AVI, canvasObjects=(session.viewports['Viewport: 1'], ))
 session.viewports['Viewport: 1'].odbDisplay.setPrimaryVariable(
     variableLabel='NT11', outputPosition=NODAL, )
 session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF, 
     compass=OFF)
-session.writeImageAnimation(fileName='C:/Users/DELL/Desktop/wendu', format=AVI, 
+session.writeImageAnimation(fileName='{{RESULT_TEMP_PATH}}', format=AVI, 
     canvasObjects=(session.viewports['Viewport: 1'], ))
 session.viewports['Viewport: 1'].odbDisplay.setPrimaryVariable(
     variableLabel='SDV1', outputPosition=INTEGRATION_POINT, )
 session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF, 
     compass=OFF)
-session.writeImageAnimation(fileName='C:/Users/DELL/Desktop/guhuadu', 
+session.writeImageAnimation(fileName='{{RESULT_CURE_PATH}}', 
     format=AVI, canvasObjects=(session.viewports['Viewport: 1'], ))
