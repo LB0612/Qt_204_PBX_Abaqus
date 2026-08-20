@@ -17,6 +17,7 @@
 #include "StructureParamWidget.h"
 #include "ExplosiveParamWidget.h"
 #include "MoldParamWidget.h"
+#include "BoundaryParamWidget.h"
 
 class NewProjectDialog;
 class OpenProjectDialog;
@@ -64,6 +65,7 @@ private:
     StructureParamWidget *structureWidget;
     ExplosiveParamWidget *explosiveWidget;
     MoldParamWidget *moldWidget;
+    BoundaryParamWidget *boundaryWidget;
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
@@ -82,6 +84,8 @@ private slots:
     void saveExplosiveParams();
     void moldParams();
     void saveMoldParams();
+    void boundaryParams();
+    void saveBoundaryParams();
     void generateFiles();
     void settings();
     void help();

@@ -42,6 +42,11 @@ set(PROJECT_SOURCES
     MoldConfigManager.h
     MoldParamWidget.cpp
     MoldParamWidget.h
+    BoundaryConfig.h
+    BoundaryConfigManager.cpp
+    BoundaryConfigManager.h
+    BoundaryParamWidget.cpp
+    BoundaryParamWidget.h
     AbaqusFileGenerator.cpp
     AbaqusFileGenerator.h
     Picture.qrc

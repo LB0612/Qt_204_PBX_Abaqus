@@ -6,6 +6,7 @@
 #include "StructureConfigManager.h"
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
+#include "BoundaryConfigManager.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -41,6 +42,9 @@ const QString NODE_EXPLOSIVE =
 
 const QString NODE_MOLD =
     QStringLiteral("MOLD");
+
+const QString NODE_BOUNDARY =
+    QStringLiteral("BOUNDARY");
 
 }
 
@@ -122,6 +126,9 @@ void MainWindow::setupUi()
     moldWidget = new MoldParamWidget(stackedWidget);
     stackedWidget->addWidget(moldWidget);
 
+    boundaryWidget = new BoundaryParamWidget(stackedWidget);
+    stackedWidget->addWidget(boundaryWidget);
+
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
@@ -150,6 +157,14 @@ void MainWindow::setupUi()
 
     connect(moldWidget, &MoldParamWidget::saveRequested,
             this, &MainWindow::saveMoldParams);
+
+    connect(boundaryWidget, &BaseParamWidget::backClicked, this, [this]() {
+        stackedWidget->setCurrentIndex(0);
+        treeWidget->clearSelection();
+    });
+
+    connect(boundaryWidget, &BoundaryParamWidget::saveRequested,
+            this, &MainWindow::saveBoundaryParams);
 
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
@@ -227,7 +242,7 @@ void MainWindow::createPureStyleToolBar()
     addBtn(QStringLiteral("炸药参数"), QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"), &MainWindow::explosiveParams);
     addBtn(QStringLiteral("结构参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::structureParams);
     addBtn(QStringLiteral("模具参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::moldParams);
-    addPlaceholderBtn(QStringLiteral("边界条件"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
+    addBtn(QStringLiteral("边界条件"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"), &MainWindow::boundaryParams);
     addPlaceholderBtn(QStringLiteral("仿真设置"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
 
     toolBar->addSeparator();
@@ -337,6 +352,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     moldItem->setData(0, ROLE_NODE_TYPE, NODE_MOLD);
     moldItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
     moldItem->setFont(0, childFont);
+
+    QTreeWidgetItem *boundaryItem = new QTreeWidgetItem(projectItem);
+    boundaryItem->setText(0, QStringLiteral("边界条件"));
+    boundaryItem->setData(0, Qt::UserRole, path);
+    boundaryItem->setData(0, ROLE_NODE_TYPE, NODE_BOUNDARY);
+    boundaryItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png")));
+    boundaryItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
@@ -739,6 +761,77 @@ void MainWindow::saveMoldParams()
     );
 }
 
+void MainWindow::boundaryParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    BoundaryConfig config;
+
+    const QString filePath =
+        QDir(currentProject.projectPath)
+            .filePath(QStringLiteral("config/boundary.json"));
+
+    if (QFileInfo::exists(filePath)) {
+        if (!BoundaryConfigManager::load(currentProject.projectPath, config)) {
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("读取失败"),
+                QStringLiteral(
+                    "边界条件文件存在，"
+                    "但文件内容无效或无法读取。"
+                )
+            );
+            return;
+        }
+    } else {
+        config = BoundaryConfig();
+    }
+
+    boundaryWidget->setConfig(config);
+    selectTreeItem(QStringLiteral("边界条件"));
+    stackedWidget->setCurrentWidget(boundaryWidget);
+}
+
+void MainWindow::saveBoundaryParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    BoundaryConfig config = boundaryWidget->getConfig();
+    QString error;
+
+    if (!BoundaryConfigManager::validate(config, error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("参数错误"),
+            error
+        );
+        return;
+    }
+
+    if (!BoundaryConfigManager::save(currentProject.projectPath, config)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Critical,
+            QStringLiteral("保存失败"),
+            QStringLiteral("边界条件保存失败。")
+        );
+        return;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("成功"),
+        QStringLiteral("边界条件已保存。")
+    );
+}
+
 void MainWindow::generateFiles()
 {
     if (!isProjectLoaded) {
@@ -778,12 +871,24 @@ void MainWindow::generateFiles()
         return;
     }
 
+    BoundaryConfig boundary;
+    if (!BoundaryConfigManager::load(currentProject.projectPath, boundary)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("无法生成"),
+            QStringLiteral("请先填写并保存边界条件。")
+        );
+        return;
+    }
+
     QString error;
     if (!AbaqusFileGenerator::generate(
             currentProject.projectPath,
             structure,
             explosive,
             mold,
+            boundary,
             error)) {
         showCenteredMessageBox(
             this,
@@ -873,7 +978,8 @@ void MainWindow::onTreeItemClicked(
     else if (nodeType == NODE_PROJECT_INFO
              || nodeType == NODE_STRUCTURE
              || nodeType == NODE_EXPLOSIVE
-             || nodeType == NODE_MOLD) {
+             || nodeType == NODE_MOLD
+             || nodeType == NODE_BOUNDARY) {
         projectItem = item->parent();
     }
     else {
@@ -944,6 +1050,11 @@ void MainWindow::onTreeItemClicked(
 
     if (nodeType == NODE_MOLD) {
         moldParams();
+        return;
+    }
+
+    if (nodeType == NODE_BOUNDARY) {
+        boundaryParams();
         return;
     }
 

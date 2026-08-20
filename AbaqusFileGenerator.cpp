@@ -50,6 +50,7 @@ bool AbaqusFileGenerator::generate(
     const StructureConfig &structure,
     const ExplosiveConfig &explosive,
     const MoldConfig &mold,
+    const BoundaryConfig &boundary,
     QString &errorMessage)
 {
     QDir projectDir(projectPath);
@@ -91,7 +92,9 @@ bool AbaqusFileGenerator::generate(
         QStringLiteral("{{MOLD_ELASTIC_MODULUS}}"),
         QStringLiteral("{{MOLD_POISSON_RATIO}}"),
         QStringLiteral("{{MOLD_THERMAL_CONDUCTIVITY}}"),
-        QStringLiteral("{{MOLD_SPECIFIC_HEAT}}")
+        QStringLiteral("{{MOLD_SPECIFIC_HEAT}}"),
+
+        QStringLiteral("{{AMBIENT_TEMPERATURE}}")
     };
 
     for (const QString &placeholder : requiredPlaceholders) {
@@ -120,6 +123,8 @@ bool AbaqusFileGenerator::generate(
     content.replace(QStringLiteral("{{MOLD_POISSON_RATIO}}"), number(mold.poissonRatio));
     content.replace(QStringLiteral("{{MOLD_THERMAL_CONDUCTIVITY}}"), number(mold.thermalConductivity));
     content.replace(QStringLiteral("{{MOLD_SPECIFIC_HEAT}}"), number(mold.specificHeat));
+
+    content.replace(QStringLiteral("{{AMBIENT_TEMPERATURE}}"), number(boundary.ambientTemperature));
 
     if (content.contains(QLatin1String("{{"))) {
         errorMessage = QStringLiteral("模板占位符替换失败。");

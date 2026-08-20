@@ -1,6 +1,7 @@
 #ifndef ABAQUSFILEGENERATOR_H
 #define ABAQUSFILEGENERATOR_H
 
+#include "BoundaryConfig.h"
 #include "ExplosiveConfig.h"
 #include "MoldConfig.h"
 #include "StructureConfig.h"
@@ -15,6 +16,7 @@ public:
         const StructureConfig &structure,
         const ExplosiveConfig &explosive,
         const MoldConfig &mold,
+        const BoundaryConfig &boundary,
         QString &errorMessage
     );
 

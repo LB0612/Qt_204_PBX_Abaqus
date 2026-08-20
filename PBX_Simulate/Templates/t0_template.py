@@ -237,7 +237,7 @@ faces1 = f1.getSequenceFromMask(mask=('[#49 ]', ), )
 region = a.Set(faces=faces1, name='Set-2')
 mdb.models['Model-1'].TemperatureBC(name='BC-2', createStepName='Step-1', 
     region=region, fixed=OFF, distributionType=USER_DEFINED, fieldName='', 
-    magnitude=335.0, amplitude=UNSET)
+    magnitude={{AMBIENT_TEMPERATURE}}, amplitude=UNSET)
 a = mdb.models['Model-1'].rootAssembly
 f1 = a.instances['ke-1'].faces
 faces1 = f1.getSequenceFromMask(mask=('[#22 ]', ), )
@@ -271,7 +271,7 @@ region = a.Set(vertices=verts1+verts2, edges=edges1+edges2, faces=faces1+\
     faces2, cells=cells1+cells2, name='Set-4')
 mdb.models['Model-1'].Temperature(name='Predefined Field-1', 
     createStepName='Initial', region=region, distributionType=UNIFORM, 
-    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, magnitudes=(335.0, ))
+    crossSectionDistribution=CONSTANT_THROUGH_THICKNESS, magnitudes=({{AMBIENT_TEMPERATURE}}, ))
 session.viewports['Viewport: 1'].assemblyDisplay.setValues(mesh=ON, loads=OFF, 
     bcs=OFF, predefinedFields=OFF, connectors=OFF)
 session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
