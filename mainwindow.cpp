@@ -14,6 +14,7 @@
 #include <QBrush>
 #include <QCloseEvent>
 #include <QColor>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -1062,6 +1063,7 @@ void MainWindow::startSimulation()
         return;
     }
 
+    // currentProject.projectPath 已是工程根目录，例如 D:/Test01
     const QString projectDir = currentProject.projectPath;
     const QString abaqusDir =
         QDir(projectDir).filePath(QStringLiteral("abaqus"));
@@ -1081,12 +1083,12 @@ void MainWindow::startSimulation()
     }
 
     const QString abaqusPath = SettingsDialog::getAbaqusPath();
-    if (abaqusPath.trimmed().isEmpty() || !QFile::exists(abaqusPath)) {
+    if (abaqusPath.isEmpty() || !QFile::exists(abaqusPath)) {
         showCenteredMessageBox(
             this,
             QMessageBox::Warning,
             QStringLiteral("错误"),
-            QStringLiteral("Abaqus 路径无效，请先在系统设置中配置。")
+            QStringLiteral("Abaqus 路径无效。")
         );
         return;
     }
@@ -1096,41 +1098,85 @@ void MainWindow::startSimulation()
         abaqusProcess = nullptr;
     }
 
-    QProcess *process0 = new QProcess(this);
-    abaqusProcess = process0;
-    process0->setWorkingDirectory(abaqusDir);
+    // ---------- 阶段 1：t0.py ----------
+    abaqusProcess = new QProcess(this);
+    abaqusProcess->setWorkingDirectory(abaqusDir);
 
     connect(
-        process0,
+        abaqusProcess,
+        &QProcess::readyReadStandardOutput,
+        this,
+        [this]() {
+            if (abaqusProcess) {
+                qDebug() << abaqusProcess->readAllStandardOutput();
+            }
+        }
+    );
+
+    connect(
+        abaqusProcess,
+        &QProcess::readyReadStandardError,
+        this,
+        [this]() {
+            if (abaqusProcess) {
+                qDebug() << abaqusProcess->readAllStandardError();
+            }
+        }
+    );
+
+    connect(
+        abaqusProcess,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [=](int exitCode, QProcess::ExitStatus) {
-            process0->deleteLater();
-            if (abaqusProcess == process0) {
+        [this, t1Path, abaqusPath, abaqusDir](int exitCode, QProcess::ExitStatus) {
+            if (abaqusProcess) {
+                abaqusProcess->deleteLater();
                 abaqusProcess = nullptr;
             }
 
             if (exitCode != 0) {
                 showCenteredMessageBox(
                     this,
-                    QMessageBox::Warning,
+                    QMessageBox::Critical,
                     QStringLiteral("错误"),
                     QStringLiteral("t0.py 执行失败。")
                 );
                 return;
             }
 
-            QProcess *process1 = new QProcess(this);
-            abaqusProcess = process1;
-            process1->setWorkingDirectory(abaqusDir);
+            // ---------- 阶段 2：t1.py（t0 成功后新建进程）----------
+            abaqusProcess = new QProcess(this);
+            abaqusProcess->setWorkingDirectory(abaqusDir);
 
             connect(
-                process1,
+                abaqusProcess,
+                &QProcess::readyReadStandardOutput,
+                this,
+                [this]() {
+                    if (abaqusProcess) {
+                        qDebug() << abaqusProcess->readAllStandardOutput();
+                    }
+                }
+            );
+
+            connect(
+                abaqusProcess,
+                &QProcess::readyReadStandardError,
+                this,
+                [this]() {
+                    if (abaqusProcess) {
+                        qDebug() << abaqusProcess->readAllStandardError();
+                    }
+                }
+            );
+
+            connect(
+                abaqusProcess,
                 QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this,
-                [=](int t1ExitCode, QProcess::ExitStatus) {
-                    process1->deleteLater();
-                    if (abaqusProcess == process1) {
+                [this](int t1ExitCode, QProcess::ExitStatus) {
+                    if (abaqusProcess) {
+                        abaqusProcess->deleteLater();
                         abaqusProcess = nullptr;
                     }
 
@@ -1152,18 +1198,16 @@ void MainWindow::startSimulation()
                 }
             );
 
-            process1->start(
+            abaqusProcess->start(
                 abaqusPath,
                 QStringList()
                     << QStringLiteral("cae")
                     << QStringLiteral("script=") + t1Path
             );
 
-            if (!process1->waitForStarted(10000)) {
-                process1->deleteLater();
-                if (abaqusProcess == process1) {
-                    abaqusProcess = nullptr;
-                }
+            if (!abaqusProcess->waitForStarted(10000)) {
+                abaqusProcess->deleteLater();
+                abaqusProcess = nullptr;
                 showCenteredMessageBox(
                     this,
                     QMessageBox::Warning,
@@ -1174,18 +1218,16 @@ void MainWindow::startSimulation()
         }
     );
 
-    process0->start(
+    abaqusProcess->start(
         abaqusPath,
         QStringList()
             << QStringLiteral("cae")
             << QStringLiteral("script=") + t0Path
     );
 
-    if (!process0->waitForStarted(10000)) {
-        process0->deleteLater();
-        if (abaqusProcess == process0) {
-            abaqusProcess = nullptr;
-        }
+    if (!abaqusProcess->waitForStarted(10000)) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
         showCenteredMessageBox(
             this,
             QMessageBox::Warning,
