@@ -166,5 +166,61 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
+    // =========================================================
+    // 生成 t1.py
+    // =========================================================
+    QString t1Content;
+    if (!loadTemplate(
+            QStringLiteral(":/simulation/templates/t1.py"),
+            t1Content,
+            errorMessage)) {
+        return false;
+    }
+
+    const QStringList t1RequiredPlaceholders = {
+        QStringLiteral("{{ABAQUS_WORK_DIR}}"),
+        QStringLiteral("{{CAE_FILE_PATH}}"),
+        QStringLiteral("{{USER_SUBROUTINE_PATH}}")
+    };
+
+    for (const QString &placeholder : t1RequiredPlaceholders) {
+        if (!t1Content.contains(placeholder)) {
+            errorMessage =
+                QStringLiteral("t1 模板缺少占位符：%1").arg(placeholder);
+            return false;
+        }
+    }
+
+    QString abaqusWorkDir =
+        QDir::fromNativeSeparators(
+            projectDir.filePath(QStringLiteral("abaqus"))
+        );
+    QString caeFilePath =
+        QDir::fromNativeSeparators(
+            projectDir.filePath(QStringLiteral("abaqus/guhua.cae"))
+        );
+    QString userSubroutinePath =
+        QDir::fromNativeSeparators(
+            projectDir.filePath(QStringLiteral("abaqus/335K.for"))
+        );
+
+    abaqusWorkDir.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+    caeFilePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+    userSubroutinePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+
+    t1Content.replace(QStringLiteral("{{ABAQUS_WORK_DIR}}"), abaqusWorkDir);
+    t1Content.replace(QStringLiteral("{{CAE_FILE_PATH}}"), caeFilePath);
+    t1Content.replace(QStringLiteral("{{USER_SUBROUTINE_PATH}}"), userSubroutinePath);
+
+    if (t1Content.contains(QLatin1String("{{"))) {
+        errorMessage = QStringLiteral("t1 模板占位符替换失败。");
+        return false;
+    }
+
+    const QString t1OutputPath = projectDir.filePath(QStringLiteral("abaqus/t1.py"));
+    if (!saveFile(t1OutputPath, t1Content, errorMessage)) {
+        return false;
+    }
+
     return true;
 }
