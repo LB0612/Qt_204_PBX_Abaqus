@@ -26,21 +26,18 @@ void StructureParamWidget::setupUi()
 
     addParamRow(
         scrollLayout,
-        QStringLiteral("药柱半径"),
-        radiusEdit,
-        QStringLiteral("mm")
+        QStringLiteral("药柱半径（mm）"),
+        radiusEdit
     );
     addParamRow(
         scrollLayout,
-        QStringLiteral("药柱高度"),
-        heightEdit,
-        QStringLiteral("mm")
+        QStringLiteral("药柱高度（mm）"),
+        heightEdit
     );
     addParamRow(
         scrollLayout,
-        QStringLiteral("外壳厚度"),
-        shellThicknessEdit,
-        QStringLiteral("mm")
+        QStringLiteral("外壳厚度（mm）"),
+        shellThicknessEdit
     );
 
     addSaveButton(scrollLayout, QStringLiteral("保存结构参数"), [this]() {
