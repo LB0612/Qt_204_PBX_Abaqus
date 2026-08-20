@@ -19,6 +19,7 @@
 #include "MoldParamWidget.h"
 #include "BoundaryParamWidget.h"
 #include "SimulationParamWidget.h"
+#include "ParameterCheckWidget.h"
 
 class NewProjectDialog;
 class OpenProjectDialog;
@@ -68,6 +69,7 @@ private:
     MoldParamWidget *moldWidget;
     BoundaryParamWidget *boundaryWidget;
     SimulationParamWidget *simulationWidget;
+    ParameterCheckWidget *parameterCheckWidget;
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;

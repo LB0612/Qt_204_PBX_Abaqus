@@ -8,7 +8,7 @@
 #include "MoldConfigManager.h"
 #include "BoundaryConfigManager.h"
 #include "SimulationConfigManager.h"
-#include "ParameterCheckDialog.h"
+#include "ParameterCheckWidget.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -140,6 +140,9 @@ void MainWindow::setupUi()
     simulationWidget = new SimulationParamWidget(stackedWidget);
     stackedWidget->addWidget(simulationWidget);
 
+    parameterCheckWidget = new ParameterCheckWidget(stackedWidget);
+    stackedWidget->addWidget(parameterCheckWidget);
+
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
@@ -184,6 +187,11 @@ void MainWindow::setupUi()
 
     connect(simulationWidget, &SimulationParamWidget::saveRequested,
             this, &MainWindow::saveSimulationParams);
+
+    connect(parameterCheckWidget, &BaseParamWidget::backClicked, this, [this]() {
+        stackedWidget->setCurrentIndex(0);
+        treeWidget->clearSelection();
+    });
 
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
@@ -942,14 +950,9 @@ void MainWindow::checkParams()
         return;
     }
 
+    parameterCheckWidget->refresh(currentProject);
     selectTreeItem(QStringLiteral("参数检查"));
-
-    ParameterCheckDialog dialog(
-        currentProject,
-        this
-    );
-
-    dialog.exec();
+    stackedWidget->setCurrentWidget(parameterCheckWidget);
 }
 
 void MainWindow::generateFiles()

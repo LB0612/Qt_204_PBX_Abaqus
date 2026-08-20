@@ -1,4 +1,4 @@
-#include "ParameterCheckDialog.h"
+#include "ParameterCheckWidget.h"
 
 #include "BoundaryConfigManager.h"
 #include "ExplosiveConfigManager.h"
@@ -7,7 +7,6 @@
 #include "StructureConfigManager.h"
 
 #include <QAbstractItemView>
-#include <QDialogButtonBox>
 #include <QDir>
 #include <QFileInfo>
 #include <QHeaderView>
@@ -91,22 +90,17 @@ void addChildValue(
 
 } // namespace
 
-ParameterCheckDialog::ParameterCheckDialog(
-    const ProjectConfig &project,
-    QWidget *parent)
-    : QDialog(parent)
+ParameterCheckWidget::ParameterCheckWidget(QWidget *parent)
+    : BaseParamWidget(parent)
 {
-    setWindowTitle(QStringLiteral("参数检查"));
-    setModal(true);
-    resize(720, 560);
-    setupUi(project);
+    setupUi();
+    applyCommonStyles();
 }
 
-void ParameterCheckDialog::setupUi(const ProjectConfig &project)
+void ParameterCheckWidget::setupUi()
 {
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(16, 16, 16, 16);
-    mainLayout->setSpacing(12);
+    QVBoxLayout *mainLayout = createMainLayout(this);
+    setupHeader(QStringLiteral("参数检查"));
 
     treeWidget = new QTreeWidget(this);
     treeWidget->setColumnCount(3);
@@ -127,6 +121,18 @@ void ParameterCheckDialog::setupUi(const ProjectConfig &project)
     header->setSectionResizeMode(0, QHeaderView::Stretch);
     header->setSectionResizeMode(1, QHeaderView::Stretch);
     header->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+
+    mainLayout->addWidget(treeWidget, 1);
+
+    summaryLabel = new QLabel(this);
+    summaryLabel->setWordWrap(true);
+    summaryLabel->setStyleSheet(QStringLiteral("font-size: 14px; padding: 4px 2px;"));
+    mainLayout->addWidget(summaryLabel);
+}
+
+void ParameterCheckWidget::refresh(const ProjectConfig &project)
+{
+    treeWidget->clear();
 
     bool allPassed = true;
 
@@ -350,11 +356,6 @@ void ParameterCheckDialog::setupUi(const ProjectConfig &project)
         }
     }
 
-    mainLayout->addWidget(treeWidget, 1);
-
-    summaryLabel = new QLabel(this);
-    summaryLabel->setWordWrap(true);
-    summaryLabel->setStyleSheet(QStringLiteral("font-size: 14px; padding: 4px 2px;"));
     if (allPassed) {
         summaryLabel->setText(
             QStringLiteral("参数检查通过，可以生成 Abaqus 文件。")
@@ -370,13 +371,4 @@ void ParameterCheckDialog::setupUi(const ProjectConfig &project)
             QStringLiteral("font-size: 14px; padding: 4px 2px; color: #cf1322;")
         );
     }
-    mainLayout->addWidget(summaryLabel);
-
-    QDialogButtonBox *buttonBox = new QDialogButtonBox(
-        QDialogButtonBox::Close,
-        this
-    );
-    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    mainLayout->addWidget(buttonBox);
 }
