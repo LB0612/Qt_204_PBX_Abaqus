@@ -90,6 +90,7 @@ private slots:
     void saveBoundaryParams();
     void simulationParams();
     void saveSimulationParams();
+    void checkParams();
     void generateFiles();
     void settings();
     void help();

@@ -8,6 +8,7 @@
 #include "MoldConfigManager.h"
 #include "BoundaryConfigManager.h"
 #include "SimulationConfigManager.h"
+#include "ParameterCheckDialog.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -49,6 +50,9 @@ const QString NODE_BOUNDARY =
 
 const QString NODE_SIMULATION =
     QStringLiteral("SIMULATION");
+
+const QString NODE_PARAMETER_CHECK =
+    QStringLiteral("PARAMETER_CHECK");
 
 }
 
@@ -262,7 +266,7 @@ void MainWindow::createPureStyleToolBar()
 
     toolBar->addSeparator();
 
-    addPlaceholderBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"));
+    addBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"), &MainWindow::checkParams);
     addBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"), &MainWindow::generateFiles);
     addPlaceholderBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"));
     addPlaceholderBtn(QStringLiteral("生成报告"), QStringLiteral(":/new/prefix1/toolbar_picture/report.png"));
@@ -381,6 +385,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     simulationItem->setData(0, ROLE_NODE_TYPE, NODE_SIMULATION);
     simulationItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png")));
     simulationItem->setFont(0, childFont);
+
+    QTreeWidgetItem *checkItem = new QTreeWidgetItem(projectItem);
+    checkItem->setText(0, QStringLiteral("参数检查"));
+    checkItem->setData(0, Qt::UserRole, path);
+    checkItem->setData(0, ROLE_NODE_TYPE, NODE_PARAMETER_CHECK);
+    checkItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/check.png")));
+    checkItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
@@ -925,6 +936,22 @@ void MainWindow::saveSimulationParams()
     );
 }
 
+void MainWindow::checkParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    selectTreeItem(QStringLiteral("参数检查"));
+
+    ParameterCheckDialog dialog(
+        currentProject,
+        this
+    );
+
+    dialog.exec();
+}
+
 void MainWindow::generateFiles()
 {
     if (!isProjectLoaded) {
@@ -1085,7 +1112,8 @@ void MainWindow::onTreeItemClicked(
              || nodeType == NODE_EXPLOSIVE
              || nodeType == NODE_MOLD
              || nodeType == NODE_BOUNDARY
-             || nodeType == NODE_SIMULATION) {
+             || nodeType == NODE_SIMULATION
+             || nodeType == NODE_PARAMETER_CHECK) {
         projectItem = item->parent();
     }
     else {
@@ -1166,6 +1194,11 @@ void MainWindow::onTreeItemClicked(
 
     if (nodeType == NODE_SIMULATION) {
         simulationParams();
+        return;
+    }
+
+    if (nodeType == NODE_PARAMETER_CHECK) {
+        checkParams();
         return;
     }
 
