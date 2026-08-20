@@ -142,6 +142,8 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 {
     clearSections();
 
+    bool allPassed = true;
+
     // 1. 工程信息
     {
         QGroupBox *box = createSectionBox(QStringLiteral("1. 工程信息"));
@@ -157,8 +159,10 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             && !loaded.projectName.trimmed().isEmpty();
 
         if (!exists) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("工程信息文件不存在"));
         } else if (!valid) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("工程信息文件无效"));
         } else {
             boxLayout->addLayout(
@@ -183,8 +187,10 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             exists && ExplosiveConfigManager::load(project.projectPath, config);
 
         if (!exists) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("炸药参数未保存"));
         } else if (!valid) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("炸药参数配置文件无效"));
         } else {
             boxLayout->addLayout(createInfoRow(QStringLiteral("炸药密度："), formatNumber(config.density)));
@@ -215,8 +221,10 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             exists && StructureConfigManager::load(project.projectPath, config);
 
         if (!exists) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("结构参数未保存"));
         } else if (!valid) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("结构参数配置文件无效"));
         } else {
             boxLayout->addLayout(createInfoRow(QStringLiteral("药柱半径："), formatNumber(config.chargeRadius)));
@@ -241,8 +249,10 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             exists && MoldConfigManager::load(project.projectPath, config);
 
         if (!exists) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("模具参数未保存"));
         } else if (!valid) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("模具参数配置文件无效"));
         } else {
             boxLayout->addLayout(createInfoRow(QStringLiteral("模具密度："), formatNumber(config.density)));
@@ -269,8 +279,10 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             exists && BoundaryConfigManager::load(project.projectPath, config);
 
         if (!exists) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("边界条件未保存"));
         } else if (!valid) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("边界条件配置文件无效"));
         } else {
             boxLayout->addLayout(
@@ -298,8 +310,10 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             exists && SimulationConfigManager::load(project.projectPath, config);
 
         if (!exists) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("仿真设置未保存"));
         } else if (!valid) {
+            allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("仿真设置配置文件无效"));
         } else {
             boxLayout->addLayout(
@@ -311,6 +325,20 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         }
 
         sectionsLayout->addWidget(box);
+    }
+
+    {
+        QGroupBox *resultBox = createSectionBox(QStringLiteral("检查结果"));
+        QVBoxLayout *resultLayout = qobject_cast<QVBoxLayout *>(resultBox->layout());
+        resultLayout->addLayout(
+            createInfoRow(
+                QStringLiteral("检查结果："),
+                allPassed
+                    ? QStringLiteral("参数配置完整，可以生成 Abaqus 文件")
+                    : QStringLiteral("存在未保存或无效的参数配置")
+            )
+        );
+        sectionsLayout->addWidget(resultBox);
     }
 
     sectionsLayout->addStretch();
