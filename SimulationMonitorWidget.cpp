@@ -14,6 +14,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
 
     progressBar = new QProgressBar(this);
     progressBar->setRange(0, 100);
+    progressBar->hide();
 
     logEdit = new QTextEdit(this);
     logEdit->setReadOnly(true);

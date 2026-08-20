@@ -1273,7 +1273,7 @@ void MainWindow::startSimulation()
                 QStringLiteral("[系统] 模型生成完成，启动 t1.py")
             );
             simulationMonitorWidget->setStatus(
-                QStringLiteral("正在执行 Abaqus 求解...")
+                QStringLiteral("Abaqus 求解中")
             );
 
             // ---------- 阶段 2：t1.py（t0 成功后新建进程）----------
@@ -1312,10 +1312,19 @@ void MainWindow::startSimulation()
 
             const QString jobName =
                 QDir(projectDir).dirName() + QStringLiteral("_Job");
+            simulationMsgPath =
+                QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg"));
             simulationStaPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"));
+            simulationDatPath =
+                QDir(abaqusDir).filePath(jobName + QStringLiteral(".dat"));
             simulationTotalTime = loadSimulationTotalTime();
-            lastStaSnapshot.clear();
+            lastAbaqusLogSnapshot.clear();
+
+            QFile::remove(simulationMsgPath);
+            QFile::remove(simulationStaPath);
+            QFile::remove(simulationDatPath);
+
             const QString odbPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
 
@@ -1415,7 +1424,7 @@ void MainWindow::startSimulation()
                     simulationTimer,
                     &QTimer::timeout,
                     this,
-                    &MainWindow::updateSimulationProgress
+                    &MainWindow::updateAbaqusLogs
                 );
             }
             simulationTimer->start(1000);
@@ -1452,13 +1461,19 @@ void MainWindow::startSimulation()
     );
 }
 
-void MainWindow::updateSimulationProgress()
+void MainWindow::updateAbaqusLogs()
 {
-    if (simulationStaPath.isEmpty()) {
+    readLogFile(simulationMsgPath, QStringLiteral("[MSG]"));
+    readLogFile(simulationStaPath, QStringLiteral("[STA]"));
+}
+
+void MainWindow::readLogFile(const QString &path, const QString &tag)
+{
+    if (path.isEmpty()) {
         return;
     }
 
-    QFile file(simulationStaPath);
+    QFile file(path);
     if (!file.exists()) {
         return;
     }
@@ -1467,17 +1482,16 @@ void MainWindow::updateSimulationProgress()
         return;
     }
 
-    const QString content =
-        QString::fromLocal8Bit(file.readAll());
+    const QStringList lines =
+        QString::fromLocal8Bit(file.readAll())
+            .split(QStringLiteral("\n"), Qt::SkipEmptyParts);
     file.close();
 
-    const QStringList lines =
-        content.split(QStringLiteral("\n"), Qt::SkipEmptyParts);
     if (lines.isEmpty()) {
         return;
     }
 
-    const int start = qMax(0, lines.size() - 20);
+    const int start = qMax(0, lines.size() - 5);
     QStringList recentLines;
     for (int i = start; i < lines.size(); ++i) {
         const QString line = lines[i].trimmed();
@@ -1490,17 +1504,15 @@ void MainWindow::updateSimulationProgress()
         return;
     }
 
-    // 内容未变化时不重复刷屏，便于观察真实 .sta 格式
+    // 内容未变化时不重复刷屏
     const QString snapshot = recentLines.join(QLatin1Char('\n'));
-    if (snapshot == lastStaSnapshot) {
+    if (lastAbaqusLogSnapshot.value(path) == snapshot) {
         return;
     }
-    lastStaSnapshot = snapshot;
+    lastAbaqusLogSnapshot.insert(path, snapshot);
 
     for (const QString &line : recentLines) {
-        simulationMonitorWidget->appendLog(
-            QStringLiteral("[STA] ") + line
-        );
+        simulationMonitorWidget->appendLog(tag + QStringLiteral(" ") + line);
     }
 }
 

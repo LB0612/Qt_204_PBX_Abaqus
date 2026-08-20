@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QStackedWidget>
 #include <QFileSystemWatcher>
+#include <QHash>
 #include <QTimer>
 #include <QMessageBox>
 #include <QProcess>
@@ -47,7 +48,8 @@ private:
     void stopWatchingProject();
     void loadProjectToUi();
     void updateUIStates();
-    void updateSimulationProgress();
+    void updateAbaqusLogs();
+    void readLogFile(const QString &path, const QString &tag);
     double loadSimulationTotalTime();
 
     QMessageBox::StandardButton showCenteredMessageBox(
@@ -80,8 +82,10 @@ private:
     QTimer *debounceTimer;
     QProcess *abaqusProcess = nullptr;
     QTimer *simulationTimer = nullptr;
+    QString simulationMsgPath;
     QString simulationStaPath;
-    QString lastStaSnapshot;
+    QString simulationDatPath;
+    QHash<QString, QString> lastAbaqusLogSnapshot;
     double simulationTotalTime = 0.0;
 
     QList<QAction *> projectDependentActions;
