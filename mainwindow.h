@@ -74,6 +74,7 @@ private slots:
     void projectInfo();
     void structureParams();
     void saveStructureParams();
+    void generateFiles();
     void settings();
     void help();
 

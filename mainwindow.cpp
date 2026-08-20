@@ -4,6 +4,7 @@
 #include "OpenProjectDialog.h"
 #include "SettingsDialog.h"
 #include "StructureConfigManager.h"
+#include "AbaqusFileGenerator.h"
 
 #include <QBrush>
 #include <QCloseEvent>
@@ -201,7 +202,7 @@ void MainWindow::createPureStyleToolBar()
     toolBar->addSeparator();
 
     addPlaceholderBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"));
-    addPlaceholderBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"));
+    addBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"), &MainWindow::generateFiles);
     addPlaceholderBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"));
     addPlaceholderBtn(QStringLiteral("生成报告"), QStringLiteral(":/new/prefix1/toolbar_picture/report.png"));
 
@@ -548,6 +549,57 @@ void MainWindow::saveStructureParams()
         QMessageBox::Information,
         QStringLiteral("成功"),
         QStringLiteral("结构参数已保存。")
+    );
+}
+
+void MainWindow::generateFiles()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    StructureConfig structure;
+
+    if (!StructureConfigManager::load(
+            currentProject.projectPath,
+            structure)) {
+
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("无法生成"),
+            QStringLiteral(
+                "请先填写并保存结构参数。"
+            )
+        );
+
+        return;
+    }
+
+    QString error;
+
+    if (!AbaqusFileGenerator::generate(
+            currentProject.projectPath,
+            structure,
+            error)) {
+
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Critical,
+            QStringLiteral("生成失败"),
+            error
+        );
+
+        return;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("成功"),
+        QStringLiteral(
+            "Abaqus 文件生成成功。"
+        )
     );
 }
 

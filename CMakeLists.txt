@@ -32,7 +32,10 @@ set(PROJECT_SOURCES
     StructureConfigManager.h
     StructureParamWidget.cpp
     StructureParamWidget.h
+    AbaqusFileGenerator.cpp
+    AbaqusFileGenerator.h
     Picture.qrc
+    SimulationTemplates.qrc
 )
 
 qt_standard_project_setup()

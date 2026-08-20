@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/simulation/templates">
+        <file alias="t0.py">PBX_Simulate/Templates/t0_template.py</file>
+        <file alias="t1.py">PBX_Simulate/Templates/t1_template.py</file>
+        <file alias="335K.for">PBX_Simulate/Templates/335K_template.for</file>
+    </qresource>
+</RCC>
