@@ -44,7 +44,7 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
         unitLabel->setStyleSheet(
             QStringLiteral(
                 "font-family: 'Microsoft YaHei';"
-                "font-size: 16px;"
+                "font-size: 15px;"
                 "color: #555;"
             )
         );
@@ -130,7 +130,7 @@ void BaseParamWidget::setupHeader(const QString& title) {
     btnBack->setFixedSize(100, 36); 
     btnBack->setCursor(Qt::PointingHandCursor); 
     btnBack->setStyleSheet(
-        "QPushButton { background-color: #e6e6e6; color: #333; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 16px; } "
+        "QPushButton { background-color: #e6e6e6; color: #333; border: 1px solid #ccc; border-radius: 4px; font-family: 'Microsoft YaHei'; font-weight: bold; font-size: 16px; } "
         "QPushButton:hover { background-color: #d4d4d4; } "
         "QPushButton:pressed { background-color: #c0c0c0; }"
     ); 
@@ -144,7 +144,7 @@ void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, st
     QPushButton* btn = new QPushButton(text);
     btn->setFixedHeight(60);
     btn->setCursor(Qt::PointingHandCursor);
-    btn->setStyleSheet("QPushButton { background-color: #007bff; color: white; border-radius: 5px; font-weight: bold; font-size: 18px; margin-top: 25px; } QPushButton:hover { background-color: #0069d9; }");
+    btn->setStyleSheet("QPushButton { background-color: #007bff; color: white; border-radius: 5px; font-family: 'Microsoft YaHei'; font-weight: bold; font-size: 18px; margin-top: 25px; } QPushButton:hover { background-color: #0069d9; }");
     connect(btn, &QPushButton::clicked, this, onClick);
     layout->addWidget(btn);
 } 

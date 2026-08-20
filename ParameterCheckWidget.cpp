@@ -75,9 +75,8 @@ QTreeWidgetItem *addGroupItem(
     applyStatus(item, status);
     item->setExpanded(true);
 
-    QFont font = item->font(0);
-    font.setFamily(QStringLiteral("Microsoft YaHei"));
-    font.setPointSize(11);
+    QFont font(QStringLiteral("Microsoft YaHei"));
+    font.setPixelSize(16);
     font.setBold(true);
 
     for (int column = 0; column < 3; ++column) {
@@ -88,9 +87,8 @@ QTreeWidgetItem *addGroupItem(
         );
     }
 
-    QFont statusFont = item->font(2);
-    statusFont.setFamily(QStringLiteral("Microsoft YaHei"));
-    statusFont.setPointSize(11);
+    QFont statusFont(QStringLiteral("Microsoft YaHei"));
+    statusFont.setPixelSize(15);
     statusFont.setBold(true);
     item->setFont(2, statusFont);
     item->setTextAlignment(2, Qt::AlignCenter);
@@ -108,10 +106,22 @@ void addChildValue(
     QTreeWidgetItem *child = new QTreeWidgetItem(parent);
     child->setText(0, name);
     child->setText(1, value);
+
+    QFont dataFont(QStringLiteral("Microsoft YaHei"));
+    dataFont.setPixelSize(15);
+    dataFont.setBold(false);
+    child->setFont(0, dataFont);
+    child->setFont(1, dataFont);
+
     if (childStatus == CheckStatus::Pass && !value.isEmpty()) {
         child->setText(2, QString());
     } else {
         applyStatus(child, childStatus);
+        QFont statusFont(QStringLiteral("Microsoft YaHei"));
+        statusFont.setPixelSize(15);
+        statusFont.setBold(true);
+        child->setFont(2, statusFont);
+        child->setTextAlignment(2, Qt::AlignCenter);
     }
 }
 
@@ -186,7 +196,7 @@ void ParameterCheckWidget::setupUi()
             border: 1px solid #e5e5e5;
             border-radius: 4px;
             font-family: 'Microsoft YaHei';
-            font-size: 14px;
+            font-size: 15px;
             color: #333333;
             outline: none;
         }

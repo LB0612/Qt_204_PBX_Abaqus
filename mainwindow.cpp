@@ -223,9 +223,9 @@ void MainWindow::createPureStyleToolBar()
         border: none;
         border-radius: 6px;
         color: #000000;
-        font-family: 'SimSun', '宋体';
-        font-weight: 800;
-        font-size: 16px;
+        font-family: 'Microsoft YaHei';
+        font-weight: bold;
+        font-size: 15px;
         padding: 2px 3px;
         min-width: 60px;
     }
@@ -299,7 +299,7 @@ void MainWindow::createTreeWidget()
     treeWidget->setColumnCount(1);
     treeWidget->setIndentation(20);
     treeWidget->setStyleSheet(
-        "QTreeWidget { background: transparent; border: none; font-size: 14px; outline: none; }"
+        "QTreeWidget { background: transparent; border: none; font-family: 'Microsoft YaHei'; font-size: 15px; outline: none; }"
         "QTreeWidget::item { height: 32px; padding-left: 5px; border-bottom: 1px solid transparent; }"
         "QTreeWidget::item:hover { background-color: #f0f0f0; }"
         "QTreeWidget::item:selected { background-color: #e6f7ff; color: #1890ff; border-left: 3px solid #1890ff; }"
@@ -314,9 +314,9 @@ void MainWindow::createTreeWidget()
     rootItem->setData(0, ROLE_NODE_TYPE, NODE_ROOT);
     rootItem->setExpanded(true);
 
-    QFont rootFont = rootItem->font(0);
+    QFont rootFont(QStringLiteral("Microsoft YaHei"));
+    rootFont.setPixelSize(16);
     rootFont.setBold(true);
-    rootFont.setPointSize(13);
     rootItem->setFont(0, rootFont);
     rootItem->setForeground(0, QBrush(QColor(QStringLiteral("#333"))));
 }
@@ -344,9 +344,9 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     projectItem->setData(0, ROLE_NODE_TYPE, NODE_PROJECT);
     projectItem->setExpanded(true);
 
-    QFont projectFont = projectItem->font(0);
+    QFont projectFont(QStringLiteral("Microsoft YaHei"));
+    projectFont.setPixelSize(16);
     projectFont.setBold(true);
-    projectFont.setPointSize(13);
     projectItem->setFont(0, projectFont);
 
     QTreeWidgetItem *infoItem = new QTreeWidgetItem(projectItem);
@@ -355,8 +355,9 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     infoItem->setData(0, ROLE_NODE_TYPE, NODE_PROJECT_INFO);
     infoItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/information.png")));
 
-    QFont childFont = infoItem->font(0);
-    childFont.setPointSize(13);
+    QFont childFont(QStringLiteral("Microsoft YaHei"));
+    childFont.setPixelSize(15);
+    childFont.setBold(false);
     infoItem->setFont(0, childFont);
 
     QTreeWidgetItem *explosiveItem = new QTreeWidgetItem(projectItem);
