@@ -1839,43 +1839,48 @@ void MainWindow::onAbaqusJobTerminateFinished()
     simulationState = SimulationState::Stopping;
 
     simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] Job已终止，正在关闭Abaqus CAE")
+        QStringLiteral("[SYS] Job已终止，等待3秒后关闭Abaqus CAE")
     );
 
     if (simulationTimer) {
         simulationTimer->stop();
     }
 
-    closeAbaqusProcesses();
+    // 给 Abaqus 释放模块的时间，避免立刻 taskkill 触发未知消息框
+    QTimer::singleShot(
+        3000,
+        this,
+        &MainWindow::closeAbaqusProcesses
+    );
 }
 
 void MainWindow::closeAbaqusProcesses()
 {
     simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] 正在请求Abaqus CAE退出")
+        QStringLiteral("[SYS] 正在关闭Abaqus CAE")
     );
 
-    if (!abaqusProcess) {
-        finishStopState();
-        return;
-    }
-
-    if (abaqusProcess->state() == QProcess::NotRunning) {
-        finishStopState();
-        return;
-    }
-
-    connect(
-        abaqusProcess,
-        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-        this,
-        [this](int, QProcess::ExitStatus) {
-            finishStopState();
-        },
-        Qt::UniqueConnection
+    // Job 已官方 terminate；此处只关 CAE GUI/Kernel，不杀 standard.exe
+    QProcess::execute(
+        QStringLiteral("taskkill"),
+        QStringList()
+            << QStringLiteral("/F")
+            << QStringLiteral("/IM")
+            << QStringLiteral("SMACaeGMain.exe")
+    );
+    QProcess::execute(
+        QStringLiteral("taskkill"),
+        QStringList()
+            << QStringLiteral("/F")
+            << QStringLiteral("/IM")
+            << QStringLiteral("abqcaeK.exe")
     );
 
-    abaqusProcess->terminate();
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] Abaqus CAE已关闭")
+    );
+
+    finishStopState();
 }
 
 void MainWindow::finishStopState()
