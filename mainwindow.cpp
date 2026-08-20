@@ -1096,51 +1096,45 @@ void MainWindow::startSimulation()
         abaqusProcess = nullptr;
     }
 
-    abaqusProcess = new QProcess(this);
-    abaqusProcess->setWorkingDirectory(abaqusDir);
+    QProcess *process0 = new QProcess(this);
+    abaqusProcess = process0;
+    process0->setWorkingDirectory(abaqusDir);
 
     connect(
-        abaqusProcess,
+        process0,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [this, abaqusPath, abaqusDir, t1Path](int code, QProcess::ExitStatus status) {
-            Q_UNUSED(status);
+        [=](int exitCode, QProcess::ExitStatus) {
+            process0->deleteLater();
+            if (abaqusProcess == process0) {
+                abaqusProcess = nullptr;
+            }
 
-            if (code != 0) {
-                if (abaqusProcess) {
-                    abaqusProcess->deleteLater();
-                    abaqusProcess = nullptr;
-                }
+            if (exitCode != 0) {
                 showCenteredMessageBox(
                     this,
                     QMessageBox::Warning,
                     QStringLiteral("错误"),
-                    QStringLiteral("t0 建模失败。")
+                    QStringLiteral("t0.py 执行失败。")
                 );
                 return;
             }
 
-            if (abaqusProcess) {
-                abaqusProcess->deleteLater();
-                abaqusProcess = nullptr;
-            }
-
-            abaqusProcess = new QProcess(this);
-            abaqusProcess->setWorkingDirectory(abaqusDir);
+            QProcess *process1 = new QProcess(this);
+            abaqusProcess = process1;
+            process1->setWorkingDirectory(abaqusDir);
 
             connect(
-                abaqusProcess,
+                process1,
                 QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this,
-                [this](int t1Code, QProcess::ExitStatus t1Status) {
-                    Q_UNUSED(t1Status);
-
-                    if (abaqusProcess) {
-                        abaqusProcess->deleteLater();
+                [=](int t1ExitCode, QProcess::ExitStatus) {
+                    process1->deleteLater();
+                    if (abaqusProcess == process1) {
                         abaqusProcess = nullptr;
                     }
 
-                    if (t1Code == 0) {
+                    if (t1ExitCode == 0) {
                         showCenteredMessageBox(
                             this,
                             QMessageBox::Information,
@@ -1151,48 +1145,53 @@ void MainWindow::startSimulation()
                         showCenteredMessageBox(
                             this,
                             QMessageBox::Warning,
-                            QStringLiteral("失败"),
-                            QStringLiteral("Abaqus 计算失败。")
+                            QStringLiteral("错误"),
+                            QStringLiteral("t1.py 执行失败。")
                         );
                     }
                 }
             );
 
-            const QStringList t1Args = {
-                QStringLiteral("cae"),
-                QStringLiteral("noGUI=%1").arg(t1Path)
-            };
-            abaqusProcess->start(abaqusPath, t1Args);
+            process1->start(
+                abaqusPath,
+                QStringList()
+                    << QStringLiteral("cae")
+                    << QStringLiteral("script=") + t1Path
+            );
 
-            if (!abaqusProcess->waitForStarted(10000)) {
-                abaqusProcess->deleteLater();
-                abaqusProcess = nullptr;
+            if (!process1->waitForStarted(10000)) {
+                process1->deleteLater();
+                if (abaqusProcess == process1) {
+                    abaqusProcess = nullptr;
+                }
                 showCenteredMessageBox(
                     this,
                     QMessageBox::Warning,
                     QStringLiteral("错误"),
-                    QStringLiteral("无法启动 t1 计算。")
+                    QStringLiteral("无法启动 t1.py。")
                 );
             }
         }
     );
 
-    const QStringList t0Args = {
-        QStringLiteral("cae"),
-        QStringLiteral("noGUI=%1").arg(t0Path)
-    };
-    abaqusProcess->start(abaqusPath, t0Args);
+    process0->start(
+        abaqusPath,
+        QStringList()
+            << QStringLiteral("cae")
+            << QStringLiteral("script=") + t0Path
+    );
 
-    if (!abaqusProcess->waitForStarted(10000)) {
-        abaqusProcess->deleteLater();
-        abaqusProcess = nullptr;
+    if (!process0->waitForStarted(10000)) {
+        process0->deleteLater();
+        if (abaqusProcess == process0) {
+            abaqusProcess = nullptr;
+        }
         showCenteredMessageBox(
             this,
             QMessageBox::Warning,
             QStringLiteral("错误"),
-            QStringLiteral("无法启动 t0 建模。")
+            QStringLiteral("无法启动 t0.py。")
         );
-        return;
     }
 }
 
