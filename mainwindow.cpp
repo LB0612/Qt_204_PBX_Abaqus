@@ -1072,6 +1072,35 @@ void MainWindow::generateFiles()
     );
 }
 
+bool MainWindow::checkSimulationReady(QString &errorMessage)
+{
+    const QString projectDir = currentProject.projectPath;
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+
+    const QStringList files = {
+        QDir(abaqusDir).filePath(QStringLiteral("t0.py")),
+        QDir(abaqusDir).filePath(QStringLiteral("t1.py")),
+        QDir(abaqusDir).filePath(QStringLiteral("335K.for"))
+    };
+
+    for (const QString &file : files) {
+        if (!QFile::exists(file)) {
+            errorMessage =
+                QStringLiteral("缺少文件:\n%1").arg(file);
+            return false;
+        }
+    }
+
+    const QString abaqusPath = SettingsDialog::getAbaqusPath();
+    if (abaqusPath.isEmpty() || !QFile::exists(abaqusPath)) {
+        errorMessage = QStringLiteral("Abaqus路径无效");
+        return false;
+    }
+
+    return true;
+}
+
 void MainWindow::startSimulation()
 {
     if (!isProjectLoaded) {
@@ -1089,6 +1118,17 @@ void MainWindow::startSimulation()
         return;
     }
 
+    QString error;
+    if (!checkSimulationReady(error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("仿真无法启动"),
+            error
+        );
+        return;
+    }
+
     // currentProject.projectPath 已是工程根目录，例如 D:/Test01
     const QString projectDir = currentProject.projectPath;
     const QString abaqusDir =
@@ -1097,20 +1137,6 @@ void MainWindow::startSimulation()
         QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
     const QString t1Path =
         QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
-    const QString forPath =
-        QDir(abaqusDir).filePath(QStringLiteral("335K.for"));
-
-    if (!QFile::exists(t0Path)
-        || !QFile::exists(t1Path)
-        || !QFile::exists(forPath)) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("错误"),
-            QStringLiteral("Abaqus 计算文件不完整，请重新生成文件。")
-        );
-        return;
-    }
 
     const QDateTime generatedTime = QFileInfo(t0Path).lastModified();
     const QStringList configFiles = {
@@ -1138,15 +1164,6 @@ void MainWindow::startSimulation()
     }
 
     const QString abaqusPath = SettingsDialog::getAbaqusPath();
-    if (abaqusPath.isEmpty() || !QFile::exists(abaqusPath)) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("错误"),
-            QStringLiteral("Abaqus 路径无效。")
-        );
-        return;
-    }
 
     const QString logsDir =
         QDir(projectDir).filePath(QStringLiteral("logs"));
@@ -1189,6 +1206,9 @@ void MainWindow::startSimulation()
     simulationMonitorWidget->setProgress(0);
     simulationMonitorWidget->setStatus(
         QStringLiteral("正在启动 Abaqus...")
+    );
+    simulationMonitorWidget->setPhase(
+        QStringLiteral("阶段: 模型建立(t0)")
     );
     simulationMonitorWidget->appendLog(
         QStringLiteral("[SYS] 开始仿真")
@@ -1286,6 +1306,9 @@ void MainWindow::startSimulation()
             );
             simulationMonitorWidget->setStatus(
                 QStringLiteral("Abaqus 求解中")
+            );
+            simulationMonitorWidget->setPhase(
+                QStringLiteral("阶段: Abaqus求解(t1)")
             );
 
             // ---------- 阶段 2：t1.py（t0 成功后新建进程）----------
@@ -1395,6 +1418,9 @@ void MainWindow::startSimulation()
 
                     simulationMonitorWidget->setStatus(
                         QStringLiteral("固化仿真完成")
+                    );
+                    simulationMonitorWidget->setPhase(
+                        QStringLiteral("阶段: 完成")
                     );
                     simulationMonitorWidget->setProgress(100);
                     simulationMonitorWidget->appendLog(

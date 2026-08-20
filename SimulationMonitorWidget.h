@@ -17,10 +17,12 @@ public:
 public slots:
     void appendLog(const QString &text);
     void setStatus(const QString &text);
+    void setPhase(const QString &text);
     void setProgress(int value);
 
 private:
     QLabel *statusLabel;
+    QLabel *phaseLabel;
     QProgressBar *progressBar;
     QTextEdit *logEdit;
 };

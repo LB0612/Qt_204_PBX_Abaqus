@@ -54,6 +54,7 @@ private:
         QString &lastContent
     );
     double loadSimulationTotalTime();
+    bool checkSimulationReady(QString &errorMessage);
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,

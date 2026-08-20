@@ -12,6 +12,8 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
 
     statusLabel = new QLabel(QStringLiteral("等待仿真"), this);
 
+    phaseLabel = new QLabel(QStringLiteral("阶段: 空闲"), this);
+
     progressBar = new QProgressBar(this);
     progressBar->setRange(0, 100);
     progressBar->hide();
@@ -20,6 +22,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     logEdit->setReadOnly(true);
 
     layout->addWidget(statusLabel);
+    layout->addWidget(phaseLabel);
     layout->addWidget(progressBar);
     layout->addWidget(logEdit);
 }
@@ -32,6 +35,11 @@ void SimulationMonitorWidget::appendLog(const QString &text)
 void SimulationMonitorWidget::setStatus(const QString &text)
 {
     statusLabel->setText(text);
+}
+
+void SimulationMonitorWidget::setPhase(const QString &text)
+{
+    phaseLabel->setText(text);
 }
 
 void SimulationMonitorWidget::setProgress(int value)
