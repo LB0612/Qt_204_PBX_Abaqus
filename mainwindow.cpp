@@ -1189,7 +1189,12 @@ void MainWindow::startSimulation()
                 logFile.write(data);
             }
             const QString text = QString::fromLocal8Bit(data);
-            if (isError) {
+            if (text.contains(QStringLiteral("License Manager"))
+                || text.contains(QStringLiteral("checked out"))) {
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral("[ABAQUS] ") + text
+                );
+            } else if (isError) {
                 simulationMonitorWidget->appendLog(
                     QStringLiteral("[ERROR] ") + text
                 );
