@@ -3,6 +3,7 @@
 #include "NewProjectDialog.h"
 #include "OpenProjectDialog.h"
 #include "SettingsDialog.h"
+#include "StructureConfigManager.h"
 
 #include <QBrush>
 #include <QCloseEvent>
@@ -28,6 +29,9 @@ const QString NODE_PROJECT =
 
 const QString NODE_PROJECT_INFO =
     QStringLiteral("PROJECT_INFO");
+
+const QString NODE_STRUCTURE =
+    QStringLiteral("STRUCTURE");
 
 }
 
@@ -100,10 +104,21 @@ void MainWindow::setupUi()
     infoWidget = new ProjectInfoWidget(stackedWidget);
     stackedWidget->addWidget(infoWidget);
 
+    structureWidget = new StructureParamWidget(stackedWidget);
+    stackedWidget->addWidget(structureWidget);
+
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
     });
+
+    connect(structureWidget, &BaseParamWidget::backClicked, this, [this]() {
+        stackedWidget->setCurrentIndex(0);
+        treeWidget->clearSelection();
+    });
+
+    connect(structureWidget, &StructureParamWidget::saveRequested,
+            this, &MainWindow::saveStructureParams);
 
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
@@ -179,7 +194,7 @@ void MainWindow::createPureStyleToolBar()
 
     addBtn(QStringLiteral("工程信息"), QStringLiteral(":/new/prefix1/toolbar_picture/information.png"), &MainWindow::projectInfo);
     addPlaceholderBtn(QStringLiteral("炸药参数"), QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"));
-    addPlaceholderBtn(QStringLiteral("结构参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"));
+    addBtn(QStringLiteral("结构参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::structureParams);
     addPlaceholderBtn(QStringLiteral("边界条件"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
     addPlaceholderBtn(QStringLiteral("仿真设置"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
 
@@ -269,6 +284,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     QFont childFont = infoItem->font(0);
     childFont.setPointSize(13);
     infoItem->setFont(0, childFont);
+
+    QTreeWidgetItem *structureItem = new QTreeWidgetItem(projectItem);
+    structureItem->setText(0, QStringLiteral("结构参数"));
+    structureItem->setData(0, Qt::UserRole, path);
+    structureItem->setData(0, ROLE_NODE_TYPE, NODE_STRUCTURE);
+    structureItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
+    structureItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
@@ -440,6 +462,60 @@ void MainWindow::projectInfo()
     stackedWidget->setCurrentWidget(infoWidget);
 }
 
+void MainWindow::structureParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    StructureConfig config;
+    if (!StructureConfigManager::load(currentProject.projectPath, config)) {
+        // 文件还没创建时使用默认值
+        config = StructureConfig();
+    }
+
+    structureWidget->setConfig(config);
+    selectTreeItem(QStringLiteral("结构参数"));
+    stackedWidget->setCurrentWidget(structureWidget);
+}
+
+void MainWindow::saveStructureParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    StructureConfig config = structureWidget->getConfig();
+    QString error;
+
+    if (!StructureConfigManager::validate(config, error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("参数错误"),
+            error
+        );
+        return;
+    }
+
+    if (!StructureConfigManager::save(currentProject.projectPath, config)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Critical,
+            QStringLiteral("保存失败"),
+            QStringLiteral("结构参数保存失败。")
+        );
+        return;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("成功"),
+        QStringLiteral("结构参数已保存。")
+    );
+}
+
 void MainWindow::settings()
 {
     SettingsDialog dlg(this);
@@ -508,7 +584,8 @@ void MainWindow::onTreeItemClicked(
     if (nodeType == NODE_PROJECT) {
         projectItem = item;
     }
-    else if (nodeType == NODE_PROJECT_INFO) {
+    else if (nodeType == NODE_PROJECT_INFO
+             || nodeType == NODE_STRUCTURE) {
         projectItem = item->parent();
     }
     else {
@@ -567,8 +644,11 @@ void MainWindow::onTreeItemClicked(
         ).arg(currentProject.projectName)
     );
 
-    // 当前阶段工程节点只有工程信息页面，
-    // 所以点击工程或工程信息都显示工程信息
+    if (nodeType == NODE_STRUCTURE) {
+        structureParams();
+        return;
+    }
+
     infoWidget->setProjectData(currentProject);
     stackedWidget->setCurrentWidget(infoWidget);
 

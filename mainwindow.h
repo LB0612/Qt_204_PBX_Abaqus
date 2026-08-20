@@ -14,6 +14,7 @@
 
 #include "ProjectManager.h"
 #include "ProjectInfoWidget.h"
+#include "StructureParamWidget.h"
 
 class NewProjectDialog;
 class OpenProjectDialog;
@@ -58,6 +59,7 @@ private:
     QStackedWidget *stackedWidget;
     QLabel *titleLabel;
     ProjectInfoWidget *infoWidget;
+    StructureParamWidget *structureWidget;
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
@@ -70,6 +72,8 @@ private slots:
     void saveProject(bool silent = false);
     void exitProject();
     void projectInfo();
+    void structureParams();
+    void saveStructureParams();
     void settings();
     void help();
 

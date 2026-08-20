@@ -27,6 +27,11 @@ set(PROJECT_SOURCES
     OpenProjectDialog.h
     SettingsDialog.cpp
     SettingsDialog.h
+    StructureConfig.h
+    StructureConfigManager.cpp
+    StructureConfigManager.h
+    StructureParamWidget.cpp
+    StructureParamWidget.h
     Picture.qrc
 )
 
