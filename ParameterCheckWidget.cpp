@@ -271,8 +271,6 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
                 loaded.projectName,
                 CheckStatus::Pass
             );
-            group->child(0)->setText(2, statusText(CheckStatus::Pass));
-            group->child(0)->setForeground(2, statusColor(CheckStatus::Pass));
         }
     }
 
