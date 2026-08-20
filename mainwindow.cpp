@@ -1325,9 +1325,12 @@ void MainWindow::startSimulation()
             }
 
             if (simulationUserStopped
-                || simulationState == SimulationState::Stopping) {
+                || simulationState == SimulationState::Stopping
+                || simulationState == SimulationState::Stopped) {
                 simulationUserStopped = false;
-                simulationState = SimulationState::Failed;
+                if (simulationState != SimulationState::Stopped) {
+                    simulationState = SimulationState::Stopped;
+                }
                 currentJobName.clear();
                 if (stopSimulationAction) {
                     stopSimulationAction->setEnabled(false);
@@ -1482,9 +1485,12 @@ void MainWindow::startSimulation()
                     }
 
                     if (simulationUserStopped
-                        || simulationState == SimulationState::Stopping) {
+                        || simulationState == SimulationState::Stopping
+                        || simulationState == SimulationState::Stopped) {
                         simulationUserStopped = false;
-                        simulationState = SimulationState::Failed;
+                        if (simulationState != SimulationState::Stopped) {
+                            simulationState = SimulationState::Stopped;
+                        }
                         currentJobName.clear();
                         if (stopSimulationAction) {
                             stopSimulationAction->setEnabled(false);
@@ -1715,7 +1721,7 @@ void MainWindow::stopSimulation()
         abaqusProcess->deleteLater();
         abaqusProcess = nullptr;
     }
-    simulationState = SimulationState::Failed;
+    simulationState = SimulationState::Stopped;
     simulationUserStopped = false;
     if (stopSimulationAction) {
         stopSimulationAction->setEnabled(false);
@@ -1728,6 +1734,9 @@ void MainWindow::stopSimulation()
     );
     simulationMonitorWidget->appendLog(
         QStringLiteral("[SYS] 已发送终止请求")
+    );
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] Abaqus已完全退出")
     );
 }
 
@@ -1830,7 +1839,7 @@ void MainWindow::sendAbaqusTerminateCommand()
                 this,
                 [this, waitTimer, lockPath, tries]() {
                     ++(*tries);
-                    if (!QFile::exists(lockPath) || *tries >= 90) {
+                    if (!QFile::exists(lockPath) || *tries >= 30) {
                         waitTimer->stop();
                         waitTimer->deleteLater();
                         delete tries;
@@ -1863,30 +1872,49 @@ void MainWindow::sendAbaqusTerminateCommand()
 
 void MainWindow::onAbaqusJobTerminateFinished()
 {
-    const QString jobName = currentJobName;
+    simulationState = SimulationState::Stopping;
 
     simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] Job %1 已终止").arg(
-            jobName.isEmpty() ? QStringLiteral("(unknown)") : jobName
-        )
-    );
-    simulationMonitorWidget->setStatus(
-        QStringLiteral("仿真已终止")
-    );
-    simulationMonitorWidget->setPhase(
-        QStringLiteral("终止")
+        QStringLiteral("[SYS] Job已终止，正在关闭Abaqus CAE")
     );
 
     if (simulationTimer) {
         simulationTimer->stop();
     }
 
-    // 不 kill CAE：让 t1 finished 回调自行收尾
-    simulationState = SimulationState::Failed;
+    if (abaqusProcess
+        && abaqusProcess->state() != QProcess::NotRunning) {
+        simulationMonitorWidget->appendLog(
+            QStringLiteral("[SYS] 正在关闭Abaqus CAE")
+        );
+
+        abaqusProcess->terminate();
+        if (!abaqusProcess->waitForFinished(5000)) {
+            abaqusProcess->kill();
+            abaqusProcess->waitForFinished(3000);
+        }
+
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
+
+    simulationState = SimulationState::Stopped;
+    currentJobName.clear();
+    simulationUserStopped = false;
+
     if (stopSimulationAction) {
         stopSimulationAction->setEnabled(false);
     }
-    currentJobName.clear();
+
+    simulationMonitorWidget->setStatus(
+        QStringLiteral("仿真已终止")
+    );
+    simulationMonitorWidget->setPhase(
+        QStringLiteral("终止")
+    );
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] Abaqus已完全退出")
+    );
 }
 
 void MainWindow::updateAbaqusLog()

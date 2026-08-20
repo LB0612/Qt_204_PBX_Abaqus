@@ -32,6 +32,7 @@ enum class SimulationState
     T0Running,
     T1Running,
     Stopping,
+    Stopped,
     Finished,
     Failed
 };
