@@ -9,6 +9,7 @@
 #include "BoundaryConfigManager.h"
 #include "SimulationConfigManager.h"
 #include "ParameterCheckWidget.h"
+#include "SimulationMonitorWidget.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -146,6 +147,9 @@ void MainWindow::setupUi()
 
     parameterCheckWidget = new ParameterCheckWidget(stackedWidget);
     stackedWidget->addWidget(parameterCheckWidget);
+
+    simulationMonitorWidget = new SimulationMonitorWidget(stackedWidget);
+    stackedWidget->addWidget(simulationMonitorWidget);
 
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
@@ -1148,19 +1152,36 @@ void MainWindow::startSimulation()
             logFile.close();
         }
     };
-    auto appendLog = [](const QString &logPath, const QByteArray &data) {
-        if (data.isEmpty()) {
-            return;
-        }
-        QFile logFile(logPath);
-        if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
-            logFile.write(data);
-        }
-        qDebug().noquote() << QString::fromLocal8Bit(data);
-    };
+    auto appendProcessLog =
+        [this](const QString &logPath, const QByteArray &data, bool isError) {
+            if (data.isEmpty()) {
+                return;
+            }
+            QFile logFile(logPath);
+            if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+                logFile.write(data);
+            }
+            const QString text = QString::fromLocal8Bit(data);
+            if (isError) {
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral("[ERROR]") + text
+                );
+            } else {
+                simulationMonitorWidget->appendLog(text);
+            }
+        };
 
     clearLogFile(t0LogPath);
     clearLogFile(t1LogPath);
+
+    simulationMonitorWidget->setProgress(0);
+    simulationMonitorWidget->setStatus(
+        QStringLiteral("正在启动 Abaqus...")
+    );
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[系统] 开始仿真")
+    );
+    stackedWidget->setCurrentWidget(simulationMonitorWidget);
 
     if (abaqusProcess) {
         abaqusProcess->deleteLater();
@@ -1175,9 +1196,13 @@ void MainWindow::startSimulation()
         abaqusProcess,
         &QProcess::readyReadStandardOutput,
         this,
-        [this, t0LogPath, appendLog]() {
+        [this, t0LogPath, appendProcessLog]() {
             if (abaqusProcess) {
-                appendLog(t0LogPath, abaqusProcess->readAllStandardOutput());
+                appendProcessLog(
+                    t0LogPath,
+                    abaqusProcess->readAllStandardOutput(),
+                    false
+                );
             }
         }
     );
@@ -1186,9 +1211,13 @@ void MainWindow::startSimulation()
         abaqusProcess,
         &QProcess::readyReadStandardError,
         this,
-        [this, t0LogPath, appendLog]() {
+        [this, t0LogPath, appendProcessLog]() {
             if (abaqusProcess) {
-                appendLog(t0LogPath, abaqusProcess->readAllStandardError());
+                appendProcessLog(
+                    t0LogPath,
+                    abaqusProcess->readAllStandardError(),
+                    true
+                );
             }
         }
     );
@@ -1197,7 +1226,7 @@ void MainWindow::startSimulation()
         abaqusProcess,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [this, t1Path, abaqusPath, abaqusDir, projectDir, t1LogPath, appendLog](
+        [this, t1Path, abaqusPath, abaqusDir, projectDir, t1LogPath, appendProcessLog](
             int exitCode,
             QProcess::ExitStatus
         ) {
@@ -1207,6 +1236,12 @@ void MainWindow::startSimulation()
             }
 
             if (exitCode != 0) {
+                simulationMonitorWidget->setStatus(
+                    QStringLiteral("t0.py 执行失败")
+                );
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral("[系统] t0.py 执行失败")
+                );
                 showCenteredMessageBox(
                     this,
                     QMessageBox::Critical,
@@ -1219,6 +1254,12 @@ void MainWindow::startSimulation()
             const QString caePath =
                 QDir(abaqusDir).filePath(QStringLiteral("guhua.cae"));
             if (!QFile::exists(caePath)) {
+                simulationMonitorWidget->setStatus(
+                    QStringLiteral("未生成 guhua.cae")
+                );
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral("[系统] t0 执行完成，但未生成 guhua.cae")
+                );
                 showCenteredMessageBox(
                     this,
                     QMessageBox::Critical,
@@ -1228,6 +1269,13 @@ void MainWindow::startSimulation()
                 return;
             }
 
+            simulationMonitorWidget->appendLog(
+                QStringLiteral("[系统] 模型生成完成，启动 t1.py")
+            );
+            simulationMonitorWidget->setStatus(
+                QStringLiteral("正在执行 Abaqus 求解...")
+            );
+
             // ---------- 阶段 2：t1.py（t0 成功后新建进程）----------
             abaqusProcess = new QProcess(this);
             abaqusProcess->setWorkingDirectory(abaqusDir);
@@ -1236,11 +1284,12 @@ void MainWindow::startSimulation()
                 abaqusProcess,
                 &QProcess::readyReadStandardOutput,
                 this,
-                [this, t1LogPath, appendLog]() {
+                [this, t1LogPath, appendProcessLog]() {
                     if (abaqusProcess) {
-                        appendLog(
+                        appendProcessLog(
                             t1LogPath,
-                            abaqusProcess->readAllStandardOutput()
+                            abaqusProcess->readAllStandardOutput(),
+                            false
                         );
                     }
                 }
@@ -1250,11 +1299,12 @@ void MainWindow::startSimulation()
                 abaqusProcess,
                 &QProcess::readyReadStandardError,
                 this,
-                [this, t1LogPath, appendLog]() {
+                [this, t1LogPath, appendProcessLog]() {
                     if (abaqusProcess) {
-                        appendLog(
+                        appendProcessLog(
                             t1LogPath,
-                            abaqusProcess->readAllStandardError()
+                            abaqusProcess->readAllStandardError(),
+                            true
                         );
                     }
                 }
@@ -1276,6 +1326,12 @@ void MainWindow::startSimulation()
                     }
 
                     if (t1ExitCode != 0) {
+                        simulationMonitorWidget->setStatus(
+                            QStringLiteral("t1.py 执行失败")
+                        );
+                        simulationMonitorWidget->appendLog(
+                            QStringLiteral("[系统] t1.py 执行失败")
+                        );
                         showCenteredMessageBox(
                             this,
                             QMessageBox::Warning,
@@ -1286,6 +1342,12 @@ void MainWindow::startSimulation()
                     }
 
                     if (!QFile::exists(odbPath)) {
+                        simulationMonitorWidget->setStatus(
+                            QStringLiteral("未生成 ODB")
+                        );
+                        simulationMonitorWidget->appendLog(
+                            QStringLiteral("[系统] t1 执行完成，但未生成 ODB")
+                        );
                         showCenteredMessageBox(
                             this,
                             QMessageBox::Warning,
@@ -1295,6 +1357,13 @@ void MainWindow::startSimulation()
                         return;
                     }
 
+                    simulationMonitorWidget->setStatus(
+                        QStringLiteral("固化仿真完成")
+                    );
+                    simulationMonitorWidget->setProgress(100);
+                    simulationMonitorWidget->appendLog(
+                        QStringLiteral("[系统] 固化仿真完成")
+                    );
                     showCenteredMessageBox(
                         this,
                         QMessageBox::Information,
@@ -1304,6 +1373,9 @@ void MainWindow::startSimulation()
                 }
             );
 
+            simulationMonitorWidget->appendLog(
+                QStringLiteral("[Qt] 启动 t1.py")
+            );
             abaqusProcess->start(
                 abaqusPath,
                 QStringList()
@@ -1314,6 +1386,9 @@ void MainWindow::startSimulation()
             if (!abaqusProcess->waitForStarted(10000)) {
                 abaqusProcess->deleteLater();
                 abaqusProcess = nullptr;
+                simulationMonitorWidget->setStatus(
+                    QStringLiteral("无法启动 t1.py")
+                );
                 showCenteredMessageBox(
                     this,
                     QMessageBox::Warning,
@@ -1324,6 +1399,9 @@ void MainWindow::startSimulation()
         }
     );
 
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[Qt] 启动 t0.py")
+    );
     abaqusProcess->start(
         abaqusPath,
         QStringList()
@@ -1334,13 +1412,21 @@ void MainWindow::startSimulation()
     if (!abaqusProcess->waitForStarted(10000)) {
         abaqusProcess->deleteLater();
         abaqusProcess = nullptr;
+        simulationMonitorWidget->setStatus(
+            QStringLiteral("无法启动 t0.py")
+        );
         showCenteredMessageBox(
             this,
             QMessageBox::Warning,
             QStringLiteral("错误"),
             QStringLiteral("无法启动 t0.py。")
         );
+        return;
     }
+
+    simulationMonitorWidget->setStatus(
+        QStringLiteral("正在执行 Abaqus")
+    );
 }
 
 void MainWindow::settings()
