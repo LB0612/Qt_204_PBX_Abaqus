@@ -48,12 +48,8 @@ p_yao = revolve_part('yao', [
 
 
 # =========================================================
-# 3. 装配
+# 3. 材料与截面
 # =========================================================
-a = model.rootAssembly
-a.DatumCsysByDefault(CARTESIAN)
-for p in ['ke','yao']:
-    a.Instance(name=p+'-1', part=model.parts[p], dependent=OFF)
 mdb.models['Model-1'].Material(name='gang')
 mdb.models['Model-1'].materials['gang'].Density(table=(({{MOLD_DENSITY}}, ), ))
 mdb.models['Model-1'].materials['gang'].Elastic(table=((
