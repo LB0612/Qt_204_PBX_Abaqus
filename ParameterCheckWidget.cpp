@@ -6,123 +6,20 @@
 #include "SimulationConfigManager.h"
 #include "StructureConfigManager.h"
 
-#include <QAbstractItemView>
-#include <QBrush>
 #include <QDir>
 #include <QFileInfo>
-#include <QFrame>
-#include <QHeaderView>
+#include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QScrollArea>
-#include <QSize>
-#include <QSizePolicy>
-#include <QTreeWidget>
-#include <QTreeWidgetItem>
 #include <QVBoxLayout>
 
 namespace {
 
-enum class CheckStatus {
-    Pass,
-    Missing,
-    Invalid
-};
-
-QString statusText(CheckStatus status)
-{
-    switch (status) {
-    case CheckStatus::Pass:
-        return QStringLiteral("有效");
-    case CheckStatus::Missing:
-        return QStringLiteral("未保存");
-    case CheckStatus::Invalid:
-        return QStringLiteral("文件无效");
-    }
-    return {};
-}
-
-QColor statusColor(CheckStatus status)
-{
-    switch (status) {
-    case CheckStatus::Pass:
-        return QColor(QStringLiteral("#389e0d"));
-    case CheckStatus::Missing:
-        return QColor(QStringLiteral("#d48806"));
-    case CheckStatus::Invalid:
-        return QColor(QStringLiteral("#cf1322"));
-    }
-    return QColor(Qt::black);
-}
-
 QString formatNumber(double value)
 {
     return QString::number(value, 'g', 15);
-}
-
-void applyStatus(QTreeWidgetItem *item, CheckStatus status)
-{
-    item->setText(2, statusText(status));
-    item->setForeground(2, statusColor(status));
-}
-
-QTreeWidgetItem *addGroupItem(
-    QTreeWidget *tree,
-    const QString &title,
-    CheckStatus status)
-{
-    QTreeWidgetItem *item = new QTreeWidgetItem(tree);
-    item->setText(0, title);
-    applyStatus(item, status);
-    item->setExpanded(true);
-
-    QFont font(QStringLiteral("Microsoft YaHei"));
-    font.setPixelSize(16);
-    font.setBold(true);
-
-    for (int column = 0; column < 3; ++column) {
-        item->setFont(column, font);
-        item->setBackground(
-            column,
-            QBrush(QColor(QStringLiteral("#f7f9fc")))
-        );
-    }
-
-    QFont statusFont(QStringLiteral("Microsoft YaHei"));
-    statusFont.setPixelSize(15);
-    statusFont.setBold(true);
-    item->setFont(2, statusFont);
-    item->setTextAlignment(2, Qt::AlignCenter);
-
-    item->setSizeHint(0, QSize(0, 40));
-    return item;
-}
-
-void addChildValue(
-    QTreeWidgetItem *parent,
-    const QString &name,
-    const QString &value,
-    CheckStatus childStatus = CheckStatus::Pass)
-{
-    QTreeWidgetItem *child = new QTreeWidgetItem(parent);
-    child->setText(0, name);
-    child->setText(1, value);
-
-    QFont dataFont(QStringLiteral("Microsoft YaHei"));
-    dataFont.setPixelSize(15);
-    dataFont.setBold(false);
-    child->setFont(0, dataFont);
-    child->setFont(1, dataFont);
-
-    if (childStatus == CheckStatus::Pass && !value.isEmpty()) {
-        child->setText(2, QString());
-    } else {
-        applyStatus(child, childStatus);
-        QFont statusFont(QStringLiteral("Microsoft YaHei"));
-        statusFont.setPixelSize(15);
-        statusFont.setBold(true);
-        child->setFont(2, statusFont);
-        child->setTextAlignment(2, Qt::AlignCenter);
-    }
 }
 
 } // namespace
@@ -142,146 +39,138 @@ void ParameterCheckWidget::setupUi()
     QScrollArea *scrollArea = createScrollArea(this);
     QWidget *content = new QWidget();
     content->setObjectName(QStringLiteral("ScrollContent"));
-    QVBoxLayout *scrollLayout = createScrollContentLayout(content);
-
-    QFrame *card = new QFrame(content);
-    card->setObjectName(QStringLiteral("CheckCard"));
-    card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    card->setStyleSheet(R"(
-        QFrame#CheckCard {
-            background-color: #ffffff;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
-        }
-    )");
-
-    QVBoxLayout *cardLayout = new QVBoxLayout(card);
-    cardLayout->setContentsMargins(20, 18, 20, 20);
-    cardLayout->setSpacing(14);
-
-    summaryLabel = new QLabel();
-    summaryLabel->setWordWrap(true);
-    summaryLabel->setText(QStringLiteral("请打开工程后进行参数检查。"));
-    summaryLabel->setStyleSheet(R"(
-        QLabel {
-            background-color: #f8f9fa;
-            border: 1px solid #e5e5e5;
-            border-radius: 5px;
-            color: #666666;
-            font-family: 'Microsoft YaHei';
-            font-size: 16px;
-            font-weight: bold;
-            padding: 10px 15px;
-        }
-    )");
-    cardLayout->addWidget(summaryLabel);
-
-    treeWidget = new QTreeWidget();
-    treeWidget->setColumnCount(3);
-    treeWidget->setHeaderLabels({
-        QStringLiteral("检查项"),
-        QStringLiteral("当前值"),
-        QStringLiteral("状态")
-    });
-    treeWidget->setRootIsDecorated(true);
-    treeWidget->setAlternatingRowColors(false);
-    treeWidget->setUniformRowHeights(false);
-    treeWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    treeWidget->setSelectionMode(QAbstractItemView::NoSelection);
-    treeWidget->setFocusPolicy(Qt::NoFocus);
-    treeWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    treeWidget->setStyleSheet(R"(
-        QTreeWidget {
-            background-color: #ffffff;
-            border: 1px solid #e5e5e5;
-            border-radius: 4px;
-            font-family: 'Microsoft YaHei';
-            font-size: 15px;
-            color: #333333;
-            outline: none;
-        }
-
-        QTreeWidget::item {
-            height: 36px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        QTreeWidget::item:hover {
-            background-color: #f5f9ff;
-        }
-
-        QHeaderView::section {
-            background-color: #f8f9fa;
-            color: #333333;
-            border: none;
-            border-bottom: 1px solid #dddddd;
-            padding: 10px 12px;
-            font-family: 'Microsoft YaHei';
-            font-size: 15px;
-            font-weight: bold;
-        }
-    )");
-
-    QHeaderView *header = treeWidget->header();
-    header->setStretchLastSection(false);
-    header->setSectionResizeMode(0, QHeaderView::Fixed);
-    header->setSectionResizeMode(1, QHeaderView::Stretch);
-    header->setSectionResizeMode(2, QHeaderView::Fixed);
-    treeWidget->setColumnWidth(0, 320);
-    treeWidget->setColumnWidth(2, 100);
-
-    cardLayout->addWidget(treeWidget, 1);
-
-    scrollLayout->addWidget(card, 1);
+    sectionsLayout = createScrollContentLayout(content);
+    sectionsLayout->addStretch();
 
     scrollArea->setWidget(content);
     mainLayout->addWidget(scrollArea);
 }
 
+QGroupBox *ParameterCheckWidget::createSectionBox(const QString &title)
+{
+    QGroupBox *box = new QGroupBox(title);
+    box->setStyleSheet(
+        "QGroupBox {"
+        "font-family: 'Microsoft YaHei';"
+        "font-weight: bold;"
+        "font-size: 18px;"
+        "border: 1px solid #ccc;"
+        "border-radius: 6px;"
+        "margin-top: 10px;"
+        "padding-top: 15px;"
+        "}"
+        "QGroupBox::title {"
+        "left: 10px;"
+        "padding: 0 5px;"
+        "}"
+    );
+
+    QVBoxLayout *layout = new QVBoxLayout(box);
+    layout->setSpacing(2);
+    layout->setContentsMargins(10, 15, 10, 10);
+    return box;
+}
+
+QHBoxLayout *ParameterCheckWidget::createInfoRow(
+    const QString &label,
+    const QString &value)
+{
+    QHBoxLayout *row = new QHBoxLayout();
+
+    QLabel *lblKey = new QLabel(label);
+    lblKey->setFixedWidth(180);
+    lblKey->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    lblKey->setMinimumHeight(38);
+    lblKey->setStyleSheet(
+        "font-family: 'Microsoft YaHei';"
+        "color: #000;"
+        "font-weight: bold;"
+        "font-size: 16px;"
+    );
+
+    QLineEdit *valueEdit = new QLineEdit(value);
+    valueEdit->setReadOnly(true);
+    valueEdit->setMinimumHeight(38);
+    valueEdit->setStyleSheet(
+        "border: none;"
+        "background: transparent;"
+        "color: #333;"
+        "margin-left: 5px;"
+        "font-family: 'Microsoft YaHei';"
+        "font-size: 16px;"
+        "font-weight: bold;"
+    );
+
+    row->addWidget(lblKey);
+    row->addWidget(valueEdit);
+    row->setContentsMargins(0, 0, 0, 0);
+    return row;
+}
+
+void ParameterCheckWidget::clearSections()
+{
+    if (!sectionsLayout) {
+        return;
+    }
+
+    while (sectionsLayout->count() > 0) {
+        QLayoutItem *item = sectionsLayout->takeAt(0);
+        if (!item) {
+            continue;
+        }
+        if (QWidget *widget = item->widget()) {
+            widget->deleteLater();
+        }
+        delete item;
+    }
+}
+
+void ParameterCheckWidget::addWarningLabel(QVBoxLayout *layout)
+{
+    QLabel *warningLabel = new QLabel(
+        QStringLiteral("参数未保存或配置文件无效")
+    );
+    warningLabel->setStyleSheet(
+        "font-family: 'Microsoft YaHei';"
+        "font-size: 16px;"
+        "color: #cf1322;"
+    );
+    layout->addWidget(warningLabel);
+}
+
 void ParameterCheckWidget::refresh(const ProjectConfig &project)
 {
-    treeWidget->clear();
+    clearSections();
 
-    bool allPassed = true;
-
-    // 工程信息
+    // 1. 工程信息
     {
+        QGroupBox *box = createSectionBox(QStringLiteral("1. 工程信息"));
+        QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout *>(box->layout());
+
         ProjectConfig loaded;
         const QString projectJsonPath =
             QDir(project.projectPath).filePath(QStringLiteral("project.json"));
         const bool exists = QFileInfo::exists(projectJsonPath);
         const bool valid =
-            exists && ProjectManager::loadProject(project.projectPath, loaded);
+            exists && ProjectManager::loadProject(project.projectPath, loaded)
+            && !loaded.projectName.trimmed().isEmpty();
 
-        CheckStatus status = CheckStatus::Pass;
-        if (!exists) {
-            status = CheckStatus::Missing;
-        } else if (!valid || loaded.projectName.trimmed().isEmpty()) {
-            status = CheckStatus::Invalid;
-        }
-
-        if (status != CheckStatus::Pass) {
-            allPassed = false;
-        }
-
-        QTreeWidgetItem *group = addGroupItem(
-            treeWidget,
-            QStringLiteral("工程信息"),
-            status
-        );
-
-        if (status == CheckStatus::Pass) {
-            addChildValue(
-                group,
-                QStringLiteral("项目名称"),
-                loaded.projectName,
-                CheckStatus::Pass
+        if (valid) {
+            boxLayout->addLayout(
+                createInfoRow(QStringLiteral("工程名称："), loaded.projectName)
             );
+        } else {
+            addWarningLabel(boxLayout);
         }
+
+        sectionsLayout->addWidget(box);
     }
 
-    // 炸药参数
+    // 2. 炸药参数
     {
+        QGroupBox *box = createSectionBox(QStringLiteral("2. 炸药参数"));
+        QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout *>(box->layout());
+
         ExplosiveConfig config;
         const QString filePath =
             QDir(project.projectPath)
@@ -290,38 +179,28 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && ExplosiveConfigManager::load(project.projectPath, config);
 
-        CheckStatus status = CheckStatus::Pass;
-        if (!exists) {
-            status = CheckStatus::Missing;
-        } else if (!valid) {
-            status = CheckStatus::Invalid;
+        if (valid) {
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药密度："), formatNumber(config.density)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("固化初始杨氏模量："), formatNumber(config.initialElasticModulus)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("固化初始泊松比："), formatNumber(config.initialPoissonRatio)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("固化结束杨氏模量："), formatNumber(config.finalElasticModulus)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("固化结束泊松比："), formatNumber(config.finalPoissonRatio)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药传导率："), formatNumber(config.thermalConductivity)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药屈服应力："), formatNumber(config.yieldStress)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药比热："), formatNumber(config.specificHeat)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药膨胀系数："), formatNumber(config.expansionCoefficient)));
+        } else {
+            addWarningLabel(boxLayout);
         }
 
-        if (status != CheckStatus::Pass) {
-            allPassed = false;
-        }
-
-        QTreeWidgetItem *group = addGroupItem(
-            treeWidget,
-            QStringLiteral("炸药参数"),
-            status
-        );
-
-        if (status == CheckStatus::Pass) {
-            addChildValue(group, QStringLiteral("炸药密度"), formatNumber(config.density));
-            addChildValue(group, QStringLiteral("固化初始杨氏模量"), formatNumber(config.initialElasticModulus));
-            addChildValue(group, QStringLiteral("固化初始泊松比"), formatNumber(config.initialPoissonRatio));
-            addChildValue(group, QStringLiteral("固化结束杨氏模量"), formatNumber(config.finalElasticModulus));
-            addChildValue(group, QStringLiteral("固化结束泊松比"), formatNumber(config.finalPoissonRatio));
-            addChildValue(group, QStringLiteral("炸药传导率"), formatNumber(config.thermalConductivity));
-            addChildValue(group, QStringLiteral("炸药屈服应力"), formatNumber(config.yieldStress));
-            addChildValue(group, QStringLiteral("炸药比热"), formatNumber(config.specificHeat));
-            addChildValue(group, QStringLiteral("炸药膨胀系数"), formatNumber(config.expansionCoefficient));
-        }
+        sectionsLayout->addWidget(box);
     }
 
-    // 结构参数
+    // 3. 结构参数
     {
+        QGroupBox *box = createSectionBox(QStringLiteral("3. 结构参数"));
+        QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout *>(box->layout());
+
         StructureConfig config;
         const QString filePath =
             QDir(project.projectPath)
@@ -330,32 +209,22 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && StructureConfigManager::load(project.projectPath, config);
 
-        CheckStatus status = CheckStatus::Pass;
-        if (!exists) {
-            status = CheckStatus::Missing;
-        } else if (!valid) {
-            status = CheckStatus::Invalid;
+        if (valid) {
+            boxLayout->addLayout(createInfoRow(QStringLiteral("药柱半径："), formatNumber(config.chargeRadius)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("药柱高度："), formatNumber(config.chargeHeight)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("外壳厚度："), formatNumber(config.shellThickness)));
+        } else {
+            addWarningLabel(boxLayout);
         }
 
-        if (status != CheckStatus::Pass) {
-            allPassed = false;
-        }
-
-        QTreeWidgetItem *group = addGroupItem(
-            treeWidget,
-            QStringLiteral("结构参数"),
-            status
-        );
-
-        if (status == CheckStatus::Pass) {
-            addChildValue(group, QStringLiteral("药柱半径"), formatNumber(config.chargeRadius));
-            addChildValue(group, QStringLiteral("药柱高度"), formatNumber(config.chargeHeight));
-            addChildValue(group, QStringLiteral("外壳厚度"), formatNumber(config.shellThickness));
-        }
+        sectionsLayout->addWidget(box);
     }
 
-    // 模具参数
+    // 4. 模具参数
     {
+        QGroupBox *box = createSectionBox(QStringLiteral("4. 模具参数"));
+        QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout *>(box->layout());
+
         MoldConfig config;
         const QString filePath =
             QDir(project.projectPath)
@@ -364,34 +233,24 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && MoldConfigManager::load(project.projectPath, config);
 
-        CheckStatus status = CheckStatus::Pass;
-        if (!exists) {
-            status = CheckStatus::Missing;
-        } else if (!valid) {
-            status = CheckStatus::Invalid;
+        if (valid) {
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具密度："), formatNumber(config.density)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具弹性模量："), formatNumber(config.elasticModulus)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具泊松比："), formatNumber(config.poissonRatio)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具热导率："), formatNumber(config.thermalConductivity)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具比热容："), formatNumber(config.specificHeat)));
+        } else {
+            addWarningLabel(boxLayout);
         }
 
-        if (status != CheckStatus::Pass) {
-            allPassed = false;
-        }
-
-        QTreeWidgetItem *group = addGroupItem(
-            treeWidget,
-            QStringLiteral("模具参数"),
-            status
-        );
-
-        if (status == CheckStatus::Pass) {
-            addChildValue(group, QStringLiteral("模具密度"), formatNumber(config.density));
-            addChildValue(group, QStringLiteral("模具弹性模量"), formatNumber(config.elasticModulus));
-            addChildValue(group, QStringLiteral("模具泊松比"), formatNumber(config.poissonRatio));
-            addChildValue(group, QStringLiteral("模具热导率"), formatNumber(config.thermalConductivity));
-            addChildValue(group, QStringLiteral("模具比热容"), formatNumber(config.specificHeat));
-        }
+        sectionsLayout->addWidget(box);
     }
 
-    // 边界条件
+    // 5. 边界条件
     {
+        QGroupBox *box = createSectionBox(QStringLiteral("5. 边界条件"));
+        QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout *>(box->layout());
+
         BoundaryConfig config;
         const QString filePath =
             QDir(project.projectPath)
@@ -400,34 +259,25 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && BoundaryConfigManager::load(project.projectPath, config);
 
-        CheckStatus status = CheckStatus::Pass;
-        if (!exists) {
-            status = CheckStatus::Missing;
-        } else if (!valid) {
-            status = CheckStatus::Invalid;
-        }
-
-        if (status != CheckStatus::Pass) {
-            allPassed = false;
-        }
-
-        QTreeWidgetItem *group = addGroupItem(
-            treeWidget,
-            QStringLiteral("边界条件"),
-            status
-        );
-
-        if (status == CheckStatus::Pass) {
-            addChildValue(
-                group,
-                QStringLiteral("环境温度"),
-                formatNumber(config.ambientTemperature) + QStringLiteral(" K")
+        if (valid) {
+            boxLayout->addLayout(
+                createInfoRow(
+                    QStringLiteral("环境温度："),
+                    formatNumber(config.ambientTemperature)
+                )
             );
+        } else {
+            addWarningLabel(boxLayout);
         }
+
+        sectionsLayout->addWidget(box);
     }
 
-    // 仿真设置
+    // 6. 仿真设置
     {
+        QGroupBox *box = createSectionBox(QStringLiteral("6. 仿真设置"));
+        QVBoxLayout *boxLayout = qobject_cast<QVBoxLayout *>(box->layout());
+
         SimulationConfig config;
         const QString filePath =
             QDir(project.projectPath)
@@ -436,63 +286,19 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && SimulationConfigManager::load(project.projectPath, config);
 
-        CheckStatus status = CheckStatus::Pass;
-        if (!exists) {
-            status = CheckStatus::Missing;
-        } else if (!valid) {
-            status = CheckStatus::Invalid;
-        }
-
-        if (status != CheckStatus::Pass) {
-            allPassed = false;
-        }
-
-        QTreeWidgetItem *group = addGroupItem(
-            treeWidget,
-            QStringLiteral("仿真设置"),
-            status
-        );
-
-        if (status == CheckStatus::Pass) {
-            addChildValue(
-                group,
-                QStringLiteral("时间长度"),
-                formatNumber(config.timeLength) + QStringLiteral(" s")
+        if (valid) {
+            boxLayout->addLayout(
+                createInfoRow(
+                    QStringLiteral("时间长度："),
+                    formatNumber(config.timeLength)
+                )
             );
+        } else {
+            addWarningLabel(boxLayout);
         }
+
+        sectionsLayout->addWidget(box);
     }
 
-    if (allPassed) {
-        summaryLabel->setText(
-            QStringLiteral("✓ 工程参数配置检查通过，可以生成 Abaqus 文件。")
-        );
-        summaryLabel->setStyleSheet(R"(
-            QLabel {
-                background-color: #f6ffed;
-                border: 1px solid #b7eb8f;
-                border-radius: 5px;
-                color: #389e0d;
-                font-family: 'Microsoft YaHei';
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px 15px;
-            }
-        )");
-    } else {
-        summaryLabel->setText(
-            QStringLiteral("参数检查未通过，请检查未保存或无效的参数模块。")
-        );
-        summaryLabel->setStyleSheet(R"(
-            QLabel {
-                background-color: #fff2f0;
-                border: 1px solid #ffccc7;
-                border-radius: 5px;
-                color: #cf1322;
-                font-family: 'Microsoft YaHei';
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px 15px;
-            }
-        )");
-    }
+    sectionsLayout->addStretch();
 }

@@ -3,8 +3,9 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QMessageBox>
 #include <QSettings>
 #include <QVBoxLayout>
@@ -19,7 +20,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(QStringLiteral("系统环境配置"));
-    setMinimumSize(700, 220);
+    setMinimumSize(700, 280);
     setModal(true);
     setStyleSheet(R"(
         QDialog {
@@ -41,6 +42,21 @@ SettingsDialog::SettingsDialog(QWidget *parent)
             font-family: 'Microsoft YaHei';
             font-size: 15px;
         }
+
+        QGroupBox {
+            font-family: 'Microsoft YaHei';
+            font-weight: bold;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin-top: 10px;
+            padding-top: 12px;
+        }
+
+        QGroupBox::title {
+            left: 10px;
+            padding: 0 5px;
+        }
     )");
     setupUi();
     loadSettings();
@@ -52,26 +68,28 @@ void SettingsDialog::setupUi()
     mainLayout->setContentsMargins(24, 24, 24, 24);
     mainLayout->setSpacing(20);
 
-    QFormLayout *formLayout = new QFormLayout();
-    formLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    formLayout->setHorizontalSpacing(12);
-    formLayout->setVerticalSpacing(16);
+    QGroupBox *solverGroup = new QGroupBox(QStringLiteral("求解器配置"), this);
+    QHBoxLayout *groupLayout = new QHBoxLayout(solverGroup);
+    groupLayout->setContentsMargins(16, 16, 16, 16);
+    groupLayout->setSpacing(8);
+
+    QLabel *pathLabel = new QLabel(QStringLiteral("Abaqus路径:"), this);
+    pathLabel->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+    pathLabel->setFixedWidth(100);
 
     m_exePathEdit = new QLineEdit(this);
     m_exePathEdit->setPlaceholderText(QStringLiteral("例如：C:\\SIMULIA\\Commands\\abaqus.bat"));
     m_exePathEdit->setClearButtonEnabled(true);
-    m_exePathEdit->setMinimumHeight(32);
+    m_exePathEdit->setFixedHeight(32);
 
     m_browseExeBtn = new QPushButton(QStringLiteral("浏览"), this);
     m_browseExeBtn->setFixedSize(80, 32);
 
-    QHBoxLayout *pathLayout = new QHBoxLayout();
-    pathLayout->setSpacing(8);
-    pathLayout->addWidget(m_exePathEdit, 1);
-    pathLayout->addWidget(m_browseExeBtn);
+    groupLayout->addWidget(pathLabel);
+    groupLayout->addWidget(m_exePathEdit, 1);
+    groupLayout->addWidget(m_browseExeBtn);
 
-    formLayout->addRow(QStringLiteral("Abaqus启动程序："), pathLayout);
-    mainLayout->addLayout(formLayout);
+    mainLayout->addWidget(solverGroup);
     mainLayout->addStretch();
 
     QHBoxLayout *btnLayout = new QHBoxLayout();

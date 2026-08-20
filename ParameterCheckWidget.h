@@ -4,8 +4,9 @@
 #include "BaseParamWidget.h"
 #include "ProjectManager.h"
 
-class QTreeWidget;
-class QLabel;
+class QGroupBox;
+class QHBoxLayout;
+class QVBoxLayout;
 
 class ParameterCheckWidget : public BaseParamWidget
 {
@@ -18,9 +19,12 @@ public:
 
 private:
     void setupUi();
+    QGroupBox *createSectionBox(const QString &title);
+    QHBoxLayout *createInfoRow(const QString &label, const QString &value);
+    void clearSections();
+    void addWarningLabel(QVBoxLayout *layout);
 
-    QTreeWidget *treeWidget = nullptr;
-    QLabel *summaryLabel = nullptr;
+    QVBoxLayout *sectionsLayout = nullptr;
 };
 
 #endif
