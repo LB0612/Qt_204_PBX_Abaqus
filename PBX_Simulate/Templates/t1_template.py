@@ -4,15 +4,15 @@ from caeModules import *
 import sys
 import os
 
-# === 当前工程 Abaqus 工作目录 ===
+# === ??????? Abaqus ?????? ===
 work_dir = '{{ABAQUS_WORK_DIR}}'
 os.chdir(work_dir)
 
-# === 设置基本参数 ===
-job_name = 'Job-1'
+# === ??????????? ===
+job_name = '{{JOB_NAME}}'
 cae_path = '{{CAE_FILE_PATH}}'
 
-# === 打开模型数据库 ===
+# === ?????????? ===
 mdb = openMdb(cae_path)
 mdb.Job(name=job_name, model='Model-1', description='', type=ANALYSIS, 
     atTime=None, waitMinutes=0, waitHours=0, queue=None, memory=90, 

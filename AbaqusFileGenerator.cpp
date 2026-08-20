@@ -181,6 +181,7 @@ bool AbaqusFileGenerator::generate(
         QStringLiteral("{{ABAQUS_WORK_DIR}}"),
         QStringLiteral("{{CAE_FILE_PATH}}"),
         QStringLiteral("{{USER_SUBROUTINE_PATH}}"),
+        QStringLiteral("{{JOB_NAME}}"),
         QStringLiteral("{{RESULT_STRESS_PATH}}"),
         QStringLiteral("{{RESULT_TEMP_PATH}}"),
         QStringLiteral("{{RESULT_CURE_PATH}}")
@@ -227,6 +228,9 @@ bool AbaqusFileGenerator::generate(
             QDir(resultsDir).filePath(QStringLiteral("guhuadu"))
         );
 
+    QString jobName = projectDir.dirName() + QStringLiteral("_Job");
+    jobName.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+
     abaqusWorkDir.replace(QStringLiteral("'"), QStringLiteral("\\'"));
     caeFilePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
     userSubroutinePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
@@ -237,6 +241,7 @@ bool AbaqusFileGenerator::generate(
     t1Content.replace(QStringLiteral("{{ABAQUS_WORK_DIR}}"), abaqusWorkDir);
     t1Content.replace(QStringLiteral("{{CAE_FILE_PATH}}"), caeFilePath);
     t1Content.replace(QStringLiteral("{{USER_SUBROUTINE_PATH}}"), userSubroutinePath);
+    t1Content.replace(QStringLiteral("{{JOB_NAME}}"), jobName);
     t1Content.replace(QStringLiteral("{{RESULT_STRESS_PATH}}"), resultStressPath);
     t1Content.replace(QStringLiteral("{{RESULT_TEMP_PATH}}"), resultTempPath);
     t1Content.replace(QStringLiteral("{{RESULT_CURE_PATH}}"), resultCurePath);
@@ -249,6 +254,19 @@ bool AbaqusFileGenerator::generate(
     const QString t1OutputPath = projectDir.filePath(QStringLiteral("abaqus/t1.py"));
     if (!saveFile(t1OutputPath, t1Content, errorMessage)) {
         return false;
+    }
+
+    const QStringList generatedFiles = {
+        projectDir.filePath(QStringLiteral("abaqus/t0.py")),
+        projectDir.filePath(QStringLiteral("abaqus/t1.py")),
+        projectDir.filePath(QStringLiteral("abaqus/335K.for"))
+    };
+
+    for (const QString &file : generatedFiles) {
+        if (!QFile::exists(file)) {
+            errorMessage = QStringLiteral("生成文件缺失：%1").arg(file);
+            return false;
+        }
     }
 
     return true;
