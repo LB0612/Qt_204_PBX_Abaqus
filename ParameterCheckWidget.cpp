@@ -125,11 +125,11 @@ void ParameterCheckWidget::clearSections()
     }
 }
 
-void ParameterCheckWidget::addWarningLabel(QVBoxLayout *layout)
+void ParameterCheckWidget::addWarningLabel(
+    QVBoxLayout *layout,
+    const QString &message)
 {
-    QLabel *warningLabel = new QLabel(
-        QStringLiteral("参数未保存或配置文件无效")
-    );
+    QLabel *warningLabel = new QLabel(message);
     warningLabel->setStyleSheet(
         "font-family: 'Microsoft YaHei';"
         "font-size: 16px;"
@@ -152,15 +152,18 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             QDir(project.projectPath).filePath(QStringLiteral("project.json"));
         const bool exists = QFileInfo::exists(projectJsonPath);
         const bool valid =
-            exists && ProjectManager::loadProject(project.projectPath, loaded)
+            exists
+            && ProjectManager::loadProject(project.projectPath, loaded)
             && !loaded.projectName.trimmed().isEmpty();
 
-        if (valid) {
+        if (!exists) {
+            addWarningLabel(boxLayout, QStringLiteral("工程信息文件不存在"));
+        } else if (!valid) {
+            addWarningLabel(boxLayout, QStringLiteral("工程信息文件无效"));
+        } else {
             boxLayout->addLayout(
                 createInfoRow(QStringLiteral("工程名称："), loaded.projectName)
             );
-        } else {
-            addWarningLabel(boxLayout);
         }
 
         sectionsLayout->addWidget(box);
@@ -179,7 +182,11 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && ExplosiveConfigManager::load(project.projectPath, config);
 
-        if (valid) {
+        if (!exists) {
+            addWarningLabel(boxLayout, QStringLiteral("炸药参数未保存"));
+        } else if (!valid) {
+            addWarningLabel(boxLayout, QStringLiteral("炸药参数配置文件无效"));
+        } else {
             boxLayout->addLayout(createInfoRow(QStringLiteral("炸药密度："), formatNumber(config.density)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("固化初始杨氏模量："), formatNumber(config.initialElasticModulus)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("固化初始泊松比："), formatNumber(config.initialPoissonRatio)));
@@ -189,8 +196,6 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             boxLayout->addLayout(createInfoRow(QStringLiteral("炸药屈服应力："), formatNumber(config.yieldStress)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("炸药比热："), formatNumber(config.specificHeat)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("炸药膨胀系数："), formatNumber(config.expansionCoefficient)));
-        } else {
-            addWarningLabel(boxLayout);
         }
 
         sectionsLayout->addWidget(box);
@@ -209,12 +214,14 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && StructureConfigManager::load(project.projectPath, config);
 
-        if (valid) {
+        if (!exists) {
+            addWarningLabel(boxLayout, QStringLiteral("结构参数未保存"));
+        } else if (!valid) {
+            addWarningLabel(boxLayout, QStringLiteral("结构参数配置文件无效"));
+        } else {
             boxLayout->addLayout(createInfoRow(QStringLiteral("药柱半径："), formatNumber(config.chargeRadius)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("药柱高度："), formatNumber(config.chargeHeight)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("外壳厚度："), formatNumber(config.shellThickness)));
-        } else {
-            addWarningLabel(boxLayout);
         }
 
         sectionsLayout->addWidget(box);
@@ -233,14 +240,16 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && MoldConfigManager::load(project.projectPath, config);
 
-        if (valid) {
+        if (!exists) {
+            addWarningLabel(boxLayout, QStringLiteral("模具参数未保存"));
+        } else if (!valid) {
+            addWarningLabel(boxLayout, QStringLiteral("模具参数配置文件无效"));
+        } else {
             boxLayout->addLayout(createInfoRow(QStringLiteral("模具密度："), formatNumber(config.density)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("模具弹性模量："), formatNumber(config.elasticModulus)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("模具泊松比："), formatNumber(config.poissonRatio)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("模具热导率："), formatNumber(config.thermalConductivity)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("模具比热容："), formatNumber(config.specificHeat)));
-        } else {
-            addWarningLabel(boxLayout);
         }
 
         sectionsLayout->addWidget(box);
@@ -259,15 +268,17 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && BoundaryConfigManager::load(project.projectPath, config);
 
-        if (valid) {
+        if (!exists) {
+            addWarningLabel(boxLayout, QStringLiteral("边界条件未保存"));
+        } else if (!valid) {
+            addWarningLabel(boxLayout, QStringLiteral("边界条件配置文件无效"));
+        } else {
             boxLayout->addLayout(
                 createInfoRow(
                     QStringLiteral("环境温度："),
                     formatNumber(config.ambientTemperature)
                 )
             );
-        } else {
-            addWarningLabel(boxLayout);
         }
 
         sectionsLayout->addWidget(box);
@@ -286,15 +297,17 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         const bool valid =
             exists && SimulationConfigManager::load(project.projectPath, config);
 
-        if (valid) {
+        if (!exists) {
+            addWarningLabel(boxLayout, QStringLiteral("仿真设置未保存"));
+        } else if (!valid) {
+            addWarningLabel(boxLayout, QStringLiteral("仿真设置配置文件无效"));
+        } else {
             boxLayout->addLayout(
                 createInfoRow(
                     QStringLiteral("时间长度："),
                     formatNumber(config.timeLength)
                 )
             );
-        } else {
-            addWarningLabel(boxLayout);
         }
 
         sectionsLayout->addWidget(box);

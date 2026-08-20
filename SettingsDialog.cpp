@@ -95,14 +95,14 @@ void SettingsDialog::setupUi()
     QHBoxLayout *btnLayout = new QHBoxLayout();
     btnLayout->addStretch();
 
-    m_cancelBtn = new QPushButton(QStringLiteral("取消"), this);
-    m_cancelBtn->setFixedSize(100, 32);
-    btnLayout->addWidget(m_cancelBtn);
-
     m_saveBtn = new QPushButton(QStringLiteral("保存"), this);
     m_saveBtn->setFixedSize(100, 32);
     m_saveBtn->setDefault(true);
     btnLayout->addWidget(m_saveBtn);
+
+    m_cancelBtn = new QPushButton(QStringLiteral("取消"), this);
+    m_cancelBtn->setFixedSize(100, 32);
+    btnLayout->addWidget(m_cancelBtn);
 
     mainLayout->addLayout(btnLayout);
 

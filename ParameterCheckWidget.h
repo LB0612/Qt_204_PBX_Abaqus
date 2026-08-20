@@ -22,7 +22,7 @@ private:
     QGroupBox *createSectionBox(const QString &title);
     QHBoxLayout *createInfoRow(const QString &label, const QString &value);
     void clearSections();
-    void addWarningLabel(QVBoxLayout *layout);
+    void addWarningLabel(QVBoxLayout *layout, const QString &message);
 
     QVBoxLayout *sectionsLayout = nullptr;
 };
