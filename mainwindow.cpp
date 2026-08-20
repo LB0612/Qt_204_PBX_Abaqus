@@ -347,19 +347,19 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     childFont.setPointSize(13);
     infoItem->setFont(0, childFont);
 
-    QTreeWidgetItem *structureItem = new QTreeWidgetItem(projectItem);
-    structureItem->setText(0, QStringLiteral("结构参数"));
-    structureItem->setData(0, Qt::UserRole, path);
-    structureItem->setData(0, ROLE_NODE_TYPE, NODE_STRUCTURE);
-    structureItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
-    structureItem->setFont(0, childFont);
-
     QTreeWidgetItem *explosiveItem = new QTreeWidgetItem(projectItem);
     explosiveItem->setText(0, QStringLiteral("炸药参数"));
     explosiveItem->setData(0, Qt::UserRole, path);
     explosiveItem->setData(0, ROLE_NODE_TYPE, NODE_EXPLOSIVE);
     explosiveItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png")));
     explosiveItem->setFont(0, childFont);
+
+    QTreeWidgetItem *structureItem = new QTreeWidgetItem(projectItem);
+    structureItem->setText(0, QStringLiteral("结构参数"));
+    structureItem->setData(0, Qt::UserRole, path);
+    structureItem->setData(0, ROLE_NODE_TYPE, NODE_STRUCTURE);
+    structureItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
+    structureItem->setFont(0, childFont);
 
     QTreeWidgetItem *moldItem = new QTreeWidgetItem(projectItem);
     moldItem->setText(0, QStringLiteral("模具参数"));
