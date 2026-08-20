@@ -5,6 +5,7 @@
 #include "SettingsDialog.h"
 #include "StructureConfigManager.h"
 #include "ExplosiveConfigManager.h"
+#include "MoldConfigManager.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -37,6 +38,9 @@ const QString NODE_STRUCTURE =
 
 const QString NODE_EXPLOSIVE =
     QStringLiteral("EXPLOSIVE");
+
+const QString NODE_MOLD =
+    QStringLiteral("MOLD");
 
 }
 
@@ -115,6 +119,9 @@ void MainWindow::setupUi()
     explosiveWidget = new ExplosiveParamWidget(stackedWidget);
     stackedWidget->addWidget(explosiveWidget);
 
+    moldWidget = new MoldParamWidget(stackedWidget);
+    stackedWidget->addWidget(moldWidget);
+
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
@@ -135,6 +142,14 @@ void MainWindow::setupUi()
 
     connect(explosiveWidget, &ExplosiveParamWidget::saveRequested,
             this, &MainWindow::saveExplosiveParams);
+
+    connect(moldWidget, &BaseParamWidget::backClicked, this, [this]() {
+        stackedWidget->setCurrentIndex(0);
+        treeWidget->clearSelection();
+    });
+
+    connect(moldWidget, &MoldParamWidget::saveRequested,
+            this, &MainWindow::saveMoldParams);
 
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
@@ -211,6 +226,7 @@ void MainWindow::createPureStyleToolBar()
     addBtn(QStringLiteral("工程信息"), QStringLiteral(":/new/prefix1/toolbar_picture/information.png"), &MainWindow::projectInfo);
     addBtn(QStringLiteral("炸药参数"), QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"), &MainWindow::explosiveParams);
     addBtn(QStringLiteral("结构参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::structureParams);
+    addBtn(QStringLiteral("模具参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::moldParams);
     addPlaceholderBtn(QStringLiteral("边界条件"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
     addPlaceholderBtn(QStringLiteral("仿真设置"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
 
@@ -314,6 +330,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     explosiveItem->setData(0, ROLE_NODE_TYPE, NODE_EXPLOSIVE);
     explosiveItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png")));
     explosiveItem->setFont(0, childFont);
+
+    QTreeWidgetItem *moldItem = new QTreeWidgetItem(projectItem);
+    moldItem->setText(0, QStringLiteral("模具参数"));
+    moldItem->setData(0, Qt::UserRole, path);
+    moldItem->setData(0, ROLE_NODE_TYPE, NODE_MOLD);
+    moldItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
+    moldItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
@@ -645,6 +668,77 @@ void MainWindow::saveExplosiveParams()
     );
 }
 
+void MainWindow::moldParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    MoldConfig config;
+
+    const QString filePath =
+        QDir(currentProject.projectPath)
+            .filePath(QStringLiteral("config/mold.json"));
+
+    if (QFileInfo::exists(filePath)) {
+        if (!MoldConfigManager::load(currentProject.projectPath, config)) {
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("读取失败"),
+                QStringLiteral(
+                    "模具参数文件存在，"
+                    "但文件内容无效或无法读取。"
+                )
+            );
+            return;
+        }
+    } else {
+        config = MoldConfig();
+    }
+
+    moldWidget->setConfig(config);
+    selectTreeItem(QStringLiteral("模具参数"));
+    stackedWidget->setCurrentWidget(moldWidget);
+}
+
+void MainWindow::saveMoldParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    MoldConfig config = moldWidget->getConfig();
+    QString error;
+
+    if (!MoldConfigManager::validate(config, error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("参数错误"),
+            error
+        );
+        return;
+    }
+
+    if (!MoldConfigManager::save(currentProject.projectPath, config)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Critical,
+            QStringLiteral("保存失败"),
+            QStringLiteral("模具参数保存失败。")
+        );
+        return;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("成功"),
+        QStringLiteral("模具参数已保存。")
+    );
+}
+
 void MainWindow::generateFiles()
 {
     if (!isProjectLoaded) {
@@ -673,11 +767,23 @@ void MainWindow::generateFiles()
         return;
     }
 
+    MoldConfig mold;
+    if (!MoldConfigManager::load(currentProject.projectPath, mold)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("无法生成"),
+            QStringLiteral("请先填写并保存模具参数。")
+        );
+        return;
+    }
+
     QString error;
     if (!AbaqusFileGenerator::generate(
             currentProject.projectPath,
             structure,
             explosive,
+            mold,
             error)) {
         showCenteredMessageBox(
             this,
@@ -766,7 +872,8 @@ void MainWindow::onTreeItemClicked(
     }
     else if (nodeType == NODE_PROJECT_INFO
              || nodeType == NODE_STRUCTURE
-             || nodeType == NODE_EXPLOSIVE) {
+             || nodeType == NODE_EXPLOSIVE
+             || nodeType == NODE_MOLD) {
         projectItem = item->parent();
     }
     else {
@@ -832,6 +939,11 @@ void MainWindow::onTreeItemClicked(
 
     if (nodeType == NODE_EXPLOSIVE) {
         explosiveParams();
+        return;
+    }
+
+    if (nodeType == NODE_MOLD) {
+        moldParams();
         return;
     }
 

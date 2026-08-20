@@ -37,6 +37,11 @@ set(PROJECT_SOURCES
     ExplosiveConfigManager.h
     ExplosiveParamWidget.cpp
     ExplosiveParamWidget.h
+    MoldConfig.h
+    MoldConfigManager.cpp
+    MoldConfigManager.h
+    MoldParamWidget.cpp
+    MoldParamWidget.h
     AbaqusFileGenerator.cpp
     AbaqusFileGenerator.h
     Picture.qrc

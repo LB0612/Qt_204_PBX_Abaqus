@@ -2,6 +2,7 @@
 #define ABAQUSFILEGENERATOR_H
 
 #include "ExplosiveConfig.h"
+#include "MoldConfig.h"
 #include "StructureConfig.h"
 
 #include <QString>
@@ -13,6 +14,7 @@ public:
         const QString &projectPath,
         const StructureConfig &structure,
         const ExplosiveConfig &explosive,
+        const MoldConfig &mold,
         QString &errorMessage
     );
 

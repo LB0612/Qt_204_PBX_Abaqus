@@ -55,10 +55,13 @@ a.DatumCsysByDefault(CARTESIAN)
 for p in ['ke','yao']:
     a.Instance(name=p+'-1', part=model.parts[p], dependent=OFF)
 mdb.models['Model-1'].Material(name='gang')
-mdb.models['Model-1'].materials['gang'].Density(table=((7.85e-09, ), ))
-mdb.models['Model-1'].materials['gang'].Elastic(table=((210000.0, 0.3), ))
-mdb.models['Model-1'].materials['gang'].Conductivity(table=((45.0, ), ))
-mdb.models['Model-1'].materials['gang'].SpecificHeat(table=((480000000.0, ), ))
+mdb.models['Model-1'].materials['gang'].Density(table=(({{MOLD_DENSITY}}, ), ))
+mdb.models['Model-1'].materials['gang'].Elastic(table=((
+    {{MOLD_ELASTIC_MODULUS}},
+    {{MOLD_POISSON_RATIO}}
+), ))
+mdb.models['Model-1'].materials['gang'].Conductivity(table=(({{MOLD_THERMAL_CONDUCTIVITY}}, ), ))
+mdb.models['Model-1'].materials['gang'].SpecificHeat(table=(({{MOLD_SPECIFIC_HEAT}}, ), ))
 mdb.models['Model-1'].Material(name='pbx')
 mdb.models['Model-1'].materials['pbx'].Density(table=(({{PBX_DENSITY}}, ), ))
 mdb.models['Model-1'].materials['pbx'].Depvar(n=4)
