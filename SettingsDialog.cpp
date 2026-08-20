@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFontMetrics>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -20,7 +21,8 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     : QDialog(parent)
 {
     setWindowTitle(QStringLiteral("系统环境配置"));
-    setMinimumSize(700, 280);
+    setMinimumSize(960, 280);
+    resize(960, 280);
     setModal(true);
     setStyleSheet(R"(
         QDialog {
@@ -114,7 +116,16 @@ void SettingsDialog::setupUi()
 void SettingsDialog::loadSettings()
 {
     const QString path = SettingsDialog::getAbaqusPath();
-    m_exePathEdit->setText(path.isEmpty() ? DEFAULT_ABAQUS_PATH : path);
+    const QString displayPath = path.isEmpty() ? DEFAULT_ABAQUS_PATH : path;
+    m_exePathEdit->setText(displayPath);
+    m_exePathEdit->setCursorPosition(0);
+    m_exePathEdit->setToolTip(displayPath);
+
+    // 按路径文字宽度加宽窗口，打开时尽量完整显示
+    const int textWidth = m_exePathEdit->fontMetrics().horizontalAdvance(displayPath);
+    const int chromeWidth = 24 * 2 + 16 * 2 + 100 + 80 + 8 * 2 + 48;
+    const int desiredWidth = qBound(chromeWidth + textWidth, 960, 1400);
+    resize(desiredWidth, height());
 }
 
 QString SettingsDialog::getAbaqusPath()
@@ -137,6 +148,13 @@ void SettingsDialog::onBrowseExe()
 
     if (!filePath.isEmpty()) {
         m_exePathEdit->setText(filePath);
+        m_exePathEdit->setCursorPosition(0);
+        m_exePathEdit->setToolTip(filePath);
+
+        const int textWidth = m_exePathEdit->fontMetrics().horizontalAdvance(filePath);
+        const int chromeWidth = 24 * 2 + 16 * 2 + 100 + 80 + 8 * 2 + 48;
+        const int desiredWidth = qBound(chromeWidth + textWidth, 960, 1400);
+        resize(desiredWidth, height());
     }
 }
 
