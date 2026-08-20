@@ -1164,10 +1164,12 @@ void MainWindow::startSimulation()
             const QString text = QString::fromLocal8Bit(data);
             if (isError) {
                 simulationMonitorWidget->appendLog(
-                    QStringLiteral("[ERROR]") + text
+                    QStringLiteral("[ERROR] ") + text
                 );
             } else {
-                simulationMonitorWidget->appendLog(text);
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral("[SYS] ") + text
+                );
             }
         };
 
@@ -1179,7 +1181,7 @@ void MainWindow::startSimulation()
         QStringLiteral("正在启动 Abaqus...")
     );
     simulationMonitorWidget->appendLog(
-        QStringLiteral("[系统] 开始仿真")
+        QStringLiteral("[SYS] 开始仿真")
     );
     stackedWidget->setCurrentWidget(simulationMonitorWidget);
 
@@ -1240,7 +1242,7 @@ void MainWindow::startSimulation()
                     QStringLiteral("t0.py 执行失败")
                 );
                 simulationMonitorWidget->appendLog(
-                    QStringLiteral("[系统] t0.py 执行失败")
+                    QStringLiteral("[SYS] t0.py 执行失败")
                 );
                 showCenteredMessageBox(
                     this,
@@ -1258,7 +1260,7 @@ void MainWindow::startSimulation()
                     QStringLiteral("未生成 guhua.cae")
                 );
                 simulationMonitorWidget->appendLog(
-                    QStringLiteral("[系统] t0 执行完成，但未生成 guhua.cae")
+                    QStringLiteral("[SYS] t0 执行完成，但未生成 guhua.cae")
                 );
                 showCenteredMessageBox(
                     this,
@@ -1270,7 +1272,7 @@ void MainWindow::startSimulation()
             }
 
             simulationMonitorWidget->appendLog(
-                QStringLiteral("[系统] 模型生成完成，启动 t1.py")
+                QStringLiteral("[SYS] 模型生成完成，启动 t1.py")
             );
             simulationMonitorWidget->setStatus(
                 QStringLiteral("Abaqus 求解中")
@@ -1319,7 +1321,8 @@ void MainWindow::startSimulation()
             simulationDatPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".dat"));
             simulationTotalTime = loadSimulationTotalTime();
-            lastAbaqusLogSnapshot.clear();
+            lastMsgCache.clear();
+            lastStaCache.clear();
 
             QFile::remove(simulationMsgPath);
             QFile::remove(simulationStaPath);
@@ -1347,7 +1350,7 @@ void MainWindow::startSimulation()
                             QStringLiteral("t1.py 执行失败")
                         );
                         simulationMonitorWidget->appendLog(
-                            QStringLiteral("[系统] t1.py 执行失败")
+                            QStringLiteral("[SYS] t1.py 执行失败")
                         );
                         showCenteredMessageBox(
                             this,
@@ -1363,7 +1366,7 @@ void MainWindow::startSimulation()
                             QStringLiteral("未生成 ODB")
                         );
                         simulationMonitorWidget->appendLog(
-                            QStringLiteral("[系统] t1 执行完成，但未生成 ODB")
+                            QStringLiteral("[SYS] t1 执行完成，但未生成 ODB")
                         );
                         showCenteredMessageBox(
                             this,
@@ -1379,7 +1382,7 @@ void MainWindow::startSimulation()
                     );
                     simulationMonitorWidget->setProgress(100);
                     simulationMonitorWidget->appendLog(
-                        QStringLiteral("[系统] 固化仿真完成")
+                        QStringLiteral("[SYS] 固化仿真完成")
                     );
                     showCenteredMessageBox(
                         this,
@@ -1391,7 +1394,7 @@ void MainWindow::startSimulation()
             );
 
             simulationMonitorWidget->appendLog(
-                QStringLiteral("[Qt] 启动 t1.py")
+                QStringLiteral("[SYS] 启动 t1.py")
             );
             abaqusProcess->start(
                 abaqusPath,
@@ -1424,7 +1427,7 @@ void MainWindow::startSimulation()
                     simulationTimer,
                     &QTimer::timeout,
                     this,
-                    &MainWindow::updateAbaqusLogs
+                    &MainWindow::updateAbaqusLog
                 );
             }
             simulationTimer->start(1000);
@@ -1432,7 +1435,7 @@ void MainWindow::startSimulation()
     );
 
     simulationMonitorWidget->appendLog(
-        QStringLiteral("[Qt] 启动 t0.py")
+        QStringLiteral("[SYS] 启动 t0.py")
     );
     abaqusProcess->start(
         abaqusPath,
@@ -1461,13 +1464,26 @@ void MainWindow::startSimulation()
     );
 }
 
-void MainWindow::updateAbaqusLogs()
+void MainWindow::updateAbaqusLog()
 {
-    readLogFile(simulationMsgPath, QStringLiteral("[MSG]"));
-    readLogFile(simulationStaPath, QStringLiteral("[STA]"));
+    // 读取顺序：msg（求解过程）→ sta（状态摘要）
+    readAbaqusLogFile(
+        simulationMsgPath,
+        QStringLiteral("[MSG]"),
+        lastMsgCache
+    );
+    readAbaqusLogFile(
+        simulationStaPath,
+        QStringLiteral("[STA]"),
+        lastStaCache
+    );
 }
 
-void MainWindow::readLogFile(const QString &path, const QString &tag)
+void MainWindow::readAbaqusLogFile(
+    const QString &path,
+    const QString &tag,
+    QString &lastContent
+)
 {
     if (path.isEmpty()) {
         return;
@@ -1491,7 +1507,7 @@ void MainWindow::readLogFile(const QString &path, const QString &tag)
         return;
     }
 
-    const int start = qMax(0, lines.size() - 5);
+    const int start = qMax(0, lines.size() - 10);
     QStringList recentLines;
     for (int i = start; i < lines.size(); ++i) {
         const QString line = lines[i].trimmed();
@@ -1504,12 +1520,11 @@ void MainWindow::readLogFile(const QString &path, const QString &tag)
         return;
     }
 
-    // 内容未变化时不重复刷屏
-    const QString snapshot = recentLines.join(QLatin1Char('\n'));
-    if (lastAbaqusLogSnapshot.value(path) == snapshot) {
+    const QString content = recentLines.join(QLatin1Char('\n'));
+    if (content == lastContent) {
         return;
     }
-    lastAbaqusLogSnapshot.insert(path, snapshot);
+    lastContent = content;
 
     for (const QString &line : recentLines) {
         simulationMonitorWidget->appendLog(tag + QStringLiteral(" ") + line);
