@@ -3,10 +3,15 @@ from abaqusConstants import *
 from caeModules import *
 import sys
 import os
-os.chdir("C:/Users/10454/Desktop/001")
+
+# === 当前工程 Abaqus 工作目录 ===
+work_dir = '{{ABAQUS_WORK_DIR}}'
+os.chdir(work_dir)
+
 # === 设置基本参数 ===
 job_name = 'Job-1'
-cae_path = "C:/Users/10454/Desktop/001/guhua/guhua.cae"
+cae_path = '{{CAE_FILE_PATH}}'
+
 # === 打开模型数据库 ===
 mdb = openMdb(cae_path)
 mdb.Job(name=job_name, model='Model-1', description='', type=ANALYSIS, 
@@ -14,7 +19,7 @@ mdb.Job(name=job_name, model='Model-1', description='', type=ANALYSIS,
     memoryUnits=PERCENTAGE, getMemoryFromAnalysis=True, 
     explicitPrecision=SINGLE, nodalOutputPrecision=SINGLE, echoPrint=OFF, 
     modelPrint=OFF, contactPrint=OFF, historyPrint=OFF, 
-    userSubroutine='C:\\Users\\10454\\Desktop\\335K.for', scratch='', 
+    userSubroutine='{{USER_SUBROUTINE_PATH}}', scratch='', 
     resultsFormat=ODB, numCpus=1, numGPUs=0)
 mdb.jobs[job_name].submit()
 mdb.jobs[job_name].waitForCompletion()
@@ -84,7 +89,7 @@ session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
 session.viewports['Viewport: 1'].animationController.setValues(
     animationType=SCALE_FACTOR)
 session.viewports['Viewport: 1'].animationController.play(duration=UNLIMITED)
-#: AVI Codec设置为:Intel IYUV 编码解码器
+#: AVI Codec?????:Intel IYUV ?????????
 session.aviOptions.setValues(compressionMethod=CODEC, 
     codecOptions='[12]:ejfjfffgbiaaaaaaaaaaaaaa')
 session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF, 
