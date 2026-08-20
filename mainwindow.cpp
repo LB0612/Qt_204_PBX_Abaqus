@@ -1312,6 +1312,8 @@ void MainWindow::startSimulation()
 
             const QString jobName =
                 QDir(projectDir).dirName() + QStringLiteral("_Job");
+            simulationStaPath =
+                QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"));
             const QString odbPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
 
@@ -1323,6 +1325,10 @@ void MainWindow::startSimulation()
                     if (abaqusProcess) {
                         abaqusProcess->deleteLater();
                         abaqusProcess = nullptr;
+                    }
+
+                    if (simulationTimer) {
+                        simulationTimer->stop();
                     }
 
                     if (t1ExitCode != 0) {
@@ -1386,6 +1392,9 @@ void MainWindow::startSimulation()
             if (!abaqusProcess->waitForStarted(10000)) {
                 abaqusProcess->deleteLater();
                 abaqusProcess = nullptr;
+                if (simulationTimer) {
+                    simulationTimer->stop();
+                }
                 simulationMonitorWidget->setStatus(
                     QStringLiteral("无法启动 t1.py")
                 );
@@ -1395,7 +1404,19 @@ void MainWindow::startSimulation()
                     QStringLiteral("错误"),
                     QStringLiteral("无法启动 t1.py。")
                 );
+                return;
             }
+
+            if (!simulationTimer) {
+                simulationTimer = new QTimer(this);
+                connect(
+                    simulationTimer,
+                    &QTimer::timeout,
+                    this,
+                    &MainWindow::updateSimulationProgress
+                );
+            }
+            simulationTimer->start(1000);
         }
     );
 
@@ -1426,6 +1447,41 @@ void MainWindow::startSimulation()
 
     simulationMonitorWidget->setStatus(
         QStringLiteral("正在执行 Abaqus")
+    );
+}
+
+void MainWindow::updateSimulationProgress()
+{
+    if (simulationStaPath.isEmpty()) {
+        return;
+    }
+
+    QFile file(simulationStaPath);
+    if (!file.exists()) {
+        return;
+    }
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+
+    const QString content =
+        QString::fromLocal8Bit(file.readAll());
+    file.close();
+
+    const QStringList lines =
+        content.split(QStringLiteral("\n"), Qt::SkipEmptyParts);
+    if (lines.isEmpty()) {
+        return;
+    }
+
+    const QString lastLine = lines.last().trimmed();
+    if (lastLine.isEmpty()) {
+        return;
+    }
+
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[STA] ") + lastLine
     );
 }
 

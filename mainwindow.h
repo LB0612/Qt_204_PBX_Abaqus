@@ -47,6 +47,7 @@ private:
     void stopWatchingProject();
     void loadProjectToUi();
     void updateUIStates();
+    void updateSimulationProgress();
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,
@@ -77,6 +78,9 @@ private:
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
     QProcess *abaqusProcess = nullptr;
+    QTimer *simulationTimer = nullptr;
+    QString simulationStaPath;
+    double simulationTotalTime = 0.0;
 
     QList<QAction *> projectDependentActions;
 
