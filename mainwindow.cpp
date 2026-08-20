@@ -417,8 +417,12 @@ void MainWindow::exitProject()
         treeWidget->clearSelection();
     } else if (root && root->childCount() > 0) {
         QTreeWidgetItem *nextProject = root->child(0);
+
         treeWidget->setCurrentItem(nextProject);
         onTreeItemClicked(nextProject, 0);
+
+        // 工程树发生变化后重新构建目录监控
+        startWatchingProject();
     }
 
     updateUIStates();
