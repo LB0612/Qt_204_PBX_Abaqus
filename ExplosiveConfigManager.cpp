@@ -31,8 +31,8 @@ bool ExplosiveConfigManager::validate(
         return false;
     }
 
-    if (config.initialPoissonRatio < 0.0) {
-        errorMessage = QStringLiteral("固化初始泊松比不能为负数。");
+    if (config.initialPoissonRatio <= 0.0 || config.initialPoissonRatio >= 0.5) {
+        errorMessage = QStringLiteral("固化初始泊松比必须大于 0 且小于 0.5。");
         return false;
     }
 
@@ -41,8 +41,8 @@ bool ExplosiveConfigManager::validate(
         return false;
     }
 
-    if (config.finalPoissonRatio < 0.0) {
-        errorMessage = QStringLiteral("固化结束泊松比不能为负数。");
+    if (config.finalPoissonRatio <= 0.0 || config.finalPoissonRatio >= 0.5) {
+        errorMessage = QStringLiteral("固化结束泊松比必须大于 0 且小于 0.5。");
         return false;
     }
 

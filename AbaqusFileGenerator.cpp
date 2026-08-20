@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QSaveFile>
+#include <QStringList>
 
 QString AbaqusFileGenerator::number(double value)
 {
@@ -69,6 +70,35 @@ bool AbaqusFileGenerator::generate(
             content,
             errorMessage)) {
         return false;
+    }
+
+    const QStringList requiredPlaceholders = {
+        QStringLiteral("{{CHARGE_RADIUS}}"),
+        QStringLiteral("{{CHARGE_HEIGHT}}"),
+        QStringLiteral("{{SHELL_THICKNESS}}"),
+
+        QStringLiteral("{{PBX_DENSITY}}"),
+        QStringLiteral("{{PBX_INITIAL_ELASTIC_MODULUS}}"),
+        QStringLiteral("{{PBX_INITIAL_POISSON_RATIO}}"),
+        QStringLiteral("{{PBX_FINAL_ELASTIC_MODULUS}}"),
+        QStringLiteral("{{PBX_FINAL_POISSON_RATIO}}"),
+        QStringLiteral("{{PBX_THERMAL_CONDUCTIVITY}}"),
+        QStringLiteral("{{PBX_YIELD_STRESS}}"),
+        QStringLiteral("{{PBX_SPECIFIC_HEAT}}"),
+        QStringLiteral("{{PBX_EXPANSION_COEFFICIENT}}"),
+
+        QStringLiteral("{{MOLD_DENSITY}}"),
+        QStringLiteral("{{MOLD_ELASTIC_MODULUS}}"),
+        QStringLiteral("{{MOLD_POISSON_RATIO}}"),
+        QStringLiteral("{{MOLD_THERMAL_CONDUCTIVITY}}"),
+        QStringLiteral("{{MOLD_SPECIFIC_HEAT}}")
+    };
+
+    for (const QString &placeholder : requiredPlaceholders) {
+        if (!content.contains(placeholder)) {
+            errorMessage = QStringLiteral("模板缺少占位符：%1").arg(placeholder);
+            return false;
+        }
     }
 
     content.replace(QStringLiteral("{{CHARGE_RADIUS}}"), number(structure.chargeRadius));

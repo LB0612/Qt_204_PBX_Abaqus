@@ -31,8 +31,8 @@ bool MoldConfigManager::validate(
         return false;
     }
 
-    if (config.poissonRatio < 0.0) {
-        errorMessage = QStringLiteral("模具泊松比不能为负数。");
+    if (config.poissonRatio <= 0.0 || config.poissonRatio >= 0.5) {
+        errorMessage = QStringLiteral("模具泊松比必须大于 0 且小于 0.5。");
         return false;
     }
 
