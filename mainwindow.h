@@ -11,6 +11,7 @@
 #include <QFileSystemWatcher>
 #include <QTimer>
 #include <QMessageBox>
+#include <QProcess>
 
 #include "ProjectManager.h"
 #include "ProjectInfoWidget.h"
@@ -73,6 +74,7 @@ private:
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
+    QProcess *abaqusProcess = nullptr;
 
     QList<QAction *> projectDependentActions;
 
@@ -94,6 +96,7 @@ private slots:
     void saveSimulationParams();
     void checkParams();
     void generateFiles();
+    void startSimulation();
     void settings();
     void help();
 

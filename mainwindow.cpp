@@ -15,10 +15,12 @@
 #include <QCloseEvent>
 #include <QColor>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QFont>
 #include <QGridLayout>
 #include <QIcon>
+#include <QProcess>
 #include <QSet>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
@@ -276,7 +278,7 @@ void MainWindow::createPureStyleToolBar()
 
     addBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"), &MainWindow::checkParams);
     addBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"), &MainWindow::generateFiles);
-    addPlaceholderBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"));
+    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"), &MainWindow::startSimulation);
     addPlaceholderBtn(QStringLiteral("生成报告"), QStringLiteral(":/new/prefix1/toolbar_picture/report.png"));
 
     toolBar->addSeparator();
@@ -1041,6 +1043,157 @@ void MainWindow::generateFiles()
         QStringLiteral("成功"),
         QStringLiteral("Abaqus 文件生成成功。")
     );
+}
+
+void MainWindow::startSimulation()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    if (abaqusProcess
+        && abaqusProcess->state() != QProcess::NotRunning) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("提示"),
+            QStringLiteral("仿真正在进行中，请稍候。")
+        );
+        return;
+    }
+
+    const QString projectDir = currentProject.projectPath;
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+    const QString t0Path =
+        QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
+    const QString t1Path =
+        QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
+
+    if (!QFile::exists(t0Path) || !QFile::exists(t1Path)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("错误"),
+            QStringLiteral("请先生成 Abaqus 文件。")
+        );
+        return;
+    }
+
+    const QString abaqusPath = SettingsDialog::getAbaqusPath();
+    if (abaqusPath.trimmed().isEmpty() || !QFile::exists(abaqusPath)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("错误"),
+            QStringLiteral("Abaqus 路径无效，请先在系统设置中配置。")
+        );
+        return;
+    }
+
+    if (abaqusProcess) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
+
+    abaqusProcess = new QProcess(this);
+    abaqusProcess->setWorkingDirectory(abaqusDir);
+
+    connect(
+        abaqusProcess,
+        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this,
+        [this, abaqusPath, abaqusDir, t1Path](int code, QProcess::ExitStatus status) {
+            Q_UNUSED(status);
+
+            if (code != 0) {
+                if (abaqusProcess) {
+                    abaqusProcess->deleteLater();
+                    abaqusProcess = nullptr;
+                }
+                showCenteredMessageBox(
+                    this,
+                    QMessageBox::Warning,
+                    QStringLiteral("错误"),
+                    QStringLiteral("t0 建模失败。")
+                );
+                return;
+            }
+
+            if (abaqusProcess) {
+                abaqusProcess->deleteLater();
+                abaqusProcess = nullptr;
+            }
+
+            abaqusProcess = new QProcess(this);
+            abaqusProcess->setWorkingDirectory(abaqusDir);
+
+            connect(
+                abaqusProcess,
+                QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this,
+                [this](int t1Code, QProcess::ExitStatus t1Status) {
+                    Q_UNUSED(t1Status);
+
+                    if (abaqusProcess) {
+                        abaqusProcess->deleteLater();
+                        abaqusProcess = nullptr;
+                    }
+
+                    if (t1Code == 0) {
+                        showCenteredMessageBox(
+                            this,
+                            QMessageBox::Information,
+                            QStringLiteral("完成"),
+                            QStringLiteral("固化仿真完成。")
+                        );
+                    } else {
+                        showCenteredMessageBox(
+                            this,
+                            QMessageBox::Warning,
+                            QStringLiteral("失败"),
+                            QStringLiteral("Abaqus 计算失败。")
+                        );
+                    }
+                }
+            );
+
+            const QStringList t1Args = {
+                QStringLiteral("cae"),
+                QStringLiteral("noGUI=%1").arg(t1Path)
+            };
+            abaqusProcess->start(abaqusPath, t1Args);
+
+            if (!abaqusProcess->waitForStarted(10000)) {
+                abaqusProcess->deleteLater();
+                abaqusProcess = nullptr;
+                showCenteredMessageBox(
+                    this,
+                    QMessageBox::Warning,
+                    QStringLiteral("错误"),
+                    QStringLiteral("无法启动 t1 计算。")
+                );
+            }
+        }
+    );
+
+    const QStringList t0Args = {
+        QStringLiteral("cae"),
+        QStringLiteral("noGUI=%1").arg(t0Path)
+    };
+    abaqusProcess->start(abaqusPath, t0Args);
+
+    if (!abaqusProcess->waitForStarted(10000)) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("错误"),
+            QStringLiteral("无法启动 t0 建模。")
+        );
+        return;
+    }
 }
 
 void MainWindow::settings()
