@@ -1314,6 +1314,8 @@ void MainWindow::startSimulation()
                 QDir(projectDir).dirName() + QStringLiteral("_Job");
             simulationStaPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"));
+            simulationTotalTime = loadSimulationTotalTime();
+            lastStaSnapshot.clear();
             const QString odbPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
 
@@ -1475,14 +1477,40 @@ void MainWindow::updateSimulationProgress()
         return;
     }
 
-    const QString lastLine = lines.last().trimmed();
-    if (lastLine.isEmpty()) {
+    const int start = qMax(0, lines.size() - 20);
+    QStringList recentLines;
+    for (int i = start; i < lines.size(); ++i) {
+        const QString line = lines[i].trimmed();
+        if (!line.isEmpty()) {
+            recentLines.append(line);
+        }
+    }
+
+    if (recentLines.isEmpty()) {
         return;
     }
 
-    simulationMonitorWidget->appendLog(
-        QStringLiteral("[STA] ") + lastLine
-    );
+    // 内容未变化时不重复刷屏，便于观察真实 .sta 格式
+    const QString snapshot = recentLines.join(QLatin1Char('\n'));
+    if (snapshot == lastStaSnapshot) {
+        return;
+    }
+    lastStaSnapshot = snapshot;
+
+    for (const QString &line : recentLines) {
+        simulationMonitorWidget->appendLog(
+            QStringLiteral("[STA] ") + line
+        );
+    }
+}
+
+double MainWindow::loadSimulationTotalTime()
+{
+    SimulationConfig config;
+    if (SimulationConfigManager::load(currentProject.projectPath, config)) {
+        return config.timeLength;
+    }
+    return 0.0;
 }
 
 void MainWindow::settings()

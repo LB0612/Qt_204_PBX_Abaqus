@@ -48,6 +48,7 @@ private:
     void loadProjectToUi();
     void updateUIStates();
     void updateSimulationProgress();
+    double loadSimulationTotalTime();
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,
@@ -80,6 +81,7 @@ private:
     QProcess *abaqusProcess = nullptr;
     QTimer *simulationTimer = nullptr;
     QString simulationStaPath;
+    QString lastStaSnapshot;
     double simulationTotalTime = 0.0;
 
     QList<QAction *> projectDependentActions;
