@@ -32,6 +32,11 @@ set(PROJECT_SOURCES
     StructureConfigManager.h
     StructureParamWidget.cpp
     StructureParamWidget.h
+    ExplosiveConfig.h
+    ExplosiveConfigManager.cpp
+    ExplosiveConfigManager.h
+    ExplosiveParamWidget.cpp
+    ExplosiveParamWidget.h
     AbaqusFileGenerator.cpp
     AbaqusFileGenerator.h
     Picture.qrc

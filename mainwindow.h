@@ -15,6 +15,7 @@
 #include "ProjectManager.h"
 #include "ProjectInfoWidget.h"
 #include "StructureParamWidget.h"
+#include "ExplosiveParamWidget.h"
 
 class NewProjectDialog;
 class OpenProjectDialog;
@@ -60,6 +61,7 @@ private:
     QLabel *titleLabel;
     ProjectInfoWidget *infoWidget;
     StructureParamWidget *structureWidget;
+    ExplosiveParamWidget *explosiveWidget;
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
@@ -74,6 +76,8 @@ private slots:
     void projectInfo();
     void structureParams();
     void saveStructureParams();
+    void explosiveParams();
+    void saveExplosiveParams();
     void generateFiles();
     void settings();
     void help();

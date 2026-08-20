@@ -60,17 +60,26 @@ mdb.models['Model-1'].materials['gang'].Elastic(table=((210000.0, 0.3), ))
 mdb.models['Model-1'].materials['gang'].Conductivity(table=((45.0, ), ))
 mdb.models['Model-1'].materials['gang'].SpecificHeat(table=((480000000.0, ), ))
 mdb.models['Model-1'].Material(name='pbx')
-mdb.models['Model-1'].materials['pbx'].Density(table=((1.68e-09, ), ))
+mdb.models['Model-1'].materials['pbx'].Density(table=(({{PBX_DENSITY}}, ), ))
 mdb.models['Model-1'].materials['pbx'].Depvar(n=4)
 mdb.models['Model-1'].materials['pbx'].UserDefinedField()
-mdb.models['Model-1'].materials['pbx'].Elastic(dependencies=1, table=((10.0, 
-    0.3, 0.0), (8670.0, 0.3, 1.0)))
-mdb.models['Model-1'].materials['pbx'].Plastic(scaleStress=None, table=((60.0, 
-    0.0), ))
-mdb.models['Model-1'].materials['pbx'].Expansion(table=((1.21e-05, ), ))
-mdb.models['Model-1'].materials['pbx'].Conductivity(table=((0.495, ), ))
+mdb.models['Model-1'].materials['pbx'].Elastic(dependencies=1, table=(
+    (
+        {{PBX_INITIAL_ELASTIC_MODULUS}},
+        {{PBX_INITIAL_POISSON_RATIO}},
+        0.0
+    ),
+    (
+        {{PBX_FINAL_ELASTIC_MODULUS}},
+        {{PBX_FINAL_POISSON_RATIO}},
+        1.0
+    )
+))
+mdb.models['Model-1'].materials['pbx'].Plastic(scaleStress=None, table=(({{PBX_YIELD_STRESS}}, 0.0), ))
+mdb.models['Model-1'].materials['pbx'].Expansion(table=(({{PBX_EXPANSION_COEFFICIENT}}, ), ))
+mdb.models['Model-1'].materials['pbx'].Conductivity(table=(({{PBX_THERMAL_CONDUCTIVITY}}, ), ))
 mdb.models['Model-1'].materials['pbx'].HeatGeneration()
-mdb.models['Model-1'].materials['pbx'].SpecificHeat(table=((1330000000.0, ), ))
+mdb.models['Model-1'].materials['pbx'].SpecificHeat(table=(({{PBX_SPECIFIC_HEAT}}, ), ))
 mdb.models['Model-1'].HomogeneousSolidSection(name='ke', material='gang', 
     thickness=None)
 mdb.models['Model-1'].HomogeneousSolidSection(name='yao', material='pbx', 

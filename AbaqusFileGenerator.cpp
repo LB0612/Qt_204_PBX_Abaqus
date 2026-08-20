@@ -47,6 +47,7 @@ bool AbaqusFileGenerator::saveFile(
 bool AbaqusFileGenerator::generate(
     const QString &projectPath,
     const StructureConfig &structure,
+    const ExplosiveConfig &explosive,
     QString &errorMessage)
 {
     QDir projectDir(projectPath);
@@ -69,22 +70,21 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    content.replace(
-        QStringLiteral("{{CHARGE_RADIUS}}"),
-        number(structure.chargeRadius)
-    );
-    content.replace(
-        QStringLiteral("{{CHARGE_HEIGHT}}"),
-        number(structure.chargeHeight)
-    );
-    content.replace(
-        QStringLiteral("{{SHELL_THICKNESS}}"),
-        number(structure.shellThickness)
-    );
+    content.replace(QStringLiteral("{{CHARGE_RADIUS}}"), number(structure.chargeRadius));
+    content.replace(QStringLiteral("{{CHARGE_HEIGHT}}"), number(structure.chargeHeight));
+    content.replace(QStringLiteral("{{SHELL_THICKNESS}}"), number(structure.shellThickness));
 
-    if (content.contains(QStringLiteral("{{CHARGE_RADIUS}}"))
-        || content.contains(QStringLiteral("{{CHARGE_HEIGHT}}"))
-        || content.contains(QStringLiteral("{{SHELL_THICKNESS}}"))) {
+    content.replace(QStringLiteral("{{PBX_DENSITY}}"), number(explosive.density));
+    content.replace(QStringLiteral("{{PBX_INITIAL_ELASTIC_MODULUS}}"), number(explosive.initialElasticModulus));
+    content.replace(QStringLiteral("{{PBX_INITIAL_POISSON_RATIO}}"), number(explosive.initialPoissonRatio));
+    content.replace(QStringLiteral("{{PBX_FINAL_ELASTIC_MODULUS}}"), number(explosive.finalElasticModulus));
+    content.replace(QStringLiteral("{{PBX_FINAL_POISSON_RATIO}}"), number(explosive.finalPoissonRatio));
+    content.replace(QStringLiteral("{{PBX_THERMAL_CONDUCTIVITY}}"), number(explosive.thermalConductivity));
+    content.replace(QStringLiteral("{{PBX_YIELD_STRESS}}"), number(explosive.yieldStress));
+    content.replace(QStringLiteral("{{PBX_SPECIFIC_HEAT}}"), number(explosive.specificHeat));
+    content.replace(QStringLiteral("{{PBX_EXPANSION_COEFFICIENT}}"), number(explosive.expansionCoefficient));
+
+    if (content.contains(QLatin1String("{{"))) {
         errorMessage = QStringLiteral("模板占位符替换失败。");
         return false;
     }

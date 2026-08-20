@@ -1,6 +1,7 @@
 #ifndef ABAQUSFILEGENERATOR_H
 #define ABAQUSFILEGENERATOR_H
 
+#include "ExplosiveConfig.h"
 #include "StructureConfig.h"
 
 #include <QString>
@@ -11,6 +12,7 @@ public:
     static bool generate(
         const QString &projectPath,
         const StructureConfig &structure,
+        const ExplosiveConfig &explosive,
         QString &errorMessage
     );
 

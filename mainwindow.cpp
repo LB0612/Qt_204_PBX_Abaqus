@@ -4,6 +4,7 @@
 #include "OpenProjectDialog.h"
 #include "SettingsDialog.h"
 #include "StructureConfigManager.h"
+#include "ExplosiveConfigManager.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -33,6 +34,9 @@ const QString NODE_PROJECT_INFO =
 
 const QString NODE_STRUCTURE =
     QStringLiteral("STRUCTURE");
+
+const QString NODE_EXPLOSIVE =
+    QStringLiteral("EXPLOSIVE");
 
 }
 
@@ -108,6 +112,9 @@ void MainWindow::setupUi()
     structureWidget = new StructureParamWidget(stackedWidget);
     stackedWidget->addWidget(structureWidget);
 
+    explosiveWidget = new ExplosiveParamWidget(stackedWidget);
+    stackedWidget->addWidget(explosiveWidget);
+
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
@@ -120,6 +127,14 @@ void MainWindow::setupUi()
 
     connect(structureWidget, &StructureParamWidget::saveRequested,
             this, &MainWindow::saveStructureParams);
+
+    connect(explosiveWidget, &BaseParamWidget::backClicked, this, [this]() {
+        stackedWidget->setCurrentIndex(0);
+        treeWidget->clearSelection();
+    });
+
+    connect(explosiveWidget, &ExplosiveParamWidget::saveRequested,
+            this, &MainWindow::saveExplosiveParams);
 
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
@@ -194,7 +209,7 @@ void MainWindow::createPureStyleToolBar()
     toolBar->addSeparator();
 
     addBtn(QStringLiteral("工程信息"), QStringLiteral(":/new/prefix1/toolbar_picture/information.png"), &MainWindow::projectInfo);
-    addPlaceholderBtn(QStringLiteral("炸药参数"), QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"));
+    addBtn(QStringLiteral("炸药参数"), QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"), &MainWindow::explosiveParams);
     addBtn(QStringLiteral("结构参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::structureParams);
     addPlaceholderBtn(QStringLiteral("边界条件"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
     addPlaceholderBtn(QStringLiteral("仿真设置"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
@@ -292,6 +307,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     structureItem->setData(0, ROLE_NODE_TYPE, NODE_STRUCTURE);
     structureItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
     structureItem->setFont(0, childFont);
+
+    QTreeWidgetItem *explosiveItem = new QTreeWidgetItem(projectItem);
+    explosiveItem->setText(0, QStringLiteral("炸药参数"));
+    explosiveItem->setData(0, Qt::UserRole, path);
+    explosiveItem->setData(0, ROLE_NODE_TYPE, NODE_EXPLOSIVE);
+    explosiveItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png")));
+    explosiveItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
@@ -552,44 +574,66 @@ void MainWindow::saveStructureParams()
     );
 }
 
-void MainWindow::generateFiles()
+void MainWindow::explosiveParams()
 {
     if (!isProjectLoaded) {
         return;
     }
 
-    StructureConfig structure;
+    ExplosiveConfig config;
 
-    if (!StructureConfigManager::load(
-            currentProject.projectPath,
-            structure)) {
+    const QString filePath =
+        QDir(currentProject.projectPath)
+            .filePath(QStringLiteral("config/explosive.json"));
 
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("无法生成"),
-            QStringLiteral(
-                "请先填写并保存结构参数。"
-            )
-        );
+    if (QFileInfo::exists(filePath)) {
+        if (!ExplosiveConfigManager::load(currentProject.projectPath, config)) {
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("读取失败"),
+                QStringLiteral(
+                    "炸药参数文件存在，"
+                    "但文件内容无效或无法读取。"
+                )
+            );
+            return;
+        }
+    } else {
+        config = ExplosiveConfig();
+    }
 
+    explosiveWidget->setConfig(config);
+    selectTreeItem(QStringLiteral("炸药参数"));
+    stackedWidget->setCurrentWidget(explosiveWidget);
+}
+
+void MainWindow::saveExplosiveParams()
+{
+    if (!isProjectLoaded) {
         return;
     }
 
+    ExplosiveConfig config = explosiveWidget->getConfig();
     QString error;
 
-    if (!AbaqusFileGenerator::generate(
-            currentProject.projectPath,
-            structure,
-            error)) {
+    if (!ExplosiveConfigManager::validate(config, error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("参数错误"),
+            error
+        );
+        return;
+    }
 
+    if (!ExplosiveConfigManager::save(currentProject.projectPath, config)) {
         showCenteredMessageBox(
             this,
             QMessageBox::Critical,
-            QStringLiteral("生成失败"),
-            error
+            QStringLiteral("保存失败"),
+            QStringLiteral("炸药参数保存失败。")
         );
-
         return;
     }
 
@@ -597,9 +641,58 @@ void MainWindow::generateFiles()
         this,
         QMessageBox::Information,
         QStringLiteral("成功"),
-        QStringLiteral(
-            "Abaqus 文件生成成功。"
-        )
+        QStringLiteral("炸药参数已保存。")
+    );
+}
+
+void MainWindow::generateFiles()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    StructureConfig structure;
+    if (!StructureConfigManager::load(currentProject.projectPath, structure)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("无法生成"),
+            QStringLiteral("请先填写并保存结构参数。")
+        );
+        return;
+    }
+
+    ExplosiveConfig explosive;
+    if (!ExplosiveConfigManager::load(currentProject.projectPath, explosive)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("无法生成"),
+            QStringLiteral("请先填写并保存炸药参数。")
+        );
+        return;
+    }
+
+    QString error;
+    if (!AbaqusFileGenerator::generate(
+            currentProject.projectPath,
+            structure,
+            explosive,
+            error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Critical,
+            QStringLiteral("生成失败"),
+            error
+        );
+        return;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("成功"),
+        QStringLiteral("Abaqus 文件生成成功。")
     );
 }
 
@@ -672,7 +765,8 @@ void MainWindow::onTreeItemClicked(
         projectItem = item;
     }
     else if (nodeType == NODE_PROJECT_INFO
-             || nodeType == NODE_STRUCTURE) {
+             || nodeType == NODE_STRUCTURE
+             || nodeType == NODE_EXPLOSIVE) {
         projectItem = item->parent();
     }
     else {
@@ -733,6 +827,11 @@ void MainWindow::onTreeItemClicked(
 
     if (nodeType == NODE_STRUCTURE) {
         structureParams();
+        return;
+    }
+
+    if (nodeType == NODE_EXPLOSIVE) {
+        explosiveParams();
         return;
     }
 
