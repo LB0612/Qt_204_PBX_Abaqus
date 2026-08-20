@@ -227,9 +227,9 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("结构参数配置文件无效"));
         } else {
-            boxLayout->addLayout(createInfoRow(QStringLiteral("药柱半径："), formatNumber(config.chargeRadius)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("药柱高度："), formatNumber(config.chargeHeight)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("外壳厚度："), formatNumber(config.shellThickness)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("药柱半径（mm）："), formatNumber(config.chargeRadius)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("药柱高度（mm）："), formatNumber(config.chargeHeight)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("外壳厚度（mm）："), formatNumber(config.shellThickness)));
         }
 
         sectionsLayout->addWidget(box);
@@ -287,7 +287,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         } else {
             boxLayout->addLayout(
                 createInfoRow(
-                    QStringLiteral("环境温度："),
+                    QStringLiteral("环境温度（K）："),
                     formatNumber(config.ambientTemperature)
                 )
             );
@@ -318,7 +318,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
         } else {
             boxLayout->addLayout(
                 createInfoRow(
-                    QStringLiteral("时间长度："),
+                    QStringLiteral("时间长度（s）："),
                     formatNumber(config.timeLength)
                 )
             );
