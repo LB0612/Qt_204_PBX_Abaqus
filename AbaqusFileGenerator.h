@@ -4,6 +4,7 @@
 #include "BoundaryConfig.h"
 #include "ExplosiveConfig.h"
 #include "MoldConfig.h"
+#include "SimulationConfig.h"
 #include "StructureConfig.h"
 
 #include <QString>
@@ -17,6 +18,7 @@ public:
         const ExplosiveConfig &explosive,
         const MoldConfig &mold,
         const BoundaryConfig &boundary,
+        const SimulationConfig &simulation,
         QString &errorMessage
     );
 

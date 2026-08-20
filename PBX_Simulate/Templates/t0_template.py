@@ -119,7 +119,7 @@ a.Instance(name='ke-1', part=p, dependent=OFF)
 p = mdb.models['Model-1'].parts['yao']
 a.Instance(name='yao-1', part=p, dependent=OFF)
 mdb.models['Model-1'].CoupledTempDisplacementStep(name='Step-1', 
-    previous='Initial', timePeriod=632000.0, maxNumInc=1000000000, 
+    previous='Initial', timePeriod={{SIMULATION_TIME_LENGTH}}, maxNumInc=1000000000, 
     initialInc=0.0001, minInc=1e-05, maxInc=100000.0, deltmx=0.1)
 session.viewports['Viewport: 1'].assemblyDisplay.setValues(step='Step-1')
 mdb.models['Model-1'].fieldOutputRequests['F-Output-1'].setValues(variables=(

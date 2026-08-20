@@ -7,6 +7,7 @@
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
 #include "BoundaryConfigManager.h"
+#include "SimulationConfigManager.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -45,6 +46,9 @@ const QString NODE_MOLD =
 
 const QString NODE_BOUNDARY =
     QStringLiteral("BOUNDARY");
+
+const QString NODE_SIMULATION =
+    QStringLiteral("SIMULATION");
 
 }
 
@@ -129,6 +133,9 @@ void MainWindow::setupUi()
     boundaryWidget = new BoundaryParamWidget(stackedWidget);
     stackedWidget->addWidget(boundaryWidget);
 
+    simulationWidget = new SimulationParamWidget(stackedWidget);
+    stackedWidget->addWidget(simulationWidget);
+
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
@@ -165,6 +172,14 @@ void MainWindow::setupUi()
 
     connect(boundaryWidget, &BoundaryParamWidget::saveRequested,
             this, &MainWindow::saveBoundaryParams);
+
+    connect(simulationWidget, &BaseParamWidget::backClicked, this, [this]() {
+        stackedWidget->setCurrentIndex(0);
+        treeWidget->clearSelection();
+    });
+
+    connect(simulationWidget, &SimulationParamWidget::saveRequested,
+            this, &MainWindow::saveSimulationParams);
 
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
@@ -243,7 +258,7 @@ void MainWindow::createPureStyleToolBar()
     addBtn(QStringLiteral("结构参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::structureParams);
     addBtn(QStringLiteral("模具参数"), QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"), &MainWindow::moldParams);
     addBtn(QStringLiteral("边界条件"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"), &MainWindow::boundaryParams);
-    addPlaceholderBtn(QStringLiteral("仿真设置"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"));
+    addBtn(QStringLiteral("仿真设置"), QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"), &MainWindow::simulationParams);
 
     toolBar->addSeparator();
 
@@ -359,6 +374,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     boundaryItem->setData(0, ROLE_NODE_TYPE, NODE_BOUNDARY);
     boundaryItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png")));
     boundaryItem->setFont(0, childFont);
+
+    QTreeWidgetItem *simulationItem = new QTreeWidgetItem(projectItem);
+    simulationItem->setText(0, QStringLiteral("仿真设置"));
+    simulationItem->setData(0, Qt::UserRole, path);
+    simulationItem->setData(0, ROLE_NODE_TYPE, NODE_SIMULATION);
+    simulationItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png")));
+    simulationItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
@@ -832,6 +854,77 @@ void MainWindow::saveBoundaryParams()
     );
 }
 
+void MainWindow::simulationParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    SimulationConfig config;
+
+    const QString filePath =
+        QDir(currentProject.projectPath)
+            .filePath(QStringLiteral("config/simulation.json"));
+
+    if (QFileInfo::exists(filePath)) {
+        if (!SimulationConfigManager::load(currentProject.projectPath, config)) {
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("读取失败"),
+                QStringLiteral(
+                    "仿真设置文件存在，"
+                    "但文件内容无效或无法读取。"
+                )
+            );
+            return;
+        }
+    } else {
+        config = SimulationConfig();
+    }
+
+    simulationWidget->setConfig(config);
+    selectTreeItem(QStringLiteral("仿真设置"));
+    stackedWidget->setCurrentWidget(simulationWidget);
+}
+
+void MainWindow::saveSimulationParams()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    SimulationConfig config = simulationWidget->getConfig();
+    QString error;
+
+    if (!SimulationConfigManager::validate(config, error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("参数错误"),
+            error
+        );
+        return;
+    }
+
+    if (!SimulationConfigManager::save(currentProject.projectPath, config)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Critical,
+            QStringLiteral("保存失败"),
+            QStringLiteral("仿真设置保存失败。")
+        );
+        return;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("成功"),
+        QStringLiteral("仿真设置已保存。")
+    );
+}
+
 void MainWindow::generateFiles()
 {
     if (!isProjectLoaded) {
@@ -882,6 +975,17 @@ void MainWindow::generateFiles()
         return;
     }
 
+    SimulationConfig simulation;
+    if (!SimulationConfigManager::load(currentProject.projectPath, simulation)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("无法生成"),
+            QStringLiteral("请先填写并保存仿真设置。")
+        );
+        return;
+    }
+
     QString error;
     if (!AbaqusFileGenerator::generate(
             currentProject.projectPath,
@@ -889,6 +993,7 @@ void MainWindow::generateFiles()
             explosive,
             mold,
             boundary,
+            simulation,
             error)) {
         showCenteredMessageBox(
             this,
@@ -979,7 +1084,8 @@ void MainWindow::onTreeItemClicked(
              || nodeType == NODE_STRUCTURE
              || nodeType == NODE_EXPLOSIVE
              || nodeType == NODE_MOLD
-             || nodeType == NODE_BOUNDARY) {
+             || nodeType == NODE_BOUNDARY
+             || nodeType == NODE_SIMULATION) {
         projectItem = item->parent();
     }
     else {
@@ -1055,6 +1161,11 @@ void MainWindow::onTreeItemClicked(
 
     if (nodeType == NODE_BOUNDARY) {
         boundaryParams();
+        return;
+    }
+
+    if (nodeType == NODE_SIMULATION) {
+        simulationParams();
         return;
     }
 

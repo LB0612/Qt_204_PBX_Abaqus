@@ -47,6 +47,11 @@ set(PROJECT_SOURCES
     BoundaryConfigManager.h
     BoundaryParamWidget.cpp
     BoundaryParamWidget.h
+    SimulationConfig.h
+    SimulationConfigManager.cpp
+    SimulationConfigManager.h
+    SimulationParamWidget.cpp
+    SimulationParamWidget.h
     AbaqusFileGenerator.cpp
     AbaqusFileGenerator.h
     Picture.qrc
