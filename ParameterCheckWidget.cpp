@@ -76,6 +76,8 @@ QTreeWidgetItem *addGroupItem(
     item->setExpanded(true);
 
     QFont font = item->font(0);
+    font.setFamily(QStringLiteral("Microsoft YaHei"));
+    font.setPointSize(11);
     font.setBold(true);
 
     for (int column = 0; column < 3; ++column) {
@@ -85,6 +87,13 @@ QTreeWidgetItem *addGroupItem(
             QBrush(QColor(QStringLiteral("#f7f9fc")))
         );
     }
+
+    QFont statusFont = item->font(2);
+    statusFont.setFamily(QStringLiteral("Microsoft YaHei"));
+    statusFont.setPointSize(11);
+    statusFont.setBold(true);
+    item->setFont(2, statusFont);
+    item->setTextAlignment(2, Qt::AlignCenter);
 
     item->setSizeHint(0, QSize(0, 40));
     return item;
@@ -140,19 +149,6 @@ void ParameterCheckWidget::setupUi()
     cardLayout->setContentsMargins(20, 18, 20, 20);
     cardLayout->setSpacing(14);
 
-    QLabel *cardTitle = new QLabel(QStringLiteral("参数检查结果"));
-    cardTitle->setAlignment(Qt::AlignCenter);
-    cardTitle->setStyleSheet(R"(
-        QLabel {
-            font-family: 'Microsoft YaHei';
-            font-size: 18px;
-            font-weight: bold;
-            color: #333333;
-            padding-bottom: 4px;
-        }
-    )");
-    cardLayout->addWidget(cardTitle);
-
     summaryLabel = new QLabel();
     summaryLabel->setWordWrap(true);
     summaryLabel->setText(QStringLiteral("请打开工程后进行参数检查。"));
@@ -190,7 +186,7 @@ void ParameterCheckWidget::setupUi()
             border: 1px solid #e5e5e5;
             border-radius: 4px;
             font-family: 'Microsoft YaHei';
-            font-size: 15px;
+            font-size: 14px;
             color: #333333;
             outline: none;
         }
@@ -458,7 +454,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
     if (allPassed) {
         summaryLabel->setText(
-            QStringLiteral("✓ 参数检查通过，可以生成 Abaqus 文件。")
+            QStringLiteral("✓ 工程参数配置检查通过，可以生成 Abaqus 文件。")
         );
         summaryLabel->setStyleSheet(R"(
             QLabel {
