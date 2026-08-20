@@ -1254,6 +1254,9 @@ void MainWindow::startSimulation()
     QFile::remove(
         QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"))
     );
+    QFile::remove(
+        QDir(abaqusDir).filePath(QStringLiteral("stop.flag"))
+    );
 
     simulationUserStopped = false;
     simulationState = SimulationState::T0Running;
@@ -1327,14 +1330,7 @@ void MainWindow::startSimulation()
             if (simulationUserStopped
                 || simulationState == SimulationState::Stopping
                 || simulationState == SimulationState::Stopped) {
-                simulationUserStopped = false;
-                if (simulationState != SimulationState::Stopped) {
-                    simulationState = SimulationState::Stopped;
-                }
-                currentJobName.clear();
-                if (stopSimulationAction) {
-                    stopSimulationAction->setEnabled(false);
-                }
+                finishStopState();
                 return;
             }
 
@@ -1487,14 +1483,7 @@ void MainWindow::startSimulation()
                     if (simulationUserStopped
                         || simulationState == SimulationState::Stopping
                         || simulationState == SimulationState::Stopped) {
-                        simulationUserStopped = false;
-                        if (simulationState != SimulationState::Stopped) {
-                            simulationState = SimulationState::Stopped;
-                        }
-                        currentJobName.clear();
-                        if (stopSimulationAction) {
-                            stopSimulationAction->setEnabled(false);
-                        }
+                        finishStopState();
                         return;
                     }
 
@@ -1708,36 +1697,11 @@ void MainWindow::stopSimulation()
         return;
     }
 
-    // t0 阶段尚无 Job：仅软结束 CAE 脚本进程（不 kill）
+    // t0 阶段尚无 Job：请求 CAE 退出，由 finished → finishStopState
     simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] 当前无 Job，正在结束模型建立进程")
+        QStringLiteral("[SYS] 当前无 Job，正在请求模型建立进程退出")
     );
-    if (abaqusProcess
-        && abaqusProcess->state() != QProcess::NotRunning) {
-        abaqusProcess->terminate();
-        abaqusProcess->waitForFinished(8000);
-    }
-    if (abaqusProcess) {
-        abaqusProcess->deleteLater();
-        abaqusProcess = nullptr;
-    }
-    simulationState = SimulationState::Stopped;
-    simulationUserStopped = false;
-    if (stopSimulationAction) {
-        stopSimulationAction->setEnabled(false);
-    }
-    simulationMonitorWidget->setStatus(
-        QStringLiteral("仿真已终止")
-    );
-    simulationMonitorWidget->setPhase(
-        QStringLiteral("终止")
-    );
-    simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] 已发送终止请求")
-    );
-    simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] Abaqus已完全退出")
-    );
+    closeAbaqusProcesses();
 }
 
 bool MainWindow::hasAbaqusLockFiles() const
@@ -1883,15 +1847,47 @@ void MainWindow::onAbaqusJobTerminateFinished()
     }
 
     closeAbaqusProcesses();
+}
 
-    if (abaqusProcess) {
-        abaqusProcess->deleteLater();
-        abaqusProcess = nullptr;
+void MainWindow::closeAbaqusProcesses()
+{
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] 正在请求Abaqus CAE退出")
+    );
+
+    if (!abaqusProcess) {
+        finishStopState();
+        return;
+    }
+
+    if (abaqusProcess->state() == QProcess::NotRunning) {
+        finishStopState();
+        return;
+    }
+
+    connect(
+        abaqusProcess,
+        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this,
+        [this](int, QProcess::ExitStatus) {
+            finishStopState();
+        },
+        Qt::UniqueConnection
+    );
+
+    abaqusProcess->terminate();
+}
+
+void MainWindow::finishStopState()
+{
+    if (simulationState == SimulationState::Stopped
+        && abaqusProcess == nullptr) {
+        return;
     }
 
     simulationState = SimulationState::Stopped;
-    currentJobName.clear();
     simulationUserStopped = false;
+    currentJobName.clear();
 
     if (stopSimulationAction) {
         stopSimulationAction->setEnabled(false);
@@ -1904,35 +1900,13 @@ void MainWindow::onAbaqusJobTerminateFinished()
         QStringLiteral("终止")
     );
     simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] Abaqus已完全退出")
-    );
-}
-
-void MainWindow::closeAbaqusProcesses()
-{
-    simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] 正在关闭Abaqus CAE")
+        QStringLiteral("[SYS] Abaqus CAE已退出")
     );
 
-    // Job 已用官方 terminate 结束，这里只关 CAE GUI/Kernel 外壳，不杀 standard.exe
-    QProcess::execute(
-        QStringLiteral("taskkill"),
-        QStringList()
-            << QStringLiteral("/F")
-            << QStringLiteral("/IM")
-            << QStringLiteral("SMACaeGMain.exe")
-    );
-    QProcess::execute(
-        QStringLiteral("taskkill"),
-        QStringList()
-            << QStringLiteral("/F")
-            << QStringLiteral("/IM")
-            << QStringLiteral("abqcaeK.exe")
-    );
-
-    simulationMonitorWidget->appendLog(
-        QStringLiteral("[SYS] Abaqus CAE已关闭")
-    );
+    if (abaqusProcess) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
 }
 
 void MainWindow::updateAbaqusLog()

@@ -70,6 +70,7 @@ private:
     void sendAbaqusTerminateCommand();
     void onAbaqusJobTerminateFinished();
     void closeAbaqusProcesses();
+    void finishStopState();
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,
