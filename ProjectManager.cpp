@@ -65,7 +65,6 @@ bool ProjectManager::createProject(
     config.projectPath = projectPath;
     config.projectType = PROJECT_TYPE_PBX;
     config.createdDate = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
-    config.softwareVersion = QStringLiteral("1.0");
     config.schemaVersion = 1;
 
     if (!saveProject(projectPath, config)) {
@@ -85,7 +84,6 @@ bool ProjectManager::saveProject(
     jsonObj[QStringLiteral("projectName")] = config.projectName;
     jsonObj[QStringLiteral("projectType")] = config.projectType;
     jsonObj[QStringLiteral("createdDate")] = config.createdDate;
-    jsonObj[QStringLiteral("softwareVersion")] = config.softwareVersion;
     jsonObj[QStringLiteral("schemaVersion")] = config.schemaVersion;
 
     QSaveFile file(QDir(folderPath).filePath(FILE_PROJECT));
@@ -136,7 +134,6 @@ bool ProjectManager::loadProject(
     config.projectPath = folderPath;
     config.projectType = jsonObj.value(QStringLiteral("projectType")).toString(PROJECT_TYPE_PBX);
     config.createdDate = jsonObj.value(QStringLiteral("createdDate")).toString();
-    config.softwareVersion = jsonObj.value(QStringLiteral("softwareVersion")).toString(QStringLiteral("1.0"));
     config.schemaVersion = schemaVersion;
     return true;
 }

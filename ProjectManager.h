@@ -12,8 +12,6 @@ struct ProjectConfig
 
     QString createdDate;
 
-    QString softwareVersion = QStringLiteral("1.0");
-
     int schemaVersion = 1;
 };
 

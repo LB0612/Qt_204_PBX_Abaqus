@@ -21,7 +21,6 @@ private:
     QLineEdit *typeEdit;
     QLineEdit *dateEdit;
     QLineEdit *pathEdit;
-    QLineEdit *versionEdit;
 };
 
 #endif

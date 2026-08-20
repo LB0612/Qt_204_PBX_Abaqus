@@ -28,13 +28,11 @@ void ProjectInfoWidget::setupUi()
     typeEdit = createReadOnlyEdit();
     dateEdit = createReadOnlyEdit();
     pathEdit = createReadOnlyEdit();
-    versionEdit = createReadOnlyEdit();
 
     addParamRow(scrollLayout, QStringLiteral("工程名称"), nameEdit);
     addParamRow(scrollLayout, QStringLiteral("工程类型"), typeEdit);
     addParamRow(scrollLayout, QStringLiteral("创建时间"), dateEdit);
     addParamRow(scrollLayout, QStringLiteral("工程路径"), pathEdit);
-    addParamRow(scrollLayout, QStringLiteral("软件版本"), versionEdit);
 
     addSaveButton(scrollLayout, QStringLiteral("打开所在文件夹"), [this]() {
         const QString path = pathEdit->text();
@@ -66,7 +64,6 @@ void ProjectInfoWidget::setProjectData(const ProjectConfig &config)
 
     dateEdit->setText(config.createdDate);
     pathEdit->setText(config.projectPath);
-    versionEdit->setText(config.softwareVersion);
 }
 
 void ProjectInfoWidget::getProjectData(ProjectConfig &config) const
