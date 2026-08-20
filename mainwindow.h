@@ -26,6 +26,16 @@
 class NewProjectDialog;
 class OpenProjectDialog;
 
+enum class SimulationState
+{
+    Idle,
+    T0Running,
+    T1Running,
+    Stopping,
+    Finished,
+    Failed
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -55,6 +65,9 @@ private:
     );
     double loadSimulationTotalTime();
     bool checkSimulationReady(QString &errorMessage);
+    bool hasAbaqusLockFiles() const;
+    void sendAbaqusTerminateCommand();
+    void onAbaqusJobTerminateFinished();
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,
@@ -96,6 +109,8 @@ private:
     QList<QAction *> projectDependentActions;
     QAction *stopSimulationAction = nullptr;
     bool simulationUserStopped = false;
+    SimulationState simulationState = SimulationState::Idle;
+    QString currentJobName;
 
 private slots:
     void newProject();
