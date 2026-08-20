@@ -1128,7 +1128,7 @@ void MainWindow::startSimulation()
         abaqusProcess,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [this, t1Path, abaqusPath, abaqusDir](int exitCode, QProcess::ExitStatus) {
+        [this, t1Path, abaqusPath, abaqusDir, projectDir](int exitCode, QProcess::ExitStatus) {
             if (abaqusProcess) {
                 abaqusProcess->deleteLater();
                 abaqusProcess = nullptr;
@@ -1140,6 +1140,18 @@ void MainWindow::startSimulation()
                     QMessageBox::Critical,
                     QStringLiteral("错误"),
                     QStringLiteral("t0.py 执行失败。")
+                );
+                return;
+            }
+
+            const QString caePath =
+                QDir(abaqusDir).filePath(QStringLiteral("guhua.cae"));
+            if (!QFile::exists(caePath)) {
+                showCenteredMessageBox(
+                    this,
+                    QMessageBox::Critical,
+                    QStringLiteral("错误"),
+                    QStringLiteral("t0 执行完成，但未生成 guhua.cae。")
                 );
                 return;
             }
@@ -1170,31 +1182,47 @@ void MainWindow::startSimulation()
                 }
             );
 
+            const QString jobName =
+                QDir(projectDir).dirName() + QStringLiteral("_Job");
+            const QString odbPath =
+                QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
+
             connect(
                 abaqusProcess,
                 QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this,
-                [this](int t1ExitCode, QProcess::ExitStatus) {
+                [this, odbPath](int t1ExitCode, QProcess::ExitStatus) {
                     if (abaqusProcess) {
                         abaqusProcess->deleteLater();
                         abaqusProcess = nullptr;
                     }
 
-                    if (t1ExitCode == 0) {
-                        showCenteredMessageBox(
-                            this,
-                            QMessageBox::Information,
-                            QStringLiteral("完成"),
-                            QStringLiteral("固化仿真完成。")
-                        );
-                    } else {
+                    if (t1ExitCode != 0) {
                         showCenteredMessageBox(
                             this,
                             QMessageBox::Warning,
                             QStringLiteral("错误"),
                             QStringLiteral("t1.py 执行失败。")
                         );
+                        return;
                     }
+
+                    if (!QFile::exists(odbPath)) {
+                        showCenteredMessageBox(
+                            this,
+                            QMessageBox::Warning,
+                            QStringLiteral("错误"),
+                            QStringLiteral("t1 执行完成，但未生成计算结果 ODB。")
+                        );
+                        return;
+                    }
+
+                    showCenteredMessageBox(
+                        this,
+                        QMessageBox::Information,
+                        QStringLiteral("完成"),
+                        QStringLiteral("固化仿真完成。")
+                    );
                 }
             );
 
