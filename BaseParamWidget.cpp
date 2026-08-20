@@ -32,11 +32,24 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
     hLayout->addWidget(edit); 
     
     if (!unit.isEmpty()) {
-        QLabel *lblUnit = new QLabel(unit);
-        lblUnit->setMinimumHeight(40);
-        lblUnit->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        lblUnit->setStyleSheet("font-family: 'Microsoft YaHei'; font-size: 16px; color: #333333; margin-left: 8px;");
-        hLayout->addWidget(lblUnit);
+        QLabel *unitLabel = new QLabel(unit);
+
+        unitLabel->setFixedWidth(80);
+
+        unitLabel->setAlignment(
+            Qt::AlignLeft |
+            Qt::AlignVCenter
+        );
+
+        unitLabel->setStyleSheet(
+            QStringLiteral(
+                "font-family: 'Microsoft YaHei';"
+                "font-size: 16px;"
+                "color: #555;"
+            )
+        );
+
+        hLayout->addWidget(unitLabel);
     }
 
     // 稍微增加一点行距 

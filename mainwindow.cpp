@@ -469,14 +469,49 @@ void MainWindow::structureParams()
     }
 
     StructureConfig config;
-    if (!StructureConfigManager::load(currentProject.projectPath, config)) {
-        // 文件还没创建时使用默认值
+
+    const QString filePath =
+        QDir(currentProject.projectPath)
+            .filePath(
+                QStringLiteral(
+                    "config/structure.json"
+                )
+            );
+
+    if (QFileInfo::exists(filePath)) {
+
+        if (!StructureConfigManager::load(
+                currentProject.projectPath,
+                config)) {
+
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("读取失败"),
+                QStringLiteral(
+                    "结构参数文件存在，"
+                    "但文件内容无效或无法读取。"
+                )
+            );
+
+            return;
+        }
+
+    } else {
+
+        // 新工程第一次进入时使用默认值
         config = StructureConfig();
     }
 
     structureWidget->setConfig(config);
-    selectTreeItem(QStringLiteral("结构参数"));
-    stackedWidget->setCurrentWidget(structureWidget);
+
+    selectTreeItem(
+        QStringLiteral("结构参数")
+    );
+
+    stackedWidget->setCurrentWidget(
+        structureWidget
+    );
 }
 
 void MainWindow::saveStructureParams()
