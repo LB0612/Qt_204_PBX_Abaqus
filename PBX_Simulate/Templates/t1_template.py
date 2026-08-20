@@ -113,4 +113,10 @@ session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF,
     compass=OFF)
 session.writeImageAnimation(fileName='{{RESULT_CURE_PATH}}', 
     format=AVI, canvasObjects=(session.viewports['Viewport: 1'], ))
-session.exit()
+
+# t1执行成功标志
+with open('t1_finished.flag', 'w') as f:
+    f.write('success')
+
+import sys
+sys.exit()

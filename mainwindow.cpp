@@ -1203,6 +1203,13 @@ void MainWindow::startSimulation()
     clearLogFile(t0LogPath);
     clearLogFile(t1LogPath);
 
+    QFile::remove(
+        QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"))
+    );
+    QFile::remove(
+        QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"))
+    );
+
     simulationMonitorWidget->setProgress(0);
     simulationMonitorWidget->setJob(QString());
     simulationMonitorWidget->setStatus(
@@ -1302,6 +1309,24 @@ void MainWindow::startSimulation()
                 return;
             }
 
+            const QString flagPath =
+                QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"));
+            if (!QFile::exists(flagPath)) {
+                simulationMonitorWidget->setStatus(
+                    QStringLiteral("t0执行失败")
+                );
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral("[SYS] t0未生成完成标志")
+                );
+                showCenteredMessageBox(
+                    this,
+                    QMessageBox::Critical,
+                    QStringLiteral("错误"),
+                    QStringLiteral("t0 未正常完成（缺少完成标志）。")
+                );
+                return;
+            }
+
             simulationMonitorWidget->appendLog(
                 QStringLiteral("[SYS] 模型生成完成，启动 t1.py")
             );
@@ -1365,12 +1390,14 @@ void MainWindow::startSimulation()
 
             const QString odbPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
+            const QString t1FlagPath =
+                QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"));
 
             connect(
                 abaqusProcess,
                 QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this,
-                [this, odbPath](int t1ExitCode, QProcess::ExitStatus) {
+                [this, odbPath, t1FlagPath](int t1ExitCode, QProcess::ExitStatus) {
                     if (abaqusProcess) {
                         abaqusProcess->deleteLater();
                         abaqusProcess = nullptr;
@@ -1414,6 +1441,22 @@ void MainWindow::startSimulation()
                                 "2. Abaqus 求解失败\n"
                                 "3. 用户子程序错误"
                             )
+                        );
+                        return;
+                    }
+
+                    if (!QFile::exists(t1FlagPath)) {
+                        simulationMonitorWidget->setStatus(
+                            QStringLiteral("t1未正常完成")
+                        );
+                        simulationMonitorWidget->appendLog(
+                            QStringLiteral("[SYS] t1未生成完成标志")
+                        );
+                        showCenteredMessageBox(
+                            this,
+                            QMessageBox::Warning,
+                            QStringLiteral("错误"),
+                            QStringLiteral("t1 未正常完成（缺少完成标志）。")
                         );
                         return;
                     }
