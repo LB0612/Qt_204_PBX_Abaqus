@@ -11,11 +11,11 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFrame>
-#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QScrollArea>
 #include <QSize>
+#include <QSizePolicy>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
@@ -125,9 +125,9 @@ void ParameterCheckWidget::setupUi()
     content->setObjectName(QStringLiteral("ScrollContent"));
     QVBoxLayout *scrollLayout = createScrollContentLayout(content);
 
-    QFrame *card = new QFrame();
+    QFrame *card = new QFrame(content);
     card->setObjectName(QStringLiteral("CheckCard"));
-    card->setFixedWidth(1100);
+    card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     card->setStyleSheet(R"(
         QFrame#CheckCard {
             background-color: #ffffff;
@@ -183,7 +183,7 @@ void ParameterCheckWidget::setupUi()
     treeWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     treeWidget->setSelectionMode(QAbstractItemView::NoSelection);
     treeWidget->setFocusPolicy(Qt::NoFocus);
-    treeWidget->setMinimumHeight(560);
+    treeWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     treeWidget->setStyleSheet(R"(
         QTreeWidget {
             background-color: #ffffff;
@@ -224,15 +224,9 @@ void ParameterCheckWidget::setupUi()
     treeWidget->setColumnWidth(0, 320);
     treeWidget->setColumnWidth(2, 100);
 
-    cardLayout->addWidget(treeWidget);
+    cardLayout->addWidget(treeWidget, 1);
 
-    QHBoxLayout *centerLayout = new QHBoxLayout();
-    centerLayout->addStretch();
-    centerLayout->addWidget(card);
-    centerLayout->addStretch();
-
-    scrollLayout->addLayout(centerLayout);
-    scrollLayout->addStretch();
+    scrollLayout->addWidget(card, 1);
 
     scrollArea->setWidget(content);
     mainLayout->addWidget(scrollArea);
