@@ -16,6 +16,21 @@
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
 
+namespace {
+
+const int ROLE_NODE_TYPE = Qt::UserRole + 1;
+
+const QString NODE_ROOT =
+    QStringLiteral("ROOT");
+
+const QString NODE_PROJECT =
+    QStringLiteral("PROJECT");
+
+const QString NODE_PROJECT_INFO =
+    QStringLiteral("PROJECT_INFO");
+
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -207,6 +222,7 @@ void MainWindow::createTreeWidget()
     QTreeWidgetItem *rootItem = new QTreeWidgetItem(treeWidget);
     rootItem->setText(0, QStringLiteral("浇注XX固化仿真分析工程"));
     rootItem->setData(0, Qt::UserRole, QStringLiteral("CATEGORY_ROOT"));
+    rootItem->setData(0, ROLE_NODE_TYPE, NODE_ROOT);
     rootItem->setExpanded(true);
 
     QFont rootFont = rootItem->font(0);
@@ -236,6 +252,7 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     projectItem->setText(0, name);
     projectItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/file.png")));
     projectItem->setData(0, Qt::UserRole, path);
+    projectItem->setData(0, ROLE_NODE_TYPE, NODE_PROJECT);
     projectItem->setExpanded(true);
 
     QFont projectFont = projectItem->font(0);
@@ -246,6 +263,7 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     QTreeWidgetItem *infoItem = new QTreeWidgetItem(projectItem);
     infoItem->setText(0, QStringLiteral("工程信息"));
     infoItem->setData(0, Qt::UserRole, path);
+    infoItem->setData(0, ROLE_NODE_TYPE, NODE_PROJECT_INFO);
     infoItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/information.png")));
 
     QFont childFont = infoItem->font(0);
@@ -460,34 +478,100 @@ void MainWindow::onTreeItemDoubleClicked(QTreeWidgetItem *item, int column)
     onTreeItemClicked(item, column);
 }
 
-void MainWindow::onTreeItemClicked(QTreeWidgetItem *item, int column)
+void MainWindow::onTreeItemClicked(
+    QTreeWidgetItem *item,
+    int column)
 {
     Q_UNUSED(column);
 
-    if (!item || !item->parent() || item->parent()->parent()) {
+    if (!item) {
         return;
     }
 
-    const QString path = item->data(0, Qt::UserRole).toString();
+    const QString nodeType =
+        item->data(
+            0,
+            ROLE_NODE_TYPE
+        ).toString();
+
+    // 根节点不代表具体工程
+    if (nodeType == NODE_ROOT) {
+        return;
+    }
+
+    QTreeWidgetItem *projectItem = nullptr;
+
+    if (nodeType == NODE_PROJECT) {
+        projectItem = item;
+    }
+    else if (nodeType == NODE_PROJECT_INFO) {
+        projectItem = item->parent();
+    }
+    else {
+        return;
+    }
+
+    if (!projectItem) {
+        return;
+    }
+
+    const QString path =
+        projectItem->data(
+            0,
+            Qt::UserRole
+        ).toString();
+
     if (path.isEmpty()) {
         return;
     }
 
-    if (path != currentProject.projectPath) {
+    // 如果切换到了另一个工程，重新加载该工程
+    if (!isProjectLoaded ||
+        path != currentProject.projectPath) {
+
         ProjectConfig config;
-        if (!ProjectManager::loadProject(path, config)) {
-            showCenteredMessageBox(this, QMessageBox::Warning, QStringLiteral("错误"), QStringLiteral("该工程文件夹已不存在或不是有效的 PBX 工程。"));
-            delete item;
+
+        if (!ProjectManager::loadProject(
+                path,
+                config)) {
+
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("错误"),
+                QStringLiteral(
+                    "该工程文件夹已不存在"
+                    "或不是有效的工程。"
+                )
+            );
+
+            delete projectItem;
+            startWatchingProject();
             return;
         }
 
         currentProject = config;
         isProjectLoaded = true;
+
         updateUIStates();
     }
 
-    if (item->text(0) == QStringLiteral("工程信息")) {
-        projectInfo();
+    // 更新窗口标题
+    setWindowTitle(
+        QStringLiteral(
+            "浇注XX固化仿真分析工程 - %1"
+        ).arg(currentProject.projectName)
+    );
+
+    // 当前阶段工程节点只有工程信息页面，
+    // 所以点击工程或工程信息都显示工程信息
+    infoWidget->setProjectData(currentProject);
+    stackedWidget->setCurrentWidget(infoWidget);
+
+    if (nodeType == NODE_PROJECT) {
+        selectTreeItem(
+            QStringLiteral("工程信息")
+        );
     }
 }
 
