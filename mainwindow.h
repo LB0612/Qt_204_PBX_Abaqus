@@ -69,6 +69,7 @@ private:
     bool hasAbaqusLockFiles() const;
     void sendAbaqusTerminateCommand();
     void onAbaqusJobTerminateFinished();
+    void closeAbaqusProcesses();
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,

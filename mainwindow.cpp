@@ -1882,18 +1882,9 @@ void MainWindow::onAbaqusJobTerminateFinished()
         simulationTimer->stop();
     }
 
-    if (abaqusProcess
-        && abaqusProcess->state() != QProcess::NotRunning) {
-        simulationMonitorWidget->appendLog(
-            QStringLiteral("[SYS] 正在关闭Abaqus CAE")
-        );
+    closeAbaqusProcesses();
 
-        abaqusProcess->terminate();
-        if (!abaqusProcess->waitForFinished(5000)) {
-            abaqusProcess->kill();
-            abaqusProcess->waitForFinished(3000);
-        }
-
+    if (abaqusProcess) {
         abaqusProcess->deleteLater();
         abaqusProcess = nullptr;
     }
@@ -1914,6 +1905,33 @@ void MainWindow::onAbaqusJobTerminateFinished()
     );
     simulationMonitorWidget->appendLog(
         QStringLiteral("[SYS] Abaqus已完全退出")
+    );
+}
+
+void MainWindow::closeAbaqusProcesses()
+{
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] 正在关闭Abaqus CAE")
+    );
+
+    // Job 已用官方 terminate 结束，这里只关 CAE GUI/Kernel 外壳，不杀 standard.exe
+    QProcess::execute(
+        QStringLiteral("taskkill"),
+        QStringList()
+            << QStringLiteral("/F")
+            << QStringLiteral("/IM")
+            << QStringLiteral("SMACaeGMain.exe")
+    );
+    QProcess::execute(
+        QStringLiteral("taskkill"),
+        QStringList()
+            << QStringLiteral("/F")
+            << QStringLiteral("/IM")
+            << QStringLiteral("abqcaeK.exe")
+    );
+
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] Abaqus CAE已关闭")
     );
 }
 
