@@ -97,7 +97,9 @@ bool AbaqusFileGenerator::generate(
 
         QStringLiteral("{{AMBIENT_TEMPERATURE}}"),
 
-        QStringLiteral("{{SIMULATION_TIME_LENGTH}}")
+        QStringLiteral("{{SIMULATION_TIME_LENGTH}}"),
+
+        QStringLiteral("{{CAE_SAVE_PATH}}")
     };
 
     for (const QString &placeholder : requiredPlaceholders) {
