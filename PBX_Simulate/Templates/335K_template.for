@@ -8,7 +8,7 @@ c
       character*3  flgray(15)
       dimension FIELD(NFIELD),STATEV(NSTATV),direct(3,3),
      1 t(3,3),time(2)
-      dimension array(15),jarray(15),jmac(*),coord(*)  !jmatyp(*),
+      dimension array(15),jarray(15),jmac(*),jmatyp(*),coord(*)
 c this subroutine must call utility routine GETVRM to access material point data.
 c Get temperatures from previous increment
       call getvrm('TEMP',array,jarray,flgray,jrcd,jmac, jmatyp, 
