@@ -1457,7 +1457,7 @@ void MainWindow::startSimulation()
         abaqusPath,
         QStringList()
             << QStringLiteral("cae")
-            << QStringLiteral("script=") + t0Path
+            << QStringLiteral("noGUI=") + t0Path
     );
 
     if (!abaqusProcess->waitForStarted(10000)) {
