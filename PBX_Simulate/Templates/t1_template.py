@@ -21,8 +21,13 @@ mdb.Job(name=job_name, model='Model-1', description='', type=ANALYSIS,
     modelPrint=OFF, contactPrint=OFF, historyPrint=OFF, 
     userSubroutine='{{USER_SUBROUTINE_PATH}}', scratch='', 
     resultsFormat=ODB, numCpus=1, numGPUs=0)
-mdb.jobs[job_name].submit()
-mdb.jobs[job_name].waitForCompletion()
+job = mdb.jobs[job_name]
+job.submit()
+job.waitForCompletion()
+if job.status != COMPLETED:
+    raise RuntimeError(
+        'Abaqus Job failed, status = %s' % job.status
+    )
 odb_path = os.path.join(os.getcwd(), job_name + '.odb')
 if not os.path.isfile(odb_path):
     raise IOError('ODB error: %s' % odb_path)

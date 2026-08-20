@@ -14,6 +14,7 @@
 #include <QBrush>
 #include <QCloseEvent>
 #include <QColor>
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -519,6 +520,17 @@ void MainWindow::saveProject(bool silent)
 void MainWindow::exitProject()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (abaqusProcess
+        && abaqusProcess->state() != QProcess::NotRunning) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("提示"),
+            QStringLiteral("当前仿真正在进行，请等待仿真结束后再关闭工程。")
+        );
         return;
     }
 
@@ -1071,15 +1083,44 @@ void MainWindow::startSimulation()
         QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
     const QString t1Path =
         QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
+    const QString forPath =
+        QDir(abaqusDir).filePath(QStringLiteral("335K.for"));
 
-    if (!QFile::exists(t0Path) || !QFile::exists(t1Path)) {
+    if (!QFile::exists(t0Path)
+        || !QFile::exists(t1Path)
+        || !QFile::exists(forPath)) {
         showCenteredMessageBox(
             this,
             QMessageBox::Warning,
             QStringLiteral("错误"),
-            QStringLiteral("请先生成 Abaqus 文件。")
+            QStringLiteral("Abaqus 计算文件不完整，请重新生成文件。")
         );
         return;
+    }
+
+    const QDateTime generatedTime = QFileInfo(t0Path).lastModified();
+    const QStringList configFiles = {
+        QDir(projectDir).filePath(QStringLiteral("config/structure.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/explosive.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/mold.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/boundary.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/simulation.json"))
+    };
+
+    for (const QString &configFile : configFiles) {
+        const QFileInfo info(configFile);
+        if (info.exists() && info.lastModified() > generatedTime) {
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("需要重新生成"),
+                QStringLiteral(
+                    "参数在 Abaqus 文件生成后发生过修改，"
+                    "请重新生成文件后再开始仿真。"
+                )
+            );
+            return;
+        }
     }
 
     const QString abaqusPath = SettingsDialog::getAbaqusPath();
@@ -1092,6 +1133,34 @@ void MainWindow::startSimulation()
         );
         return;
     }
+
+    const QString logsDir =
+        QDir(projectDir).filePath(QStringLiteral("logs"));
+    QDir().mkpath(logsDir);
+    const QString t0LogPath =
+        QDir(logsDir).filePath(QStringLiteral("t0.log"));
+    const QString t1LogPath =
+        QDir(logsDir).filePath(QStringLiteral("t1.log"));
+
+    auto clearLogFile = [](const QString &logPath) {
+        QFile logFile(logPath);
+        if (logFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            logFile.close();
+        }
+    };
+    auto appendLog = [](const QString &logPath, const QByteArray &data) {
+        if (data.isEmpty()) {
+            return;
+        }
+        QFile logFile(logPath);
+        if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+            logFile.write(data);
+        }
+        qDebug().noquote() << QString::fromLocal8Bit(data);
+    };
+
+    clearLogFile(t0LogPath);
+    clearLogFile(t1LogPath);
 
     if (abaqusProcess) {
         abaqusProcess->deleteLater();
@@ -1106,9 +1175,9 @@ void MainWindow::startSimulation()
         abaqusProcess,
         &QProcess::readyReadStandardOutput,
         this,
-        [this]() {
+        [this, t0LogPath, appendLog]() {
             if (abaqusProcess) {
-                qDebug() << abaqusProcess->readAllStandardOutput();
+                appendLog(t0LogPath, abaqusProcess->readAllStandardOutput());
             }
         }
     );
@@ -1117,9 +1186,9 @@ void MainWindow::startSimulation()
         abaqusProcess,
         &QProcess::readyReadStandardError,
         this,
-        [this]() {
+        [this, t0LogPath, appendLog]() {
             if (abaqusProcess) {
-                qDebug() << abaqusProcess->readAllStandardError();
+                appendLog(t0LogPath, abaqusProcess->readAllStandardError());
             }
         }
     );
@@ -1128,7 +1197,10 @@ void MainWindow::startSimulation()
         abaqusProcess,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [this, t1Path, abaqusPath, abaqusDir, projectDir](int exitCode, QProcess::ExitStatus) {
+        [this, t1Path, abaqusPath, abaqusDir, projectDir, t1LogPath, appendLog](
+            int exitCode,
+            QProcess::ExitStatus
+        ) {
             if (abaqusProcess) {
                 abaqusProcess->deleteLater();
                 abaqusProcess = nullptr;
@@ -1164,9 +1236,12 @@ void MainWindow::startSimulation()
                 abaqusProcess,
                 &QProcess::readyReadStandardOutput,
                 this,
-                [this]() {
+                [this, t1LogPath, appendLog]() {
                     if (abaqusProcess) {
-                        qDebug() << abaqusProcess->readAllStandardOutput();
+                        appendLog(
+                            t1LogPath,
+                            abaqusProcess->readAllStandardOutput()
+                        );
                     }
                 }
             );
@@ -1175,9 +1250,12 @@ void MainWindow::startSimulation()
                 abaqusProcess,
                 &QProcess::readyReadStandardError,
                 this,
-                [this]() {
+                [this, t1LogPath, appendLog]() {
                     if (abaqusProcess) {
-                        qDebug() << abaqusProcess->readAllStandardError();
+                        appendLog(
+                            t1LogPath,
+                            abaqusProcess->readAllStandardError()
+                        );
                     }
                 }
             );
@@ -1295,6 +1373,18 @@ QMessageBox::StandardButton MainWindow::showCenteredMessageBox(
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    if (abaqusProcess
+        && abaqusProcess->state() != QProcess::NotRunning) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("提示"),
+            QStringLiteral("当前仿真正在进行，请等待仿真结束后再退出软件。")
+        );
+        event->ignore();
+        return;
+    }
+
     if (showCenteredMessageBox(this, QMessageBox::Question, QStringLiteral("退出"), QStringLiteral("确定要退出吗？"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) == QMessageBox::Yes) {
         event->accept();
     } else {
