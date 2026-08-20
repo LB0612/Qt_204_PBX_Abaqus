@@ -576,5 +576,5 @@ mdb.models['Model-1'].interactions['Int-3'].setValues(initialClearance=OMIT,
     adjustMethod=NONE, sliding=FINITE, enforcement=SURFACE_TO_SURFACE, 
     thickness=ON, contactTracking=TWO_CONFIG, bondingSet=None)
 mdb.saveAs(pathName='{{CAE_SAVE_PATH}}')
-
+session.exit()
 

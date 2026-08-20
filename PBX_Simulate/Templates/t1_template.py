@@ -113,3 +113,4 @@ session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF,
     compass=OFF)
 session.writeImageAnimation(fileName='{{RESULT_CURE_PATH}}', 
     format=AVI, canvasObjects=(session.viewports['Viewport: 1'], ))
+session.exit()

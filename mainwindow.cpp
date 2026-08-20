@@ -59,6 +59,9 @@ const QString NODE_SIMULATION =
 const QString NODE_PARAMETER_CHECK =
     QStringLiteral("PARAMETER_CHECK");
 
+const QString NODE_START_SIMULATION =
+    QStringLiteral("START_SIMULATION");
+
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -409,6 +412,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     checkItem->setData(0, ROLE_NODE_TYPE, NODE_PARAMETER_CHECK);
     checkItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/check.png")));
     checkItem->setFont(0, childFont);
+
+    QTreeWidgetItem *simulationStartItem = new QTreeWidgetItem(projectItem);
+    simulationStartItem->setText(0, QStringLiteral("开始仿真"));
+    simulationStartItem->setData(0, Qt::UserRole, path);
+    simulationStartItem->setData(0, ROLE_NODE_TYPE, NODE_START_SIMULATION);
+    simulationStartItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/start.png")));
+    simulationStartItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
@@ -1626,7 +1636,8 @@ void MainWindow::onTreeItemClicked(
              || nodeType == NODE_MOLD
              || nodeType == NODE_BOUNDARY
              || nodeType == NODE_SIMULATION
-             || nodeType == NODE_PARAMETER_CHECK) {
+             || nodeType == NODE_PARAMETER_CHECK
+             || nodeType == NODE_START_SIMULATION) {
         projectItem = item->parent();
     }
     else {
@@ -1712,6 +1723,11 @@ void MainWindow::onTreeItemClicked(
 
     if (nodeType == NODE_PARAMETER_CHECK) {
         checkParams();
+        return;
+    }
+
+    if (nodeType == NODE_START_SIMULATION) {
+        startSimulation();
         return;
     }
 
