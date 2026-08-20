@@ -145,6 +145,26 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    const QString outputPath = projectDir.filePath(QStringLiteral("abaqus/t0.py"));
-    return saveFile(outputPath, content, errorMessage);
+    const QString t0OutputPath = projectDir.filePath(QStringLiteral("abaqus/t0.py"));
+    if (!saveFile(t0OutputPath, content, errorMessage)) {
+        return false;
+    }
+
+    // =========================================================
+    // 生成 335K.for
+    // =========================================================
+    QString forContent;
+    if (!loadTemplate(
+            QStringLiteral(":/simulation/templates/335K.for"),
+            forContent,
+            errorMessage)) {
+        return false;
+    }
+
+    const QString forOutputPath = projectDir.filePath(QStringLiteral("abaqus/335K.for"));
+    if (!saveFile(forOutputPath, forContent, errorMessage)) {
+        return false;
+    }
+
+    return true;
 }
