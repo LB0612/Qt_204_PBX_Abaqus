@@ -21,6 +21,27 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     setWindowTitle(QStringLiteral("系统环境配置"));
     setMinimumSize(700, 220);
     setModal(true);
+    setStyleSheet(R"(
+        QDialog {
+            background-color: #ffffff;
+            font-family: 'Microsoft YaHei';
+            font-size: 15px;
+        }
+
+        QLabel {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        QLineEdit {
+            font-size: 15px;
+        }
+
+        QPushButton {
+            font-family: 'Microsoft YaHei';
+            font-size: 15px;
+        }
+    )");
     setupUi();
     loadSettings();
 }

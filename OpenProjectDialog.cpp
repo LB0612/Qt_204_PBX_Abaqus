@@ -162,7 +162,10 @@ QStringList OpenProjectDialog::getSelectedPaths() const
 void OpenProjectDialog::applyStyles()
 {
     setStyleSheet(R"(
-        QDialog { background-color: #FFFFFF; }
+        QDialog {
+            background-color: #FFFFFF;
+            font-family: 'Microsoft YaHei';
+        }
         QLabel { font-size: 18px; color: #333333; font-weight: bold; }
         QLineEdit {
             border: 1px solid #CCCCCC; border-radius: 4px; padding: 5px; background: #FAFAFA; font-size: 16px;

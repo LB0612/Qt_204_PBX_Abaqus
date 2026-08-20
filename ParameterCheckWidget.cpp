@@ -32,7 +32,7 @@ QString statusText(CheckStatus status)
 {
     switch (status) {
     case CheckStatus::Pass:
-        return QStringLiteral("通过");
+        return QStringLiteral("有效");
     case CheckStatus::Missing:
         return QStringLiteral("未保存");
     case CheckStatus::Invalid:

@@ -149,6 +149,7 @@ void NewProjectDialog::applyStyles()
             border-radius: 4px;
             padding: 6px 10px;
             min-height: 20px;
+            font-family: 'Microsoft YaHei';
             font-size: 15px;
             background-color: #FAFAFA;
         }
