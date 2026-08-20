@@ -1204,6 +1204,7 @@ void MainWindow::startSimulation()
     clearLogFile(t1LogPath);
 
     simulationMonitorWidget->setProgress(0);
+    simulationMonitorWidget->setJob(QString());
     simulationMonitorWidget->setStatus(
         QStringLiteral("正在启动 Abaqus...")
     );
@@ -1347,6 +1348,7 @@ void MainWindow::startSimulation()
 
             const QString jobName =
                 QDir(projectDir).dirName() + QStringLiteral("_Job");
+            simulationMonitorWidget->setJob(jobName);
             simulationMsgPath =
                 QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg"));
             simulationStaPath =
