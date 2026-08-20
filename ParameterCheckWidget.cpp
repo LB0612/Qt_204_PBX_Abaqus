@@ -7,10 +7,15 @@
 #include "StructureConfigManager.h"
 
 #include <QAbstractItemView>
+#include <QBrush>
 #include <QDir>
 #include <QFileInfo>
+#include <QFrame>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QScrollArea>
+#include <QSize>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
@@ -69,6 +74,19 @@ QTreeWidgetItem *addGroupItem(
     item->setText(0, title);
     applyStatus(item, status);
     item->setExpanded(true);
+
+    QFont font = item->font(0);
+    font.setBold(true);
+
+    for (int column = 0; column < 3; ++column) {
+        item->setFont(column, font);
+        item->setBackground(
+            column,
+            QBrush(QColor(QStringLiteral("#f7f9fc")))
+        );
+    }
+
+    item->setSizeHint(0, QSize(0, 40));
     return item;
 }
 
@@ -102,7 +120,57 @@ void ParameterCheckWidget::setupUi()
     QVBoxLayout *mainLayout = createMainLayout(this);
     setupHeader(QStringLiteral("参数检查"));
 
-    treeWidget = new QTreeWidget(this);
+    QScrollArea *scrollArea = createScrollArea(this);
+    QWidget *content = new QWidget();
+    content->setObjectName(QStringLiteral("ScrollContent"));
+    QVBoxLayout *scrollLayout = createScrollContentLayout(content);
+
+    QFrame *card = new QFrame();
+    card->setObjectName(QStringLiteral("CheckCard"));
+    card->setFixedWidth(1100);
+    card->setStyleSheet(R"(
+        QFrame#CheckCard {
+            background-color: #ffffff;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+        }
+    )");
+
+    QVBoxLayout *cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(20, 18, 20, 20);
+    cardLayout->setSpacing(14);
+
+    QLabel *cardTitle = new QLabel(QStringLiteral("参数检查结果"));
+    cardTitle->setAlignment(Qt::AlignCenter);
+    cardTitle->setStyleSheet(R"(
+        QLabel {
+            font-family: 'Microsoft YaHei';
+            font-size: 18px;
+            font-weight: bold;
+            color: #333333;
+            padding-bottom: 4px;
+        }
+    )");
+    cardLayout->addWidget(cardTitle);
+
+    summaryLabel = new QLabel();
+    summaryLabel->setWordWrap(true);
+    summaryLabel->setText(QStringLiteral("请打开工程后进行参数检查。"));
+    summaryLabel->setStyleSheet(R"(
+        QLabel {
+            background-color: #f8f9fa;
+            border: 1px solid #e5e5e5;
+            border-radius: 5px;
+            color: #666666;
+            font-family: 'Microsoft YaHei';
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px 15px;
+        }
+    )");
+    cardLayout->addWidget(summaryLabel);
+
+    treeWidget = new QTreeWidget();
     treeWidget->setColumnCount(3);
     treeWidget->setHeaderLabels({
         QStringLiteral("检查项"),
@@ -110,24 +178,64 @@ void ParameterCheckWidget::setupUi()
         QStringLiteral("状态")
     });
     treeWidget->setRootIsDecorated(true);
-    treeWidget->setAlternatingRowColors(true);
-    treeWidget->setUniformRowHeights(true);
+    treeWidget->setAlternatingRowColors(false);
+    treeWidget->setUniformRowHeights(false);
     treeWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     treeWidget->setSelectionMode(QAbstractItemView::NoSelection);
     treeWidget->setFocusPolicy(Qt::NoFocus);
+    treeWidget->setMinimumHeight(560);
+    treeWidget->setStyleSheet(R"(
+        QTreeWidget {
+            background-color: #ffffff;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            font-family: 'Microsoft YaHei';
+            font-size: 15px;
+            color: #333333;
+            outline: none;
+        }
+
+        QTreeWidget::item {
+            height: 36px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        QTreeWidget::item:hover {
+            background-color: #f5f9ff;
+        }
+
+        QHeaderView::section {
+            background-color: #f8f9fa;
+            color: #333333;
+            border: none;
+            border-bottom: 1px solid #dddddd;
+            padding: 10px 12px;
+            font-family: 'Microsoft YaHei';
+            font-size: 15px;
+            font-weight: bold;
+        }
+    )");
 
     QHeaderView *header = treeWidget->header();
     header->setStretchLastSection(false);
-    header->setSectionResizeMode(0, QHeaderView::Stretch);
+    header->setSectionResizeMode(0, QHeaderView::Fixed);
     header->setSectionResizeMode(1, QHeaderView::Stretch);
-    header->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(2, QHeaderView::Fixed);
+    treeWidget->setColumnWidth(0, 320);
+    treeWidget->setColumnWidth(2, 100);
 
-    mainLayout->addWidget(treeWidget, 1);
+    cardLayout->addWidget(treeWidget);
 
-    summaryLabel = new QLabel(this);
-    summaryLabel->setWordWrap(true);
-    summaryLabel->setStyleSheet(QStringLiteral("font-size: 14px; padding: 4px 2px;"));
-    mainLayout->addWidget(summaryLabel);
+    QHBoxLayout *centerLayout = new QHBoxLayout();
+    centerLayout->addStretch();
+    centerLayout->addWidget(card);
+    centerLayout->addStretch();
+
+    scrollLayout->addLayout(centerLayout);
+    scrollLayout->addStretch();
+
+    scrollArea->setWidget(content);
+    mainLayout->addWidget(scrollArea);
 }
 
 void ParameterCheckWidget::refresh(const ProjectConfig &project)
@@ -358,17 +466,35 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
     if (allPassed) {
         summaryLabel->setText(
-            QStringLiteral("参数检查通过，可以生成 Abaqus 文件。")
+            QStringLiteral("✓ 参数检查通过，可以生成 Abaqus 文件。")
         );
-        summaryLabel->setStyleSheet(
-            QStringLiteral("font-size: 14px; padding: 4px 2px; color: #389e0d;")
-        );
+        summaryLabel->setStyleSheet(R"(
+            QLabel {
+                background-color: #f6ffed;
+                border: 1px solid #b7eb8f;
+                border-radius: 5px;
+                color: #389e0d;
+                font-family: 'Microsoft YaHei';
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px 15px;
+            }
+        )");
     } else {
         summaryLabel->setText(
             QStringLiteral("参数检查未通过，请检查未保存或无效的参数模块。")
         );
-        summaryLabel->setStyleSheet(
-            QStringLiteral("font-size: 14px; padding: 4px 2px; color: #cf1322;")
-        );
+        summaryLabel->setStyleSheet(R"(
+            QLabel {
+                background-color: #fff2f0;
+                border: 1px solid #ffccc7;
+                border-radius: 5px;
+                color: #cf1322;
+                font-family: 'Microsoft YaHei';
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px 15px;
+            }
+        )");
     }
 }
