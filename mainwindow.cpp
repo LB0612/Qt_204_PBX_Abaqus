@@ -1373,16 +1373,22 @@ void MainWindow::startSimulation()
 
                     if (!QFile::exists(odbPath)) {
                         simulationMonitorWidget->setStatus(
-                            QStringLiteral("未生成 ODB")
+                            QStringLiteral("Abaqus 未生成计算结果")
                         );
                         simulationMonitorWidget->appendLog(
-                            QStringLiteral("[SYS] t1 执行完成，但未生成 ODB")
+                            QStringLiteral("[SYS] Abaqus 未生成计算结果 ODB")
                         );
                         showCenteredMessageBox(
                             this,
                             QMessageBox::Warning,
                             QStringLiteral("错误"),
-                            QStringLiteral("t1 执行完成，但未生成计算结果 ODB。")
+                            QStringLiteral(
+                                "Abaqus 未生成计算结果。\n\n"
+                                "可能原因：\n"
+                                "1. 用户中断计算\n"
+                                "2. Abaqus 求解失败\n"
+                                "3. 用户子程序错误"
+                            )
                         );
                         return;
                     }
