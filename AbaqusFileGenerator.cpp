@@ -131,6 +131,13 @@ bool AbaqusFileGenerator::generate(
 
     content.replace(QStringLiteral("{{SIMULATION_TIME_LENGTH}}"), number(simulation.timeLength));
 
+    QString caeSavePath =
+        QDir::fromNativeSeparators(
+            projectDir.filePath(QStringLiteral("abaqus/guhua"))
+        );
+    caeSavePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+    content.replace(QStringLiteral("{{CAE_SAVE_PATH}}"), caeSavePath);
+
     if (content.contains(QLatin1String("{{"))) {
         errorMessage = QStringLiteral("模板占位符替换失败。");
         return false;

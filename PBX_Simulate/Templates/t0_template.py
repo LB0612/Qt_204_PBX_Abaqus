@@ -579,6 +579,6 @@ session.viewports['Viewport: 1'].view.setValues(nearPlane=230.83,
 mdb.models['Model-1'].interactions['Int-3'].setValues(initialClearance=OMIT, 
     adjustMethod=NONE, sliding=FINITE, enforcement=SURFACE_TO_SURFACE, 
     thickness=ON, contactTracking=TWO_CONFIG, bondingSet=None)
-mdb.saveAs(pathName='C:/Users/10454/Desktop/001/guhua/guhua')
+mdb.saveAs(pathName='{{CAE_SAVE_PATH}}')
 
 
