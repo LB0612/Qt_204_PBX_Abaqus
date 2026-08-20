@@ -180,7 +180,10 @@ bool AbaqusFileGenerator::generate(
     const QStringList t1RequiredPlaceholders = {
         QStringLiteral("{{ABAQUS_WORK_DIR}}"),
         QStringLiteral("{{CAE_FILE_PATH}}"),
-        QStringLiteral("{{USER_SUBROUTINE_PATH}}")
+        QStringLiteral("{{USER_SUBROUTINE_PATH}}"),
+        QStringLiteral("{{RESULT_STRESS_PATH}}"),
+        QStringLiteral("{{RESULT_TEMP_PATH}}"),
+        QStringLiteral("{{RESULT_CURE_PATH}}")
     };
 
     for (const QString &placeholder : t1RequiredPlaceholders) {
@@ -204,13 +207,39 @@ bool AbaqusFileGenerator::generate(
             projectDir.filePath(QStringLiteral("abaqus/335K.for"))
         );
 
+    QString resultsDir = projectDir.filePath(QStringLiteral("results"));
+    if (!projectDir.exists(QStringLiteral("results"))
+        && !projectDir.mkdir(QStringLiteral("results"))) {
+        errorMessage = QStringLiteral("无法创建 results 目录。");
+        return false;
+    }
+
+    QString resultStressPath =
+        QDir::fromNativeSeparators(
+            QDir(resultsDir).filePath(QStringLiteral("yingli"))
+        );
+    QString resultTempPath =
+        QDir::fromNativeSeparators(
+            QDir(resultsDir).filePath(QStringLiteral("wendu"))
+        );
+    QString resultCurePath =
+        QDir::fromNativeSeparators(
+            QDir(resultsDir).filePath(QStringLiteral("guhuadu"))
+        );
+
     abaqusWorkDir.replace(QStringLiteral("'"), QStringLiteral("\\'"));
     caeFilePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
     userSubroutinePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+    resultStressPath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+    resultTempPath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
+    resultCurePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
 
     t1Content.replace(QStringLiteral("{{ABAQUS_WORK_DIR}}"), abaqusWorkDir);
     t1Content.replace(QStringLiteral("{{CAE_FILE_PATH}}"), caeFilePath);
     t1Content.replace(QStringLiteral("{{USER_SUBROUTINE_PATH}}"), userSubroutinePath);
+    t1Content.replace(QStringLiteral("{{RESULT_STRESS_PATH}}"), resultStressPath);
+    t1Content.replace(QStringLiteral("{{RESULT_TEMP_PATH}}"), resultTempPath);
+    t1Content.replace(QStringLiteral("{{RESULT_CURE_PATH}}"), resultCurePath);
 
     if (t1Content.contains(QLatin1String("{{"))) {
         errorMessage = QStringLiteral("t1 模板占位符替换失败。");
