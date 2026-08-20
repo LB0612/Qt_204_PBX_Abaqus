@@ -94,6 +94,8 @@ private:
     double simulationTotalTime = 0.0;
 
     QList<QAction *> projectDependentActions;
+    QAction *stopSimulationAction = nullptr;
+    bool simulationUserStopped = false;
 
 private slots:
     void newProject();
@@ -114,6 +116,7 @@ private slots:
     void checkParams();
     void generateFiles();
     void startSimulation();
+    void stopSimulation();
     void settings();
     void help();
 

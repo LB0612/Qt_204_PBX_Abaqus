@@ -288,6 +288,26 @@ void MainWindow::createPureStyleToolBar()
     addBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"), &MainWindow::checkParams);
     addBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"), &MainWindow::generateFiles);
     addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"), &MainWindow::startSimulation);
+
+    stopSimulationAction = new QAction(
+        QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/stop.png")),
+        QStringLiteral("终止仿真"),
+        this
+    );
+    if (stopSimulationAction->icon().isNull()) {
+        stopSimulationAction->setIcon(
+            QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/close.png"))
+        );
+    }
+    connect(
+        stopSimulationAction,
+        &QAction::triggered,
+        this,
+        &MainWindow::stopSimulation
+    );
+    stopSimulationAction->setEnabled(false);
+    toolBar->addAction(stopSimulationAction);
+
     addPlaceholderBtn(QStringLiteral("生成报告"), QStringLiteral(":/new/prefix1/toolbar_picture/report.png"));
 
     toolBar->addSeparator();
@@ -1215,6 +1235,8 @@ void MainWindow::startSimulation()
         QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"))
     );
 
+    simulationUserStopped = false;
+
     simulationMonitorWidget->setProgress(0);
     simulationMonitorWidget->setJob(QString());
     simulationMonitorWidget->setStatus(
@@ -1280,7 +1302,18 @@ void MainWindow::startSimulation()
                 abaqusProcess = nullptr;
             }
 
+            if (simulationUserStopped) {
+                simulationUserStopped = false;
+                if (stopSimulationAction) {
+                    stopSimulationAction->setEnabled(false);
+                }
+                return;
+            }
+
             if (exitCode != 0) {
+                if (stopSimulationAction) {
+                    stopSimulationAction->setEnabled(false);
+                }
                 simulationMonitorWidget->setStatus(
                     QStringLiteral("t0.py 执行失败")
                 );
@@ -1299,6 +1332,9 @@ void MainWindow::startSimulation()
             const QString caePath =
                 QDir(abaqusDir).filePath(QStringLiteral("guhua.cae"));
             if (!QFile::exists(caePath)) {
+                if (stopSimulationAction) {
+                    stopSimulationAction->setEnabled(false);
+                }
                 simulationMonitorWidget->setStatus(
                     QStringLiteral("未生成 guhua.cae")
                 );
@@ -1317,6 +1353,9 @@ void MainWindow::startSimulation()
             const QString flagPath =
                 QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"));
             if (!QFile::exists(flagPath)) {
+                if (stopSimulationAction) {
+                    stopSimulationAction->setEnabled(false);
+                }
                 simulationMonitorWidget->setStatus(
                     QStringLiteral("t0执行失败")
                 );
@@ -1412,6 +1451,18 @@ void MainWindow::startSimulation()
                         simulationTimer->stop();
                     }
 
+                    if (simulationUserStopped) {
+                        simulationUserStopped = false;
+                        if (stopSimulationAction) {
+                            stopSimulationAction->setEnabled(false);
+                        }
+                        return;
+                    }
+
+                    if (stopSimulationAction) {
+                        stopSimulationAction->setEnabled(false);
+                    }
+
                     if (t1ExitCode != 0) {
                         simulationMonitorWidget->setStatus(
                             QStringLiteral("t1.py 执行失败")
@@ -1501,6 +1552,9 @@ void MainWindow::startSimulation()
                 if (simulationTimer) {
                     simulationTimer->stop();
                 }
+                if (stopSimulationAction) {
+                    stopSimulationAction->setEnabled(false);
+                }
                 simulationMonitorWidget->setStatus(
                     QStringLiteral("无法启动 t1.py")
                 );
@@ -1523,6 +1577,9 @@ void MainWindow::startSimulation()
                 );
             }
             simulationTimer->start(1000);
+            if (stopSimulationAction) {
+                stopSimulationAction->setEnabled(true);
+            }
         }
     );
 
@@ -1539,6 +1596,9 @@ void MainWindow::startSimulation()
     if (!abaqusProcess->waitForStarted(10000)) {
         abaqusProcess->deleteLater();
         abaqusProcess = nullptr;
+        if (stopSimulationAction) {
+            stopSimulationAction->setEnabled(false);
+        }
         simulationMonitorWidget->setStatus(
             QStringLiteral("无法启动 t0.py")
         );
@@ -1551,8 +1611,84 @@ void MainWindow::startSimulation()
         return;
     }
 
+    if (stopSimulationAction) {
+        stopSimulationAction->setEnabled(true);
+    }
     simulationMonitorWidget->setStatus(
         QStringLiteral("正在执行 Abaqus")
+    );
+}
+
+void MainWindow::stopSimulation()
+{
+    if (!abaqusProcess
+        || abaqusProcess->state() == QProcess::NotRunning) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Information,
+            QStringLiteral("提示"),
+            QStringLiteral("当前没有正在运行的仿真。")
+        );
+        return;
+    }
+
+    if (showCenteredMessageBox(
+            this,
+            QMessageBox::Question,
+            QStringLiteral("终止仿真"),
+            QStringLiteral(
+                "确定终止当前Abaqus仿真吗？\n"
+                "未完成结果可能无法保存。"
+            ),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No
+        ) != QMessageBox::Yes) {
+        return;
+    }
+
+    simulationUserStopped = true;
+
+    simulationMonitorWidget->setStatus(
+        QStringLiteral("正在终止仿真")
+    );
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] 用户请求终止仿真")
+    );
+    simulationMonitorWidget->appendLog(
+        QStringLiteral(
+            "[SYS] 注意: 若 Job 已提交，standard 求解进程可能仍需手动确认"
+        )
+    );
+
+    if (simulationTimer) {
+        simulationTimer->stop();
+    }
+
+    abaqusProcess->terminate();
+    if (!abaqusProcess->waitForFinished(5000)) {
+        abaqusProcess->kill();
+        abaqusProcess->waitForFinished(3000);
+    }
+
+    if (abaqusProcess) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
+
+    simulationUserStopped = false;
+
+    if (stopSimulationAction) {
+        stopSimulationAction->setEnabled(false);
+    }
+
+    simulationMonitorWidget->setStatus(
+        QStringLiteral("仿真已终止")
+    );
+    simulationMonitorWidget->setPhase(
+        QStringLiteral("终止")
+    );
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] Abaqus进程已结束")
     );
 }
 
@@ -1907,5 +2043,12 @@ void MainWindow::updateUIStates()
 {
     for (QAction *act : projectDependentActions) {
         act->setEnabled(isProjectLoaded);
+    }
+
+    if (stopSimulationAction) {
+        const bool running =
+            abaqusProcess
+            && abaqusProcess->state() != QProcess::NotRunning;
+        stopSimulationAction->setEnabled(isProjectLoaded && running);
     }
 }
