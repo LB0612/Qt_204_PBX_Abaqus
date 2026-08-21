@@ -56,6 +56,8 @@ set(PROJECT_SOURCES
     ParameterCheckWidget.h
     SimulationMonitorWidget.cpp
     SimulationMonitorWidget.h
+    SimulationPrepareWidget.cpp
+    SimulationPrepareWidget.h
     AbaqusFileGenerator.cpp
     AbaqusFileGenerator.h
     Picture.qrc

@@ -22,6 +22,7 @@
 #include "SimulationParamWidget.h"
 #include "ParameterCheckWidget.h"
 #include "SimulationMonitorWidget.h"
+#include "SimulationPrepareWidget.h"
 
 class NewProjectDialog;
 class OpenProjectDialog;
@@ -97,6 +98,7 @@ private:
     SimulationParamWidget *simulationWidget;
     ParameterCheckWidget *parameterCheckWidget;
     SimulationMonitorWidget *simulationMonitorWidget;
+    SimulationPrepareWidget *simulationPrepareWidget;
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
@@ -133,6 +135,7 @@ private slots:
     void saveSimulationParams();
     void checkParams();
     void generateFiles();
+    void showSimulationPrepare();
     void startSimulation();
     void stopSimulation();
     void settings();

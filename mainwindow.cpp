@@ -10,6 +10,7 @@
 #include "SimulationConfigManager.h"
 #include "ParameterCheckWidget.h"
 #include "SimulationMonitorWidget.h"
+#include "SimulationPrepareWidget.h"
 #include "AbaqusFileGenerator.h"
 
 #include <QBrush>
@@ -154,6 +155,24 @@ void MainWindow::setupUi()
     simulationMonitorWidget = new SimulationMonitorWidget(stackedWidget);
     stackedWidget->addWidget(simulationMonitorWidget);
 
+    simulationPrepareWidget = new SimulationPrepareWidget(stackedWidget);
+    stackedWidget->addWidget(simulationPrepareWidget);
+
+    connect(
+        simulationPrepareWidget,
+        &SimulationPrepareWidget::startRequested,
+        this,
+        &MainWindow::startSimulation
+    );
+    connect(
+        simulationPrepareWidget,
+        &SimulationPrepareWidget::cancelRequested,
+        this,
+        [this]() {
+            stackedWidget->setCurrentWidget(infoWidget);
+        }
+    );
+
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
@@ -287,7 +306,7 @@ void MainWindow::createPureStyleToolBar()
 
     addBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"), &MainWindow::checkParams);
     addBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"), &MainWindow::generateFiles);
-    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"), &MainWindow::startSimulation);
+    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"), &MainWindow::showSimulationPrepare);
 
     stopSimulationAction = new QAction(
         QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/stop.png")),
@@ -1119,6 +1138,15 @@ bool MainWindow::checkSimulationReady(QString &errorMessage)
     }
 
     return true;
+}
+
+void MainWindow::showSimulationPrepare()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    stackedWidget->setCurrentWidget(simulationPrepareWidget);
 }
 
 void MainWindow::startSimulation()
@@ -2167,7 +2195,7 @@ void MainWindow::onTreeItemClicked(
     }
 
     if (nodeType == NODE_START_SIMULATION) {
-        startSimulation();
+        showSimulationPrepare();
         return;
     }
 
