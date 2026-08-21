@@ -169,6 +169,11 @@ void MainWindow::setupUi()
         &SimulationPrepareWidget::cancelRequested,
         this,
         [this]() {
+            if (simulationStartItem && treeWidget) {
+                treeWidget->blockSignals(true);
+                treeWidget->setCurrentItem(simulationStartItem);
+                treeWidget->blockSignals(false);
+            }
             stackedWidget->setCurrentWidget(infoWidget);
         }
     );
@@ -306,7 +311,7 @@ void MainWindow::createPureStyleToolBar()
 
     addBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"), &MainWindow::checkParams);
     addBtn(QStringLiteral("生成文件"), QStringLiteral(":/new/prefix1/toolbar_picture/file.png"), &MainWindow::generateFiles);
-    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"), &MainWindow::showSimulationPrepare);
+    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"), &MainWindow::showSimulationPreparePage);
 
     stopSimulationAction = new QAction(
         QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/stop.png")),
@@ -452,7 +457,7 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     checkItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/check.png")));
     checkItem->setFont(0, childFont);
 
-    QTreeWidgetItem *simulationStartItem = new QTreeWidgetItem(projectItem);
+    simulationStartItem = new QTreeWidgetItem(projectItem);
     simulationStartItem->setText(0, QStringLiteral("开始仿真"));
     simulationStartItem->setData(0, Qt::UserRole, path);
     simulationStartItem->setData(0, ROLE_NODE_TYPE, NODE_START_SIMULATION);
@@ -1140,13 +1145,19 @@ bool MainWindow::checkSimulationReady(QString &errorMessage)
     return true;
 }
 
-void MainWindow::showSimulationPrepare()
+void MainWindow::showSimulationPreparePage()
 {
-    if (!isProjectLoaded) {
+    if (!isProjectLoaded || !simulationPrepareWidget) {
         return;
     }
 
     stackedWidget->setCurrentWidget(simulationPrepareWidget);
+
+    if (simulationStartItem && treeWidget) {
+        treeWidget->blockSignals(true);
+        treeWidget->setCurrentItem(simulationStartItem);
+        treeWidget->blockSignals(false);
+    }
 }
 
 void MainWindow::startSimulation()
@@ -2195,7 +2206,8 @@ void MainWindow::onTreeItemClicked(
     }
 
     if (nodeType == NODE_START_SIMULATION) {
-        showSimulationPrepare();
+        simulationStartItem = item;
+        showSimulationPreparePage();
         return;
     }
 

@@ -99,6 +99,7 @@ private:
     ParameterCheckWidget *parameterCheckWidget;
     SimulationMonitorWidget *simulationMonitorWidget;
     SimulationPrepareWidget *simulationPrepareWidget;
+    QTreeWidgetItem *simulationStartItem = nullptr;
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
@@ -135,7 +136,7 @@ private slots:
     void saveSimulationParams();
     void checkParams();
     void generateFiles();
-    void showSimulationPrepare();
+    void showSimulationPreparePage();
     void startSimulation();
     void stopSimulation();
     void settings();
