@@ -54,7 +54,7 @@ C U(1): total value of the prescribed variable at this point, here,it is the tem
 C
       INCLUDE'ABA_PARAM.INC'
 C
-      DIMENSION H(2),COORD(3),TIME(2),FIELD(NFIELD)
+      DIMENSION H(2),COORDS(3),TIME(2),FIELD(NFIELD)
       CHARACTER*80 SNAME
 C H(1) FILM COEFFICIENT AT THIS POINT.
 C SINK : THE SAME TEMPETATURE OF THE CURE CYCLE.
