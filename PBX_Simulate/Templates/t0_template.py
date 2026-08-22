@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from abaqus import *
 from abaqusConstants import *
 from caeModules import *
@@ -134,7 +136,7 @@ mdb.models['Model-1'].interactionProperties['IntProp-1'].ThermalConductance(
     clearanceDepTable=((1000.0, 0.0), (0.0, 0.1)))
 mdb.models['Model-1'].interactionProperties['IntProp-1'].GeometricProperties(
     contactArea=1.0, padThickness=None)
-#:  ?         "IntProp-1"  ?   .
+#: 相互作用属性 "IntProp-1" 已创建.
 session.viewports['Viewport: 1'].view.setValues(nearPlane=372.939, 
     farPlane=665.962, width=221.624, height=119.487, cameraPosition=(-27.0447, 
     278.656, -338.934), cameraUpVector=(0.00987852, -0.984754, -0.173674), 
@@ -146,7 +148,7 @@ region=a.Surface(side1Faces=side1Faces1, name='Surf-1')
 mdb.models['Model-1'].FilmCondition(name='Int-1', createStepName='Step-1', 
     surface=region, definition=USER_SUB, filmCoeff=10.0, sinkTemperature=1.0, 
     sinkDistributionType=UNIFORM, sinkFieldName='')
-#:  ?     "Int-1"  ?   .
+#: 相互作用 "Int-1" 已创建.
 a = mdb.models['Model-1'].rootAssembly
 s1 = a.instances['yao-1'].faces
 side1Faces1 = s1.getSequenceFromMask(mask=('[#10 ]', ), )
@@ -154,7 +156,7 @@ region=a.Surface(side1Faces=side1Faces1, name='Surf-2')
 mdb.models['Model-1'].FilmCondition(name='Int-2', createStepName='Step-1', 
     surface=region, definition=USER_SUB, filmCoeff=8.0, sinkTemperature=1.0, 
     sinkDistributionType=UNIFORM, sinkFieldName='')
-#:  ?     "Int-2"  ?   .
+#: 相互作用 "Int-2" 已创建.
 i1 = mdb.models['Model-1'].rootAssembly.allInstances['yao-1']
 leaf = dgm.LeafFromInstance(instances=(i1, ))
 session.viewports['Viewport: 1'].assemblyDisplay.displayGroup.replace(
@@ -191,7 +193,7 @@ mdb.models['Model-1'].SurfaceToSurfaceContactStd(name='Int-3',
     createStepName='Step-1', main=region1, secondary=region2, sliding=SMALL, 
     thickness=ON, interactionProperty='IntProp-1', adjustMethod=NONE, 
     initialClearance=OMIT, datumAxis=None, clearanceRegion=None)
-#:  ?     "Int-3"  ?   .
+#: 相互作用 "Int-3" 已创建.
 session.viewports['Viewport: 1'].assemblyDisplay.setValues(loads=ON, bcs=ON, 
     predefinedFields=ON, interactions=OFF, constraints=OFF, 
     engineeringFeatures=OFF)

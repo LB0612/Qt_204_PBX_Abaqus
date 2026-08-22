@@ -1,18 +1,20 @@
+# -*- coding: utf-8 -*-
+
 from abaqus import *
 from abaqusConstants import *
 from caeModules import *
 import sys
 import os
 
-# === ??????? Abaqus ?????? ===
+# === 设置 Abaqus 工作目录 ===
 work_dir = '{{ABAQUS_WORK_DIR}}'
 os.chdir(work_dir)
 
-# === ??????????? ===
+# === 设置基本参数 ===
 job_name = '{{JOB_NAME}}'
 cae_path = '{{CAE_FILE_PATH}}'
 
-# === ?????????? ===
+# === 打开模型数据库 ===
 mdb = openMdb(cae_path)
 mdb.Job(name=job_name, model='Model-1', description='', type=ANALYSIS, 
     atTime=None, waitMinutes=0, waitHours=0, queue=None, memory=90, 
@@ -94,7 +96,7 @@ session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
 session.viewports['Viewport: 1'].animationController.setValues(
     animationType=SCALE_FACTOR)
 session.viewports['Viewport: 1'].animationController.play(duration=UNLIMITED)
-#: AVI Codec?????:Intel IYUV ?????????
+# AVI Codec设置为Intel IYUV编码解码器
 session.aviOptions.setValues(compressionMethod=CODEC, 
     codecOptions='[12]:ejfjfffgbiaaaaaaaaaaaaaa')
 session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF, 
@@ -114,7 +116,7 @@ session.imageAnimationOptions.setValues(vpDecorations=ON, vpBackground=OFF,
 session.writeImageAnimation(fileName='{{RESULT_CURE_PATH}}', 
     format=AVI, canvasObjects=(session.viewports['Viewport: 1'], ))
 
-# t1ִ�гɹ���־
+# t1执行成功标志
 with open('t1_finished.flag', 'w') as f:
     f.write('success')
 
