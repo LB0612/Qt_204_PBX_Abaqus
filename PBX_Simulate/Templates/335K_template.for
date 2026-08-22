@@ -1,4 +1,4 @@
-0      SUBROUTINE USDFLD(FIELD, STATEV, PNEWDT, DIRECT, T, CELENT,
+      SUBROUTINE USDFLD(FIELD, STATEV, PNEWDT, DIRECT, T, CELENT,
      1 time,dtime,cmname,orname,nfield,nstatv,noel,npt,layer,
      2  kspt,kstep,kinc,ndi,nshr,coord,jmac,jmtyp,matlayo,laccfla)
 c redefine field variables at a material point.
@@ -8,13 +8,13 @@ c
       character*3  flgray(15)
       dimension FIELD(NFIELD),STATEV(NSTATV),direct(3,3),
      1 t(3,3),time(2)
-      dimension array(15),jarray(15),jmac(*),jmatyp(*),coord(*)
+      dimension array(15),jarray(15),jmac(*),jmtyp(*),coord(*)
 c this subroutine must call utility routine GETVRM to access material point data.
 c Get temperatures from previous increment
-      call getvrm('TEMP',array,jarray,flgray,jrcd,jmac, jmatyp, 
+      call getvrm('TEMP',array,jarray,flgray,jrcd,jmac, jmtyp, 
      1 matlayo, laccfla)
       temp = array(1)
-c field(1) : la valeur du degr¨¦ de cuisson dans chaque point d'integration de l'incr¨¦ment. 0.0001 est la valeur initiale d¨¦finie.
+c field(1) : la valeur du degr?? de cuisson dans chaque point d'integration de l'incr??ment. 0.0001 est la valeur initiale d??finie.
 c kinc: Increment number
       if(kinc.eq.1)then
 	statev(1)=5.0E-4
@@ -27,7 +27,7 @@ c
 
 
       SUBROUTINE DISP(U,KSTEP,KINC,TIME,NODE,NOEL,JDOF,COORDS)
-C  define the magnitudes of prescribed BCs /   ici d¨¦finir le cycle de cuisson. 
+C  define the magnitudes of prescribed BCs /   ici d??finir le cycle de cuisson. 
 C  appliquer sur la surface qui a contact du moule.
       INCLUDE 'ABA_PARAM.INC'
 C
