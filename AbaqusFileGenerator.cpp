@@ -66,6 +66,22 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
+    const QString t0OutputPath =
+        projectDir.filePath(QStringLiteral("abaqus/t0.py"));
+    const QString t1OutputPath =
+        projectDir.filePath(QStringLiteral("abaqus/t1.py"));
+    const QString forOutputPath =
+        projectDir.filePath(QStringLiteral("abaqus/335K.for"));
+    const QString generationFlagPath =
+        projectDir.filePath(
+            QStringLiteral("abaqus/generation_complete.flag")
+        );
+
+    QFile::remove(generationFlagPath);
+    QFile::remove(t0OutputPath);
+    QFile::remove(t1OutputPath);
+    QFile::remove(forOutputPath);
+
     QString content;
     if (!loadTemplate(
             QStringLiteral(":/simulation/templates/t0.py"),
@@ -145,7 +161,6 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    const QString t0OutputPath = projectDir.filePath(QStringLiteral("abaqus/t0.py"));
     if (!saveFile(t0OutputPath, content, errorMessage)) {
         return false;
     }
@@ -161,7 +176,6 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    const QString forOutputPath = projectDir.filePath(QStringLiteral("abaqus/335K.for"));
     if (!saveFile(forOutputPath, forContent, errorMessage)) {
         return false;
     }
@@ -251,15 +265,14 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    const QString t1OutputPath = projectDir.filePath(QStringLiteral("abaqus/t1.py"));
     if (!saveFile(t1OutputPath, t1Content, errorMessage)) {
         return false;
     }
 
     const QStringList generatedFiles = {
-        projectDir.filePath(QStringLiteral("abaqus/t0.py")),
-        projectDir.filePath(QStringLiteral("abaqus/t1.py")),
-        projectDir.filePath(QStringLiteral("abaqus/335K.for"))
+        t0OutputPath,
+        t1OutputPath,
+        forOutputPath
     };
 
     for (const QString &file : generatedFiles) {
@@ -267,6 +280,23 @@ bool AbaqusFileGenerator::generate(
             errorMessage = QStringLiteral("生成文件缺失：%1").arg(file);
             return false;
         }
+    }
+
+    QSaveFile generationFlag(generationFlagPath);
+    if (!generationFlag.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        errorMessage = QStringLiteral(
+            "无法写入 Abaqus 文件生成完成标志。"
+        );
+        return false;
+    }
+
+    generationFlag.write(QByteArray("success\n"));
+
+    if (!generationFlag.commit()) {
+        errorMessage = QStringLiteral(
+            "Abaqus 文件生成完成标志保存失败。"
+        );
+        return false;
     }
 
     return true;

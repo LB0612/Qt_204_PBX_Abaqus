@@ -10,6 +10,7 @@
 #include <QStackedWidget>
 #include <QFileSystemWatcher>
 #include <QTimer>
+#include <QByteArray>
 #include <QMessageBox>
 #include <QProcess>
 
@@ -63,8 +64,10 @@ private:
     void readAbaqusLogFile(
         const QString &path,
         const QString &tag,
-        QString &lastContent
+        qint64 &readOffset,
+        QByteArray &pendingData
     );
+    void updateProgressFromStaLine(const QString &line);
     double loadSimulationTotalTime();
     bool checkSimulationReady(QString &errorMessage);
     bool hasAbaqusLockFiles() const;
@@ -81,7 +84,11 @@ private:
     void handleTerminateRequestFailure(const QString &reason);
     void sendAbaqusTerminateCommand();
     void onAbaqusJobTerminateFinished();
+
     void closeAbaqusProcesses();
+    void forceCloseAbaqusProcesses();
+    bool isCurrentJobLockPresent() const;
+
     void finishStopState();
 
     QMessageBox::StandardButton showCenteredMessageBox(
@@ -118,8 +125,10 @@ private:
     QString simulationMsgPath;
     QString simulationStaPath;
     QString simulationDatPath;
-    QString lastMsgCache;
-    QString lastStaCache;
+    qint64 simulationMsgReadOffset = 0;
+    qint64 simulationStaReadOffset = 0;
+    QByteArray simulationMsgPending;
+    QByteArray simulationStaPending;
     double simulationTotalTime = 0.0;
 
     QList<QAction *> projectDependentActions;
