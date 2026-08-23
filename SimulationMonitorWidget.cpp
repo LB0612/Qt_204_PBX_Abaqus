@@ -199,6 +199,16 @@ void SimulationMonitorWidget::appendLog(const QString &text)
     logEdit->append(text);
 }
 
+void SimulationMonitorWidget::clearLog()
+{
+    logEdit->clear();
+}
+
+void SimulationMonitorWidget::setLogText(const QString &text)
+{
+    logEdit->setPlainText(text);
+}
+
 void SimulationMonitorWidget::setStatus(const QString &text)
 {
     QString value = text.trimmed();

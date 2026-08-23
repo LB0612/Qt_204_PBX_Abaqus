@@ -17,6 +17,8 @@ public:
 
 public slots:
     void appendLog(const QString &text);
+    void clearLog();
+    void setLogText(const QString &text);
     void setStatus(const QString &text);
     void setPhase(const QString &text);
     void setJob(const QString &jobName);

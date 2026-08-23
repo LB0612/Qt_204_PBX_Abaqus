@@ -152,6 +152,7 @@ private slots:
     void checkParams();
     void generateFiles();
     void showSimulationPreparePage();
+    void showPreviousSimulationLogs();
     void startSimulation();
     void stopSimulation();
     void settings();

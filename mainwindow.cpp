@@ -25,6 +25,7 @@
 #include <QGridLayout>
 #include <QIcon>
 #include <QProcess>
+#include <QPushButton>
 #include <QSet>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
@@ -62,6 +63,55 @@ const QString NODE_PARAMETER_CHECK =
 
 const QString NODE_START_SIMULATION =
     QStringLiteral("START_SIMULATION");
+
+enum PreviousResultAction {
+    PreviousResultCancel = 0,
+    PreviousResultViewLogs,
+    PreviousResultRerun
+};
+
+PreviousResultAction promptPreviousSimulationResult(
+    QWidget *parent,
+    const QString &message)
+{
+    QMessageBox msgBox(
+        QMessageBox::Question,
+        QStringLiteral("上一次仿真已正常完成"),
+        message,
+        QMessageBox::NoButton,
+        parent
+    );
+
+    QPushButton *viewLogsButton = msgBox.addButton(
+        QStringLiteral("查看上次仿真日志"),
+        QMessageBox::ActionRole
+    );
+    QPushButton *rerunButton = msgBox.addButton(
+        QStringLiteral("重新进行仿真"),
+        QMessageBox::AcceptRole
+    );
+    QPushButton *cancelButton = msgBox.addButton(
+        QStringLiteral("取消"),
+        QMessageBox::RejectRole
+    );
+
+    msgBox.setDefaultButton(cancelButton);
+    msgBox.setWindowModality(Qt::ApplicationModal);
+    msgBox.exec();
+
+    QAbstractButton *clicked = msgBox.clickedButton();
+    if (clicked == viewLogsButton) {
+        return PreviousResultViewLogs;
+    }
+    if (clicked == rerunButton) {
+        return PreviousResultRerun;
+    }
+    if (clicked == cancelButton) {
+        return PreviousResultCancel;
+    }
+
+    return PreviousResultCancel;
+}
 
 }
 
@@ -1459,8 +1509,7 @@ bool MainWindow::hasValidPreviousSimulationResult(
         "结果文件：%2\n\n"
         "当前已保存参数和 Abaqus 文件"
         "在上次完成后没有发生变化，"
-        "通常不需要重复计算。\n\n"
-        "是否仍要重新进行仿真？"
+        "通常不需要重复计算。"
     ).arg(
         completedTime.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")),
         odbPath
@@ -1551,6 +1600,80 @@ bool MainWindow::checkSimulationReady(QString &errorMessage)
     return true;
 }
 
+void MainWindow::showPreviousSimulationLogs()
+{
+    if (!isProjectLoaded || !simulationMonitorWidget) {
+        return;
+    }
+
+    const QString projectDir = currentProject.projectPath;
+
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+
+    const QString logsDir =
+        QDir(projectDir).filePath(QStringLiteral("logs"));
+
+    const QString jobName =
+        QDir(projectDir).dirName() + QStringLiteral("_Job");
+
+    QStringList logSections;
+
+    auto loadLog =
+        [&logSections](const QString &title, const QString &path) {
+            QFile file(path);
+
+            if (!file.exists()) {
+                return;
+            }
+
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                return;
+            }
+
+            const QString content =
+                QString::fromLocal8Bit(file.readAll());
+
+            file.close();
+
+            logSections
+                << QStringLiteral("========== %1 ==========").arg(title)
+                << content;
+        };
+
+    loadLog(
+        QStringLiteral("T0 LOG"),
+        QDir(logsDir).filePath(QStringLiteral("t0.log"))
+    );
+    loadLog(
+        QStringLiteral("T1 LOG"),
+        QDir(logsDir).filePath(QStringLiteral("t1.log"))
+    );
+    loadLog(
+        QStringLiteral("ABAQUS STA"),
+        QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"))
+    );
+
+    simulationMonitorWidget->clearLog();
+    simulationMonitorWidget->setLogText(
+        logSections.isEmpty()
+            ? QStringLiteral("未找到上一次仿真日志文件。")
+            : logSections.join(QStringLiteral("\n\n"))
+    );
+
+    simulationMonitorWidget->setStatus(
+        QStringLiteral("上次仿真已正常完成")
+    );
+    simulationMonitorWidget->setPhase(
+        QStringLiteral("历史仿真结果")
+    );
+    simulationMonitorWidget->setJob(jobName);
+    simulationMonitorWidget->setProgress(100);
+
+    selectTreeItem(QStringLiteral("开始仿真"));
+    stackedWidget->setCurrentWidget(simulationMonitorWidget);
+}
+
 void MainWindow::showSimulationPreparePage()
 {
     if (!isProjectLoaded
@@ -1564,6 +1687,21 @@ void MainWindow::showSimulationPreparePage()
     if (isSimulationActive()) {
         stackedWidget->setCurrentWidget(simulationMonitorWidget);
         return;
+    }
+
+    QString previousResultMessage;
+    if (hasValidPreviousSimulationResult(previousResultMessage)) {
+        const PreviousResultAction action =
+            promptPreviousSimulationResult(this, previousResultMessage);
+
+        if (action == PreviousResultViewLogs) {
+            showPreviousSimulationLogs();
+            return;
+        }
+
+        if (action == PreviousResultCancel) {
+            return;
+        }
     }
 
     QString error;
@@ -1611,23 +1749,6 @@ void MainWindow::startSimulation()
             error
         );
         return;
-    }
-
-    QString previousResultMessage;
-    if (hasValidPreviousSimulationResult(previousResultMessage)) {
-        const QMessageBox::StandardButton choice =
-            showCenteredMessageBox(
-                this,
-                QMessageBox::Question,
-                QStringLiteral("检测到已完成结果"),
-                previousResultMessage,
-                QMessageBox::Yes | QMessageBox::No,
-                QMessageBox::No
-            );
-
-        if (choice != QMessageBox::Yes) {
-            return;
-        }
     }
 
     // currentProject.projectPath 已是工程根目录，例如 D:/Test01
