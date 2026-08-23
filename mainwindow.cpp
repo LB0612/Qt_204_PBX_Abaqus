@@ -1214,6 +1214,48 @@ void MainWindow::setParameterPagesReadOnly(bool readOnly)
     }
 }
 
+void MainWindow::reloadParameterPagesFromSavedConfig()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    StructureConfig structure;
+    if (StructureConfigManager::load(
+            currentProject.projectPath,
+            structure)) {
+        structureWidget->setConfig(structure);
+    }
+
+    ExplosiveConfig explosive;
+    if (ExplosiveConfigManager::load(
+            currentProject.projectPath,
+            explosive)) {
+        explosiveWidget->setConfig(explosive);
+    }
+
+    MoldConfig mold;
+    if (MoldConfigManager::load(
+            currentProject.projectPath,
+            mold)) {
+        moldWidget->setConfig(mold);
+    }
+
+    BoundaryConfig boundary;
+    if (BoundaryConfigManager::load(
+            currentProject.projectPath,
+            boundary)) {
+        boundaryWidget->setConfig(boundary);
+    }
+
+    SimulationConfig simulation;
+    if (SimulationConfigManager::load(
+            currentProject.projectPath,
+            simulation)) {
+        simulationWidget->setConfig(simulation);
+    }
+}
+
 void MainWindow::clearRunningSimulationContext()
 {
     currentJobName.clear();
@@ -1535,6 +1577,8 @@ void MainWindow::startSimulation()
     runningAbaqusPath = abaqusPath;
 
     currentJobName.clear();
+
+    reloadParameterPagesFromSavedConfig();
 
     setSimulationState(SimulationState::T0Running);
 

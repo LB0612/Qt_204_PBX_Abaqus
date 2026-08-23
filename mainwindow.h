@@ -73,6 +73,7 @@ private:
     bool ensureParameterWritable(const QString &parameterName);
 
     void setParameterPagesReadOnly(bool readOnly);
+    void reloadParameterPagesFromSavedConfig();
     void setSimulationState(SimulationState state);
     void clearRunningSimulationContext();
 
