@@ -1243,8 +1243,11 @@ bool MainWindow::checkSimulationReady(QString &errorMessage)
     const QString abaqusDir =
         QDir(projectDir).filePath(QStringLiteral("abaqus"));
 
+    const QString t0Path =
+        QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
+
     const QStringList files = {
-        QDir(abaqusDir).filePath(QStringLiteral("t0.py")),
+        t0Path,
         QDir(abaqusDir).filePath(QStringLiteral("t1.py")),
         QDir(abaqusDir).filePath(QStringLiteral("335K.for"))
     };
@@ -1253,6 +1256,56 @@ bool MainWindow::checkSimulationReady(QString &errorMessage)
         if (!QFile::exists(file)) {
             errorMessage =
                 QStringLiteral("缺少文件:\n%1").arg(file);
+            return false;
+        }
+    }
+
+    StructureConfig structure;
+    if (!StructureConfigManager::load(projectDir, structure)) {
+        errorMessage = QStringLiteral("请先填写并保存结构参数。");
+        return false;
+    }
+
+    ExplosiveConfig explosive;
+    if (!ExplosiveConfigManager::load(projectDir, explosive)) {
+        errorMessage = QStringLiteral("请先填写并保存炸药参数。");
+        return false;
+    }
+
+    MoldConfig mold;
+    if (!MoldConfigManager::load(projectDir, mold)) {
+        errorMessage = QStringLiteral("请先填写并保存模具参数。");
+        return false;
+    }
+
+    BoundaryConfig boundary;
+    if (!BoundaryConfigManager::load(projectDir, boundary)) {
+        errorMessage = QStringLiteral("请先填写并保存边界条件。");
+        return false;
+    }
+
+    SimulationConfig simulation;
+    if (!SimulationConfigManager::load(projectDir, simulation)) {
+        errorMessage = QStringLiteral("请先填写并保存仿真设置。");
+        return false;
+    }
+
+    const QDateTime generatedTime = QFileInfo(t0Path).lastModified();
+    const QStringList configFiles = {
+        QDir(projectDir).filePath(QStringLiteral("config/structure.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/explosive.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/mold.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/boundary.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/simulation.json"))
+    };
+
+    for (const QString &configFile : configFiles) {
+        const QFileInfo info(configFile);
+        if (info.exists() && info.lastModified() > generatedTime) {
+            errorMessage = QStringLiteral(
+                "参数在 Abaqus 文件生成后发生过修改，"
+                "请重新生成文件后再开始仿真。"
+            );
             return false;
         }
     }
@@ -1336,31 +1389,6 @@ void MainWindow::startSimulation()
         QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
     const QString t1Path =
         QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
-
-    const QDateTime generatedTime = QFileInfo(t0Path).lastModified();
-    const QStringList configFiles = {
-        QDir(projectDir).filePath(QStringLiteral("config/structure.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/explosive.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/mold.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/boundary.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/simulation.json"))
-    };
-
-    for (const QString &configFile : configFiles) {
-        const QFileInfo info(configFile);
-        if (info.exists() && info.lastModified() > generatedTime) {
-            showCenteredMessageBox(
-                this,
-                QMessageBox::Warning,
-                QStringLiteral("需要重新生成"),
-                QStringLiteral(
-                    "参数在 Abaqus 文件生成后发生过修改，"
-                    "请重新生成文件后再开始仿真。"
-                )
-            );
-            return;
-        }
-    }
 
     const QString abaqusPath = SettingsDialog::getAbaqusPath();
 
@@ -1494,7 +1522,6 @@ void MainWindow::startSimulation()
             if (simulationUserStopped
                 || simulationState == SimulationState::Stopping
                 || simulationState == SimulationState::Stopped) {
-                finishStopState();
                 return;
             }
 
@@ -1641,7 +1668,6 @@ void MainWindow::startSimulation()
                     if (simulationUserStopped
                         || simulationState == SimulationState::Stopping
                         || simulationState == SimulationState::Stopped) {
-                        finishStopState();
                         return;
                     }
 
@@ -1887,6 +1913,7 @@ void MainWindow::sendAbaqusTerminateCommand()
         simulationMonitorWidget->appendLog(
             QStringLiteral("[ERROR] Abaqus 路径无效，无法发送 terminate")
         );
+        simulationUserStopped = false;
         setSimulationState(SimulationState::T1Running);
         simulationMonitorWidget->setStatus(
             QStringLiteral("终止请求失败，仿真仍在运行")
@@ -1946,8 +1973,27 @@ void MainWindow::sendAbaqusTerminateCommand()
         terminateProcess,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [this, terminateProcess, jobName, projectPath](int, QProcess::ExitStatus) {
+        [this, terminateProcess, jobName, projectPath](
+            int exitCode,
+            QProcess::ExitStatus exitStatus
+        ) {
             terminateProcess->deleteLater();
+
+            if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+                simulationUserStopped = false;
+                setSimulationState(SimulationState::T1Running);
+                simulationMonitorWidget->setStatus(
+                    QStringLiteral("终止请求失败，仿真仍在运行")
+                );
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral(
+                        "[ERROR] abaqus terminate 执行失败，"
+                        "Abaqus Job 可能仍在运行"
+                    )
+                );
+                return;
+            }
+
             simulationMonitorWidget->appendLog(
                 QStringLiteral("[SYS] 等待Abaqus Job结束")
             );
@@ -1996,6 +2042,7 @@ void MainWindow::sendAbaqusTerminateCommand()
         simulationMonitorWidget->appendLog(
             QStringLiteral("[ERROR] 无法启动 abaqus terminate")
         );
+        simulationUserStopped = false;
         setSimulationState(SimulationState::T1Running);
         simulationMonitorWidget->setStatus(
             QStringLiteral("终止请求失败，仿真仍在运行")
@@ -2011,6 +2058,10 @@ void MainWindow::sendAbaqusTerminateCommand()
 
 void MainWindow::onAbaqusJobTerminateFinished()
 {
+    if (simulationState == SimulationState::Stopped) {
+        return;
+    }
+
     setSimulationState(SimulationState::Stopping);
 
     simulationMonitorWidget->appendLog(
