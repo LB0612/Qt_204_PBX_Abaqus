@@ -1390,15 +1390,31 @@ void MainWindow::handleTerminateRequestFailure(const QString &reason)
         currentJobName.isEmpty()
         || !QFile::exists(lockPath);
 
-    if (processEnded && lockGone) {
+    if (processEnded) {
+        if (lockGone) {
+            simulationMonitorWidget->appendLog(
+                QStringLiteral(
+                    "[SYS] 主仿真进程已结束且锁文件不存在，"
+                    "继续终止收尾"
+                )
+            );
+
+            onAbaqusJobTerminateFinished();
+            return;
+        }
+
+        simulationMonitorWidget->setStatus(
+            QStringLiteral("等待Abaqus释放Job锁")
+        );
+
         simulationMonitorWidget->appendLog(
             QStringLiteral(
-                "[SYS] 主仿真进程已结束且锁文件不存在，"
-                "按已终止状态继续收尾"
+                "[SYS] 主进程已结束，"
+                "但Job锁文件仍存在，继续等待释放"
             )
         );
 
-        onAbaqusJobTerminateFinished();
+        waitForJobLockRelease(lockPath);
         return;
     }
 
@@ -2418,13 +2434,6 @@ void MainWindow::sendAbaqusTerminateCommand()
                 return;
             }
 
-            simulationMonitorWidget->appendLog(
-                QStringLiteral("[SYS] 等待Abaqus Job结束")
-            );
-            simulationMonitorWidget->appendLog(
-                QStringLiteral("[SYS] 等待Standard结束")
-            );
-
             const QString lockPath =
                 QDir(projectPath)
                     .filePath(
@@ -2433,65 +2442,7 @@ void MainWindow::sendAbaqusTerminateCommand()
                         + QStringLiteral(".lck")
                     );
 
-            QTimer *waitTimer = new QTimer(this);
-            waitTimer->setInterval(1000);
-            auto *tries = new int(0);
-            connect(
-                waitTimer,
-                &QTimer::timeout,
-                this,
-                [this, waitTimer, lockPath, tries]() {
-                    ++(*tries);
-
-                    if (!QFile::exists(lockPath)) {
-                        waitTimer->stop();
-                        waitTimer->deleteLater();
-                        delete tries;
-                        onAbaqusJobTerminateFinished();
-                        return;
-                    }
-
-                    if (*tries == 30) {
-                        simulationMonitorWidget->appendLog(
-                            QStringLiteral(
-                                "[SYS] 终止等待已超过30秒，"
-                                "Job锁文件仍存在，继续等待..."
-                            )
-                        );
-                    }
-
-                    if (*tries == 120) {
-                        const QMessageBox::StandardButton choice =
-                            showCenteredMessageBox(
-                                this,
-                                QMessageBox::Warning,
-                                QStringLiteral("终止等待时间过长"),
-                                QStringLiteral(
-                                    "Abaqus Job 已等待约120秒，"
-                                    "锁文件仍未释放。\n\n"
-                                    "选择“是”继续等待；\n"
-                                    "选择“否”强制结束"
-                                    "本软件启动的 Abaqus 进程。"
-                                ),
-                                QMessageBox::Yes | QMessageBox::No,
-                                QMessageBox::Yes
-                            );
-
-                        if (choice == QMessageBox::Yes) {
-                            *tries = 0;
-                            return;
-                        }
-
-                        waitTimer->stop();
-                        waitTimer->deleteLater();
-                        delete tries;
-
-                        forceCloseAbaqusProcesses();
-                        return;
-                    }
-                }
-            );
-            waitTimer->start();
+            waitForJobLockRelease(lockPath);
         }
     );
 
@@ -2508,6 +2459,90 @@ void MainWindow::sendAbaqusTerminateCommand()
             QStringLiteral("无法启动 abaqus terminate")
         );
     }
+}
+
+void MainWindow::waitForJobLockRelease(const QString &lockPath)
+{
+    if (lockPath.isEmpty() || !QFile::exists(lockPath)) {
+        onAbaqusJobTerminateFinished();
+        return;
+    }
+
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] 等待Abaqus Job结束")
+    );
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[SYS] 等待Standard结束")
+    );
+
+    QTimer *waitTimer = new QTimer(this);
+    waitTimer->setInterval(1000);
+    auto *tries = new int(0);
+    connect(
+        waitTimer,
+        &QTimer::timeout,
+        this,
+        [this, waitTimer, lockPath, tries]() {
+            ++(*tries);
+
+            if (!QFile::exists(lockPath)) {
+                waitTimer->stop();
+                waitTimer->deleteLater();
+                delete tries;
+                onAbaqusJobTerminateFinished();
+                return;
+            }
+
+            if (*tries == 30) {
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral(
+                        "[SYS] 终止等待已超过30秒，"
+                        "Job锁文件仍存在，继续等待..."
+                    )
+                );
+            }
+
+            if (*tries == 120) {
+                waitTimer->stop();
+
+                const QMessageBox::StandardButton choice =
+                    showCenteredMessageBox(
+                        this,
+                        QMessageBox::Warning,
+                        QStringLiteral("终止等待时间过长"),
+                        QStringLiteral(
+                            "Abaqus Job 已等待约120秒，"
+                            "锁文件仍未释放。\n\n"
+                            "选择“是”继续等待；\n"
+                            "选择“否”强制结束"
+                            "本软件启动的 Abaqus 进程。"
+                        ),
+                        QMessageBox::Yes | QMessageBox::No,
+                        QMessageBox::Yes
+                    );
+
+                if (!QFile::exists(lockPath)) {
+                    waitTimer->deleteLater();
+                    delete tries;
+                    onAbaqusJobTerminateFinished();
+                    return;
+                }
+
+                if (choice == QMessageBox::Yes) {
+                    *tries = 0;
+                    waitTimer->start();
+                    return;
+                }
+
+                waitTimer->deleteLater();
+                delete tries;
+
+                forceCloseAbaqusProcesses();
+                return;
+            }
+        }
+    );
+    waitTimer->start();
 }
 
 void MainWindow::onAbaqusJobTerminateFinished()
@@ -2730,6 +2765,10 @@ void MainWindow::finishStopState()
             )
         );
         return;
+    }
+
+    if (simulationTimer) {
+        simulationTimer->stop();
     }
 
     if (abaqusProcess) {

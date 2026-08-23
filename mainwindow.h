@@ -83,6 +83,7 @@ private:
 
     void handleTerminateRequestFailure(const QString &reason);
     void sendAbaqusTerminateCommand();
+    void waitForJobLockRelease(const QString &lockPath);
     void onAbaqusJobTerminateFinished();
 
     void closeAbaqusProcesses();
