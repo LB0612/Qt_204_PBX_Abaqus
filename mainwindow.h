@@ -68,6 +68,7 @@ private:
     double loadSimulationTotalTime();
     bool checkSimulationReady(QString &errorMessage);
     bool hasAbaqusLockFiles() const;
+    bool hasValidPreviousSimulationResult(QString &message) const;
     bool isSimulationActive() const;
     bool ensureSimulationIdle(const QString &operation);
     bool ensureParameterWritable(const QString &parameterName);

@@ -1363,6 +1363,112 @@ void MainWindow::handleTerminateRequestFailure(const QString &reason)
     );
 }
 
+bool MainWindow::hasValidPreviousSimulationResult(
+    QString &message) const
+{
+    if (!isProjectLoaded) {
+        return false;
+    }
+
+    const QString projectDir = currentProject.projectPath;
+
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+
+    const QString jobName =
+        QDir(projectDir).dirName() + QStringLiteral("_Job");
+
+    const QString flagPath =
+        QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"));
+
+    const QString odbPath =
+        QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
+
+    const QString lockPath =
+        QDir(abaqusDir).filePath(jobName + QStringLiteral(".lck"));
+
+    if (!QFile::exists(flagPath)) {
+        return false;
+    }
+
+    if (!QFile::exists(odbPath)) {
+        return false;
+    }
+
+    if (QFile::exists(lockPath)) {
+        return false;
+    }
+
+    QFile flagFile(flagPath);
+    if (!flagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    const QString flagContent =
+        QString::fromUtf8(flagFile.readAll()).trimmed();
+    flagFile.close();
+
+    if (flagContent != QStringLiteral("success")) {
+        return false;
+    }
+
+    const QFileInfo flagInfo(flagPath);
+    const QDateTime completedTime = flagInfo.lastModified();
+
+    const QStringList generatedFiles = {
+        QDir(abaqusDir).filePath(QStringLiteral("t0.py")),
+        QDir(abaqusDir).filePath(QStringLiteral("t1.py")),
+        QDir(abaqusDir).filePath(QStringLiteral("335K.for"))
+    };
+
+    for (const QString &filePath : generatedFiles) {
+        const QFileInfo info(filePath);
+
+        if (!info.exists()) {
+            return false;
+        }
+
+        if (info.lastModified() > completedTime) {
+            return false;
+        }
+    }
+
+    const QStringList configFiles = {
+        QDir(projectDir).filePath(QStringLiteral("config/structure.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/explosive.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/mold.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/boundary.json")),
+        QDir(projectDir).filePath(QStringLiteral("config/simulation.json"))
+    };
+
+    for (const QString &filePath : configFiles) {
+        const QFileInfo info(filePath);
+
+        if (!info.exists()) {
+            return false;
+        }
+
+        if (info.lastModified() > completedTime) {
+            return false;
+        }
+    }
+
+    message = QStringLiteral(
+        "检测到当前工程上一次仿真已经正常完成。\n\n"
+        "完成时间：%1\n"
+        "结果文件：%2\n\n"
+        "当前已保存参数和 Abaqus 文件"
+        "在上次完成后没有发生变化，"
+        "通常不需要重复计算。\n\n"
+        "是否仍要重新进行仿真？"
+    ).arg(
+        completedTime.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")),
+        odbPath
+    );
+
+    return true;
+}
+
 bool MainWindow::checkSimulationReady(QString &errorMessage)
 {
     const QString projectDir = currentProject.projectPath;
@@ -1505,6 +1611,23 @@ void MainWindow::startSimulation()
             error
         );
         return;
+    }
+
+    QString previousResultMessage;
+    if (hasValidPreviousSimulationResult(previousResultMessage)) {
+        const QMessageBox::StandardButton choice =
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Question,
+                QStringLiteral("检测到已完成结果"),
+                previousResultMessage,
+                QMessageBox::Yes | QMessageBox::No,
+                QMessageBox::No
+            );
+
+        if (choice != QMessageBox::Yes) {
+            return;
+        }
     }
 
     // currentProject.projectPath 已是工程根目录，例如 D:/Test01
