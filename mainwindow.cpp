@@ -2675,12 +2675,28 @@ void MainWindow::forceCloseAbaqusProcesses()
         )
     );
 
+    bool killedTrackedProcessTree = false;
+
     if (abaqusProcess
         && abaqusProcess->state() != QProcess::NotRunning) {
 
         const qint64 pid = abaqusProcess->processId();
 
-        if (pid > 0) {
+        if (pid <= 0) {
+            simulationMonitorWidget->setStatus(
+                QStringLiteral("强制终止失败")
+            );
+
+            simulationMonitorWidget->appendLog(
+                QStringLiteral(
+                    "[ERROR] 无法取得当前Abaqus进程PID"
+                )
+            );
+
+            return;
+        }
+
+        const int result =
             QProcess::execute(
                 QStringLiteral("taskkill"),
                 QStringList()
@@ -2689,28 +2705,48 @@ void MainWindow::forceCloseAbaqusProcesses()
                     << QStringLiteral("/T")
                     << QStringLiteral("/F")
             );
-        }
 
         if (abaqusProcess
             && abaqusProcess->state() != QProcess::NotRunning) {
             abaqusProcess->waitForFinished(5000);
         }
-    }
 
-    if (abaqusProcess
-        && abaqusProcess->state() != QProcess::NotRunning) {
-        simulationMonitorWidget->setStatus(
-            QStringLiteral("强制终止失败")
-        );
-        simulationMonitorWidget->appendLog(
-            QStringLiteral(
-                "[ERROR] 强制结束后进程仍然存在"
-            )
-        );
-        return;
+        if (abaqusProcess
+            && abaqusProcess->state() != QProcess::NotRunning) {
+            simulationMonitorWidget->setStatus(
+                QStringLiteral("强制终止失败")
+            );
+
+            simulationMonitorWidget->appendLog(
+                QStringLiteral(
+                    "[ERROR] 强制结束后进程仍然存在"
+                )
+            );
+
+            return;
+        }
+
+        killedTrackedProcessTree = (result == 0);
     }
 
     if (isCurrentJobLockPresent()) {
+
+        if (!killedTrackedProcessTree) {
+            simulationMonitorWidget->setStatus(
+                QStringLiteral("等待Abaqus求解器退出")
+            );
+
+            simulationMonitorWidget->appendLog(
+                QStringLiteral(
+                    "[ERROR] Job锁文件仍存在，"
+                    "但当前没有可安全确认结束的"
+                    "Abaqus进程树，不能直接删除锁文件"
+                )
+            );
+
+            return;
+        }
+
         const QString projectPath =
             runningProjectPath.isEmpty()
                 ? currentProject.projectPath
@@ -2728,11 +2764,13 @@ void MainWindow::forceCloseAbaqusProcesses()
             simulationMonitorWidget->setStatus(
                 QStringLiteral("锁文件清理失败")
             );
+
             simulationMonitorWidget->appendLog(
                 QStringLiteral(
                     "[ERROR] 无法删除终止后残留的锁文件"
                 )
             );
+
             return;
         }
     }
