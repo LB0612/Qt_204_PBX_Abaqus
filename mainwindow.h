@@ -68,6 +68,10 @@ private:
     double loadSimulationTotalTime();
     bool checkSimulationReady(QString &errorMessage);
     bool hasAbaqusLockFiles() const;
+    bool isSimulationActive() const;
+    bool ensureSimulationIdle(const QString &operation);
+    void setSimulationState(SimulationState state);
+    void clearRunningSimulationContext();
     void sendAbaqusTerminateCommand();
     void onAbaqusJobTerminateFinished();
     void closeAbaqusProcesses();
@@ -99,7 +103,6 @@ private:
     ParameterCheckWidget *parameterCheckWidget;
     SimulationMonitorWidget *simulationMonitorWidget;
     SimulationPrepareWidget *simulationPrepareWidget;
-    QTreeWidgetItem *simulationStartItem = nullptr;
 
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
@@ -113,10 +116,15 @@ private:
     double simulationTotalTime = 0.0;
 
     QList<QAction *> projectDependentActions;
+    QList<QAction *> simulationLockedActions;
+
     QAction *stopSimulationAction = nullptr;
     bool simulationUserStopped = false;
     SimulationState simulationState = SimulationState::Idle;
+
     QString currentJobName;
+    QString runningProjectPath;
+    QString runningAbaqusPath;
 
 private slots:
     void newProject();

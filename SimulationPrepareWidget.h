@@ -13,6 +13,11 @@ class SimulationPrepareWidget : public QWidget
 public:
     explicit SimulationPrepareWidget(QWidget *parent = nullptr);
 
+    void setReadyState(
+        bool ready,
+        const QString &message = QString()
+    );
+
 signals:
     void startRequested();
     void cancelRequested();

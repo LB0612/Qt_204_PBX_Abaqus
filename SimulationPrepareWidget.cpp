@@ -127,3 +127,30 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
         &SimulationPrepareWidget::cancelRequested
     );
 }
+
+void SimulationPrepareWidget::setReadyState(
+    bool ready,
+    const QString &message)
+{
+    if (ready) {
+        infoLabel->setText(
+            QStringLiteral(
+                "工程状态:\n"
+                "✓ 参数配置完整\n"
+                "✓ Abaqus文件完整\n"
+                "✓ Abaqus路径有效\n\n"
+                "确认后开始计算"
+            )
+        );
+    } else {
+        infoLabel->setText(
+            QStringLiteral(
+                "工程状态:\n"
+                "✗ 当前不能开始仿真\n\n"
+                "原因:\n%1"
+            ).arg(message)
+        );
+    }
+
+    startButton->setEnabled(ready);
+}
