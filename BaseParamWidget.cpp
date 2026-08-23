@@ -144,8 +144,18 @@ void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, st
     QPushButton* btn = new QPushButton(text);
     btn->setFixedHeight(60);
     btn->setCursor(Qt::PointingHandCursor);
-    btn->setStyleSheet("QPushButton { background-color: #007bff; color: white; border-radius: 5px; font-family: 'Microsoft YaHei'; font-weight: bold; font-size: 18px; margin-top: 25px; } QPushButton:hover { background-color: #0069d9; }");
+    btn->setStyleSheet(
+        "QPushButton { background-color: #007bff; color: white; border-radius: 5px; font-family: 'Microsoft YaHei'; font-weight: bold; font-size: 18px; margin-top: 25px; } "
+        "QPushButton:hover { background-color: #0069d9; } "
+        "QPushButton:disabled {"
+        " background-color: #bfbfbf;"
+        " color: #f5f5f5;"
+        "}"
+    );
     connect(btn, &QPushButton::clicked, this, onClick);
+
+    m_saveButtons.append(btn);
+
     layout->addWidget(btn);
 } 
 
@@ -165,4 +175,19 @@ QLineEdit* BaseParamWidget::createReadOnlyEdit() {
     edit->setMinimumHeight(40); 
     edit->setStyleSheet("QLineEdit { font-family: 'Microsoft YaHei'; font-size: 16px; margin-left: 10px; padding-left: 5px; border: 1px solid #eee; background-color: #f9f9f9; border-radius: 4px; color: #555; }"); 
     return edit; 
+}
+
+void BaseParamWidget::setReadOnlyMode(bool readOnly)
+{
+    for (const ParamInfo &info : m_paramRegistry) {
+        if (info.edit) {
+            info.edit->setReadOnly(readOnly);
+        }
+    }
+
+    for (QPushButton *button : m_saveButtons) {
+        if (button) {
+            button->setEnabled(!readOnly);
+        }
+    }
 }

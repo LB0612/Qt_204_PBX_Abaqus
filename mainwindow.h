@@ -70,8 +70,13 @@ private:
     bool hasAbaqusLockFiles() const;
     bool isSimulationActive() const;
     bool ensureSimulationIdle(const QString &operation);
+    bool ensureParameterWritable(const QString &parameterName);
+
+    void setParameterPagesReadOnly(bool readOnly);
     void setSimulationState(SimulationState state);
     void clearRunningSimulationContext();
+
+    void handleTerminateRequestFailure(const QString &reason);
     void sendAbaqusTerminateCommand();
     void onAbaqusJobTerminateFinished();
     void closeAbaqusProcesses();

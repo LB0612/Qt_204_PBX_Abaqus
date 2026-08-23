@@ -299,44 +299,31 @@ void MainWindow::createPureStyleToolBar()
     toolBar->addSeparator();
 
     addBtn(QStringLiteral("工程信息"), QStringLiteral(":/new/prefix1/toolbar_picture/information.png"), &MainWindow::projectInfo);
-
-    QAction *explosiveAction =
-        addBtn(
-            QStringLiteral("炸药参数"),
-            QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"),
-            &MainWindow::explosiveParams
-        );
-    QAction *structureAction =
-        addBtn(
-            QStringLiteral("结构参数"),
-            QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"),
-            &MainWindow::structureParams
-        );
-    QAction *moldAction =
-        addBtn(
-            QStringLiteral("模具参数"),
-            QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"),
-            &MainWindow::moldParams
-        );
-    QAction *boundaryAction =
-        addBtn(
-            QStringLiteral("边界条件"),
-            QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"),
-            &MainWindow::boundaryParams
-        );
-    QAction *simulationAction =
-        addBtn(
-            QStringLiteral("仿真设置"),
-            QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"),
-            &MainWindow::simulationParams
-        );
-
-    simulationLockedActions
-        << explosiveAction
-        << structureAction
-        << moldAction
-        << boundaryAction
-        << simulationAction;
+    addBtn(
+        QStringLiteral("炸药参数"),
+        QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"),
+        &MainWindow::explosiveParams
+    );
+    addBtn(
+        QStringLiteral("结构参数"),
+        QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"),
+        &MainWindow::structureParams
+    );
+    addBtn(
+        QStringLiteral("模具参数"),
+        QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"),
+        &MainWindow::moldParams
+    );
+    addBtn(
+        QStringLiteral("边界条件"),
+        QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"),
+        &MainWindow::boundaryParams
+    );
+    addBtn(
+        QStringLiteral("仿真设置"),
+        QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"),
+        &MainWindow::simulationParams
+    );
 
     toolBar->addSeparator();
 
@@ -633,7 +620,8 @@ void MainWindow::exitProject()
             QStringLiteral("提示"),
             QStringLiteral(
                 "当前仿真正在进行或正在终止，"
-                "请等待结束后再关闭工程。"
+                "请先点击“终止仿真”，"
+                "并等待终止完成后再关闭工程。"
             )
         );
         return;
@@ -698,10 +686,6 @@ void MainWindow::structureParams()
         return;
     }
 
-    if (!ensureSimulationIdle(QStringLiteral("修改结构参数"))) {
-        return;
-    }
-
     StructureConfig config;
 
     const QString filePath =
@@ -754,6 +738,10 @@ void MainWindow::saveStructureParams()
         return;
     }
 
+    if (!ensureParameterWritable(QStringLiteral("结构参数"))) {
+        return;
+    }
+
     StructureConfig config = structureWidget->getConfig();
     QString error;
 
@@ -791,10 +779,6 @@ void MainWindow::explosiveParams()
         return;
     }
 
-    if (!ensureSimulationIdle(QStringLiteral("修改炸药参数"))) {
-        return;
-    }
-
     ExplosiveConfig config;
 
     const QString filePath =
@@ -826,6 +810,10 @@ void MainWindow::explosiveParams()
 void MainWindow::saveExplosiveParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (!ensureParameterWritable(QStringLiteral("炸药参数"))) {
         return;
     }
 
@@ -866,10 +854,6 @@ void MainWindow::moldParams()
         return;
     }
 
-    if (!ensureSimulationIdle(QStringLiteral("修改模具参数"))) {
-        return;
-    }
-
     MoldConfig config;
 
     const QString filePath =
@@ -901,6 +885,10 @@ void MainWindow::moldParams()
 void MainWindow::saveMoldParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (!ensureParameterWritable(QStringLiteral("模具参数"))) {
         return;
     }
 
@@ -941,10 +929,6 @@ void MainWindow::boundaryParams()
         return;
     }
 
-    if (!ensureSimulationIdle(QStringLiteral("修改边界条件"))) {
-        return;
-    }
-
     BoundaryConfig config;
 
     const QString filePath =
@@ -976,6 +960,10 @@ void MainWindow::boundaryParams()
 void MainWindow::saveBoundaryParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (!ensureParameterWritable(QStringLiteral("边界条件"))) {
         return;
     }
 
@@ -1016,10 +1004,6 @@ void MainWindow::simulationParams()
         return;
     }
 
-    if (!ensureSimulationIdle(QStringLiteral("修改仿真设置"))) {
-        return;
-    }
-
     SimulationConfig config;
 
     const QString filePath =
@@ -1051,6 +1035,10 @@ void MainWindow::simulationParams()
 void MainWindow::saveSimulationParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (!ensureParameterWritable(QStringLiteral("仿真设置"))) {
         return;
     }
 
@@ -1197,7 +1185,33 @@ bool MainWindow::isSimulationActive() const
 void MainWindow::setSimulationState(SimulationState state)
 {
     simulationState = state;
+
+    setParameterPagesReadOnly(isSimulationActive());
+
     updateUIStates();
+}
+
+void MainWindow::setParameterPagesReadOnly(bool readOnly)
+{
+    if (structureWidget) {
+        structureWidget->setReadOnlyMode(readOnly);
+    }
+
+    if (explosiveWidget) {
+        explosiveWidget->setReadOnlyMode(readOnly);
+    }
+
+    if (moldWidget) {
+        moldWidget->setReadOnlyMode(readOnly);
+    }
+
+    if (boundaryWidget) {
+        boundaryWidget->setReadOnlyMode(readOnly);
+    }
+
+    if (simulationWidget) {
+        simulationWidget->setReadOnlyMode(readOnly);
+    }
 }
 
 void MainWindow::clearRunningSimulationContext()
@@ -1235,6 +1249,76 @@ bool MainWindow::ensureSimulationIdle(const QString &operation)
     );
 
     return false;
+}
+
+bool MainWindow::ensureParameterWritable(const QString &parameterName)
+{
+    if (!isSimulationActive()) {
+        return true;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("仿真正在进行"),
+        QStringLiteral(
+            "当前 Abaqus 仿真正在运行，"
+            "%1仅供查看，暂时不能修改或保存。"
+        ).arg(parameterName)
+    );
+
+    return false;
+}
+
+void MainWindow::handleTerminateRequestFailure(const QString &reason)
+{
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[ERROR] ") + reason
+    );
+
+    const QString projectPath =
+        runningProjectPath.isEmpty()
+            ? currentProject.projectPath
+            : runningProjectPath;
+
+    const QString lockPath =
+        QDir(projectPath).filePath(
+            QStringLiteral("abaqus/")
+            + currentJobName
+            + QStringLiteral(".lck")
+        );
+
+    const bool processEnded =
+        !abaqusProcess
+        || abaqusProcess->state() == QProcess::NotRunning;
+
+    const bool lockGone =
+        currentJobName.isEmpty()
+        || !QFile::exists(lockPath);
+
+    if (processEnded && lockGone) {
+        simulationMonitorWidget->appendLog(
+            QStringLiteral(
+                "[SYS] 主仿真进程已结束且锁文件不存在，"
+                "按已终止状态继续收尾"
+            )
+        );
+
+        onAbaqusJobTerminateFinished();
+        return;
+    }
+
+    simulationUserStopped = false;
+
+    setSimulationState(SimulationState::T1Running);
+
+    simulationMonitorWidget->setStatus(
+        QStringLiteral("终止请求失败，仿真仍在运行")
+    );
+
+    simulationMonitorWidget->appendLog(
+        QStringLiteral("[ERROR] Abaqus Job 可能仍在运行")
+    );
 }
 
 bool MainWindow::checkSimulationReady(QString &errorMessage)
@@ -1910,19 +1994,8 @@ void MainWindow::sendAbaqusTerminateCommand()
             : runningAbaqusPath;
 
     if (abaqusPath.isEmpty() || !QFile::exists(abaqusPath)) {
-        simulationMonitorWidget->appendLog(
-            QStringLiteral("[ERROR] Abaqus 路径无效，无法发送 terminate")
-        );
-        simulationUserStopped = false;
-        setSimulationState(SimulationState::T1Running);
-        simulationMonitorWidget->setStatus(
-            QStringLiteral("终止请求失败，仿真仍在运行")
-        );
-        simulationMonitorWidget->appendLog(
-            QStringLiteral(
-                "[ERROR] 终止请求失败，"
-                "Abaqus Job 可能仍在运行"
-            )
+        handleTerminateRequestFailure(
+            QStringLiteral("Abaqus 路径无效，无法发送 terminate")
         );
         return;
     }
@@ -1980,16 +2053,8 @@ void MainWindow::sendAbaqusTerminateCommand()
             terminateProcess->deleteLater();
 
             if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-                simulationUserStopped = false;
-                setSimulationState(SimulationState::T1Running);
-                simulationMonitorWidget->setStatus(
-                    QStringLiteral("终止请求失败，仿真仍在运行")
-                );
-                simulationMonitorWidget->appendLog(
-                    QStringLiteral(
-                        "[ERROR] abaqus terminate 执行失败，"
-                        "Abaqus Job 可能仍在运行"
-                    )
+                handleTerminateRequestFailure(
+                    QStringLiteral("abaqus terminate 执行失败")
                 );
                 return;
             }
@@ -2018,11 +2083,22 @@ void MainWindow::sendAbaqusTerminateCommand()
                 this,
                 [this, waitTimer, lockPath, tries]() {
                     ++(*tries);
-                    if (!QFile::exists(lockPath) || *tries >= 30) {
+
+                    if (!QFile::exists(lockPath)) {
                         waitTimer->stop();
                         waitTimer->deleteLater();
                         delete tries;
                         onAbaqusJobTerminateFinished();
+                        return;
+                    }
+
+                    if (*tries == 30) {
+                        simulationMonitorWidget->appendLog(
+                            QStringLiteral(
+                                "[SYS] 终止等待已超过30秒，"
+                                "Job锁文件仍存在，继续等待..."
+                            )
+                        );
                     }
                 }
             );
@@ -2039,30 +2115,17 @@ void MainWindow::sendAbaqusTerminateCommand()
 
     if (!terminateProcess->waitForStarted(10000)) {
         terminateProcess->deleteLater();
-        simulationMonitorWidget->appendLog(
-            QStringLiteral("[ERROR] 无法启动 abaqus terminate")
-        );
-        simulationUserStopped = false;
-        setSimulationState(SimulationState::T1Running);
-        simulationMonitorWidget->setStatus(
-            QStringLiteral("终止请求失败，仿真仍在运行")
-        );
-        simulationMonitorWidget->appendLog(
-            QStringLiteral(
-                "[ERROR] 终止请求失败，"
-                "Abaqus Job 可能仍在运行"
-            )
+        handleTerminateRequestFailure(
+            QStringLiteral("无法启动 abaqus terminate")
         );
     }
 }
 
 void MainWindow::onAbaqusJobTerminateFinished()
 {
-    if (simulationState == SimulationState::Stopped) {
+    if (simulationState != SimulationState::Stopping) {
         return;
     }
-
-    setSimulationState(SimulationState::Stopping);
 
     simulationMonitorWidget->appendLog(
         QStringLiteral("[SYS] Job已终止，等待3秒后关闭Abaqus CAE")
@@ -2253,7 +2316,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
             QStringLiteral("提示"),
             QStringLiteral(
                 "当前仿真正在进行或正在终止，"
-                "请等待结束后再退出软件。"
+                "请先终止仿真并等待终止完成后再退出软件。"
             )
         );
         event->ignore();

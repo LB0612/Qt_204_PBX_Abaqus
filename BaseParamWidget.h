@@ -27,6 +27,8 @@ public:
     explicit BaseParamWidget(QWidget *parent = nullptr);
     virtual ~BaseParamWidget();
 
+    void setReadOnlyMode(bool readOnly);
+
     // 通用接口：获取所有注册参数（供参数检查用）
     QList<ParamInfo> getRegisteredParams() const {
         return m_paramRegistry;
@@ -56,6 +58,7 @@ protected:
 
     // 参数注册表
     QList<ParamInfo> m_paramRegistry;
+    QList<QPushButton *> m_saveButtons;
 
 signals:
     void backClicked(); // 返回按钮信号
