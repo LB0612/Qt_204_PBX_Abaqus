@@ -1826,6 +1826,7 @@ void MainWindow::startSimulation()
 
     setSimulationState(SimulationState::T0Running);
 
+    simulationMonitorWidget->clearLog();
     simulationMonitorWidget->setProgress(0);
     simulationMonitorWidget->setJob(QString());
     simulationMonitorWidget->setStatus(
