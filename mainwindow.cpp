@@ -2738,11 +2738,25 @@ void MainWindow::forceCloseAbaqusProcesses()
 
             simulationMonitorWidget->appendLog(
                 QStringLiteral(
-                    "[ERROR] Job锁文件仍存在，"
-                    "但当前没有可安全确认结束的"
-                    "Abaqus进程树，不能直接删除锁文件"
+                    "[SYS] Job锁文件仍存在，"
+                    "当前没有可安全确认结束的"
+                    "Abaqus进程树，继续等待锁文件释放"
                 )
             );
+
+            const QString projectPath =
+                runningProjectPath.isEmpty()
+                    ? currentProject.projectPath
+                    : runningProjectPath;
+
+            const QString lockPath =
+                QDir(projectPath).filePath(
+                    QStringLiteral("abaqus/")
+                    + currentJobName
+                    + QStringLiteral(".lck")
+                );
+
+            waitForJobLockRelease(lockPath);
 
             return;
         }
