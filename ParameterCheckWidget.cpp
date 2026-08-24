@@ -78,7 +78,7 @@ QHBoxLayout *ParameterCheckWidget::createInfoRow(
     QHBoxLayout *row = new QHBoxLayout();
 
     QLabel *lblKey = new QLabel(label);
-    lblKey->setFixedWidth(180);
+    lblKey->setFixedWidth(240);
     lblKey->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     lblKey->setMinimumHeight(38);
     lblKey->setStyleSheet(
@@ -193,15 +193,15 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("炸药参数配置文件无效"));
         } else {
-            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药密度："), formatNumber(config.density)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("固化初始杨氏模量："), formatNumber(config.initialElasticModulus)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药密度（t/mm³）："), formatNumber(config.density)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("固化初始杨氏模量（MPa）："), formatNumber(config.initialElasticModulus)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("固化初始泊松比："), formatNumber(config.initialPoissonRatio)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("固化结束杨氏模量："), formatNumber(config.finalElasticModulus)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("固化结束杨氏模量（MPa）："), formatNumber(config.finalElasticModulus)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("固化结束泊松比："), formatNumber(config.finalPoissonRatio)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药传导率："), formatNumber(config.thermalConductivity)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药屈服应力："), formatNumber(config.yieldStress)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药比热："), formatNumber(config.specificHeat)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药膨胀系数："), formatNumber(config.expansionCoefficient)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药传导率（W/(m·K)）："), formatNumber(config.thermalConductivity)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药屈服应力（MPa）："), formatNumber(config.yieldStress)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药比热（N·mm/(t·K)）："), formatNumber(config.specificHeat)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("炸药膨胀系数（1/K）："), formatNumber(config.expansionCoefficient)));
         }
 
         sectionsLayout->addWidget(box);
@@ -255,11 +255,11 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("模具参数配置文件无效"));
         } else {
-            boxLayout->addLayout(createInfoRow(QStringLiteral("模具密度："), formatNumber(config.density)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("模具弹性模量："), formatNumber(config.elasticModulus)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具密度（t/mm³）："), formatNumber(config.density)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具弹性模量（MPa）："), formatNumber(config.elasticModulus)));
             boxLayout->addLayout(createInfoRow(QStringLiteral("模具泊松比："), formatNumber(config.poissonRatio)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("模具热导率："), formatNumber(config.thermalConductivity)));
-            boxLayout->addLayout(createInfoRow(QStringLiteral("模具比热容："), formatNumber(config.specificHeat)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具热导率（W/(m·K)）："), formatNumber(config.thermalConductivity)));
+            boxLayout->addLayout(createInfoRow(QStringLiteral("模具比热容（N·mm/(t·K)）："), formatNumber(config.specificHeat)));
         }
 
         sectionsLayout->addWidget(box);

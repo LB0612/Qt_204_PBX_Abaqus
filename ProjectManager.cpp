@@ -14,10 +14,8 @@ const QString FILE_PROJECT = QStringLiteral("project.json");
 const QString PROJECT_TYPE_PBX = QStringLiteral("PBX_CASTING_CURING");
 }
 
-bool ProjectManager::createProject(
-    const QString &basePath,
+bool ProjectManager::isValidProjectName(
     const QString &projectName,
-    ProjectConfig &config,
     QString &errorMessage)
 {
     const QString name = projectName.trimmed();
@@ -27,9 +25,29 @@ bool ProjectManager::createProject(
         return false;
     }
 
-    static const QRegularExpression invalid(R"([\\/:*?\"<>|])");
-    if (name.contains(invalid)) {
-        errorMessage = QStringLiteral("工程名称包含非法字符。");
+    static const QRegularExpression valid(
+        QStringLiteral("^[A-Za-z0-9_-]+$")
+    );
+    if (!valid.match(name).hasMatch()) {
+        errorMessage = QStringLiteral(
+            "工程名称只能包含英文字母、数字、"
+            "下划线（_）和连字符（-）。"
+        );
+        return false;
+    }
+
+    return true;
+}
+
+bool ProjectManager::createProject(
+    const QString &basePath,
+    const QString &projectName,
+    ProjectConfig &config,
+    QString &errorMessage)
+{
+    const QString name = projectName.trimmed();
+
+    if (!isValidProjectName(name, errorMessage)) {
         return false;
     }
 

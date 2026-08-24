@@ -18,6 +18,11 @@ struct ProjectConfig
 class ProjectManager
 {
 public:
+    static bool isValidProjectName(
+        const QString &projectName,
+        QString &errorMessage
+    );
+
     static bool createProject(
         const QString &basePath,
         const QString &projectName,

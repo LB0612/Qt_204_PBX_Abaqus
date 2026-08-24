@@ -659,17 +659,36 @@ bool MainWindow::ensureNoUnsavedParameters()
         names << QStringLiteral("仿真设置");
     }
 
-    showCenteredMessageBox(
-        this,
+    QMessageBox msgBox(
         QMessageBox::Warning,
         QStringLiteral("存在未保存修改"),
         QStringLiteral(
             "当前存在未保存修改：%1\n\n"
-            "请先保存后再继续。"
-        ).arg(names.join(QStringLiteral("、")))
+            "请选择继续编辑，或放弃未保存修改。"
+        ).arg(names.join(QStringLiteral("、"))),
+        QMessageBox::NoButton,
+        this
     );
 
-    return false;
+    QPushButton *continueButton = msgBox.addButton(
+        QStringLiteral("返回继续编辑"),
+        QMessageBox::RejectRole
+    );
+    QPushButton *discardButton = msgBox.addButton(
+        QStringLiteral("放弃未保存修改"),
+        QMessageBox::DestructiveRole
+    );
+    msgBox.setDefaultButton(continueButton);
+    msgBox.setWindowModality(Qt::ApplicationModal);
+    msgBox.exec();
+
+    if (msgBox.clickedButton() != discardButton) {
+        return false;
+    }
+
+    reloadParameterPagesFromSavedConfig();
+    clearAllParamPageDirty();
+    return true;
 }
 
 bool MainWindow::promptAndClearStaleJobLock()
@@ -2057,16 +2076,7 @@ void MainWindow::onTreeItemClicked(
     if (!isProjectLoaded ||
         path != currentProject.projectPath) {
 
-        if (!dirtyParamPages.isEmpty()) {
-            showCenteredMessageBox(
-                this,
-                QMessageBox::Warning,
-                QStringLiteral("存在未保存修改"),
-                QStringLiteral(
-                    "当前工程存在未保存的参数修改，"
-                    "请先保存后再切换到其他工程。"
-                )
-            );
+        if (!ensureNoUnsavedParameters()) {
             restoreCurrentProjectTreeSelection();
             return;
         }

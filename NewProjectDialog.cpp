@@ -1,5 +1,7 @@
 #include "NewProjectDialog.h"
 
+#include "ProjectManager.h"
+
 #include <QDir>
 #include <QFileDialog>
 #include <QGridLayout>
@@ -44,7 +46,7 @@ void NewProjectDialog::setupUi()
     QLabel *nameLabel = new QLabel(QStringLiteral("工程名称:"));
     nameLabel->setObjectName(QStringLiteral("FormLabel"));
     nameEdit = new QLineEdit();
-    nameEdit->setPlaceholderText(QStringLiteral("例如：PBX_Curing_Test01"));
+    nameEdit->setPlaceholderText(QStringLiteral("例如：PBX_Test_01"));
     nameEdit->setClearButtonEnabled(true);
 
     QLabel *pathLabel = new QLabel(QStringLiteral("存储位置:"));
@@ -98,9 +100,15 @@ void NewProjectDialog::setupUi()
 
 void NewProjectDialog::updateOkButtonState()
 {
-    const bool hasName = !nameEdit->text().trimmed().isEmpty();
+    const QString name = nameEdit->text().trimmed();
     const bool hasPath = !pathEdit->text().trimmed().isEmpty();
-    okBtn->setEnabled(hasName && hasPath);
+
+    QString nameError;
+    const bool validName =
+        !name.isEmpty()
+        && ProjectManager::isValidProjectName(name, nameError);
+
+    okBtn->setEnabled(validName && hasPath);
 }
 
 QString NewProjectDialog::getProjectName() const
