@@ -27,6 +27,8 @@
 class NewProjectDialog;
 class OpenProjectDialog;
 
+#include <QSet>
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -53,6 +55,22 @@ private:
     bool ensureSimulationIdle(const QString &operation);
     bool ensureParameterWritable(const QString &parameterName);
 
+    enum class ParamPage {
+        Structure,
+        Explosive,
+        Mold,
+        Boundary,
+        Simulation
+    };
+
+    bool ensureNoUnsavedParameters();
+    bool promptAndClearStaleJobLock();
+
+    void connectParameterEditSignals();
+    void markParamPageDirty(ParamPage page);
+    void clearParamPageDirty(ParamPage page);
+    void clearAllParamPageDirty();
+
     void setParameterPagesReadOnly(bool readOnly);
     void reloadParameterPagesFromSavedConfig();
 
@@ -66,6 +84,8 @@ private:
 
     ProjectConfig currentProject;
     bool isProjectLoaded = false;
+    bool projectDirectoryMissing = false;
+    QSet<ParamPage> dirtyParamPages;
 
     QWidget *centralWidget;
     QHBoxLayout *mainLayout;

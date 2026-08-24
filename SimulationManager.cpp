@@ -525,7 +525,10 @@ void SimulationManager::startTaskInternal()
     }
 
     if (hasLockFiles()) {
-        emit errorOccurred(QStringLiteral("提示"), QStringLiteral("上一次仿真正在清理，请稍候。"));
+        emit errorOccurred(
+            QStringLiteral("提示"),
+            QStringLiteral("检测到当前 Job 锁文件，请先清理后再开始仿真。")
+        );
         return;
     }
 

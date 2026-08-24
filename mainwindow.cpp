@@ -273,6 +273,8 @@ void MainWindow::setupUi()
     connect(simulationWidget, &SimulationParamWidget::saveRequested,
             this, &MainWindow::saveSimulationParams);
 
+    connectParameterEditSignals();
+
     connect(parameterCheckWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);
         treeWidget->clearSelection();
@@ -336,7 +338,7 @@ void MainWindow::createPureStyleToolBar()
     addBtn(QStringLiteral("新建工程"), QStringLiteral(":/toolbar/create.png"), &MainWindow::newProject, false);
     addBtn(QStringLiteral("打开工程"), QStringLiteral(":/toolbar/open.png"), &MainWindow::openProject, false);
 
-    QAction *saveAct = new QAction(QIcon(QStringLiteral(":/toolbar/save.png")), QStringLiteral("保存工程"), this);
+    QAction *saveAct = new QAction(QIcon(QStringLiteral(":/toolbar/save.png")), QStringLiteral("保存工程信息"), this);
     connect(saveAct, &QAction::triggered, this, [this]() { saveProject(false); });
     toolBar->addAction(saveAct);
     projectDependentActions.append(saveAct);
@@ -560,9 +562,146 @@ void MainWindow::selectTreeItem(const QString &itemName)
     }
 }
 
+void MainWindow::connectParameterEditSignals()
+{
+    connect(
+        structureWidget,
+        &BaseParamWidget::parameterEdited,
+        this,
+        [this]() { markParamPageDirty(ParamPage::Structure); }
+    );
+    connect(
+        explosiveWidget,
+        &BaseParamWidget::parameterEdited,
+        this,
+        [this]() { markParamPageDirty(ParamPage::Explosive); }
+    );
+    connect(
+        moldWidget,
+        &BaseParamWidget::parameterEdited,
+        this,
+        [this]() { markParamPageDirty(ParamPage::Mold); }
+    );
+    connect(
+        boundaryWidget,
+        &BaseParamWidget::parameterEdited,
+        this,
+        [this]() { markParamPageDirty(ParamPage::Boundary); }
+    );
+    connect(
+        simulationWidget,
+        &BaseParamWidget::parameterEdited,
+        this,
+        [this]() { markParamPageDirty(ParamPage::Simulation); }
+    );
+}
+
+void MainWindow::markParamPageDirty(ParamPage page)
+{
+    dirtyParamPages.insert(page);
+}
+
+void MainWindow::clearParamPageDirty(ParamPage page)
+{
+    dirtyParamPages.remove(page);
+}
+
+void MainWindow::clearAllParamPageDirty()
+{
+    dirtyParamPages.clear();
+}
+
+bool MainWindow::ensureNoUnsavedParameters()
+{
+    if (dirtyParamPages.isEmpty()) {
+        return true;
+    }
+
+    QStringList names;
+    if (dirtyParamPages.contains(ParamPage::Structure)) {
+        names << QStringLiteral("结构参数");
+    }
+    if (dirtyParamPages.contains(ParamPage::Explosive)) {
+        names << QStringLiteral("炸药参数");
+    }
+    if (dirtyParamPages.contains(ParamPage::Mold)) {
+        names << QStringLiteral("模具参数");
+    }
+    if (dirtyParamPages.contains(ParamPage::Boundary)) {
+        names << QStringLiteral("边界条件");
+    }
+    if (dirtyParamPages.contains(ParamPage::Simulation)) {
+        names << QStringLiteral("仿真设置");
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Warning,
+        QStringLiteral("存在未保存修改"),
+        QStringLiteral(
+            "当前存在未保存修改：%1\n\n"
+            "请先保存后再继续。"
+        ).arg(names.join(QStringLiteral("、")))
+    );
+
+    return false;
+}
+
+bool MainWindow::promptAndClearStaleJobLock()
+{
+    if (!simulationManager->hasLockFiles()) {
+        return true;
+    }
+
+    const QString lockPath = simulationManager->currentJobLockPath();
+    const QString jobName = QFileInfo(lockPath).completeBaseName();
+
+    QMessageBox msgBox(
+        QMessageBox::Warning,
+        QStringLiteral("检测到 Job 锁文件"),
+        QStringLiteral(
+            "检测到当前工程 Job 锁文件：\n%1\n\n"
+            "如果确认 Abaqus 已经没有运行，可以清理残留锁。"
+        ).arg(jobName),
+        QMessageBox::NoButton,
+        this
+    );
+
+    QPushButton *clearButton = msgBox.addButton(
+        QStringLiteral("清理残留锁"),
+        QMessageBox::AcceptRole
+    );
+    QPushButton *cancelButton = msgBox.addButton(
+        QStringLiteral("取消"),
+        QMessageBox::RejectRole
+    );
+    msgBox.setDefaultButton(cancelButton);
+    msgBox.setWindowModality(Qt::ApplicationModal);
+    msgBox.exec();
+
+    if (msgBox.clickedButton() != clearButton) {
+        return false;
+    }
+
+    QString error;
+    if (!simulationManager->clearCurrentJobLock(error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Critical,
+            QStringLiteral("清理失败"),
+            error
+        );
+        return false;
+    }
+
+    return !simulationManager->hasLockFiles();
+}
+
 void MainWindow::loadProjectToUi()
 {
-    infoWidget->setProjectData(currentProject);
+    clearAllParamPageDirty();
+    projectDirectoryMissing = false;
+    reloadParameterPagesFromSavedConfig();
     setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程 - %1").arg(currentProject.projectName));
     selectTreeItem(QStringLiteral("工程信息"));
     stackedWidget->setCurrentWidget(infoWidget);
@@ -640,7 +779,7 @@ void MainWindow::saveProject(bool silent)
 
     if (!silent) {
         if (success) {
-            showCenteredMessageBox(this, QMessageBox::Information, QStringLiteral("成功"), QStringLiteral("工程已保存。"));
+            showCenteredMessageBox(this, QMessageBox::Information, QStringLiteral("成功"), QStringLiteral("工程信息已保存。"));
         } else {
             showCenteredMessageBox(this, QMessageBox::Critical, QStringLiteral("错误"), QStringLiteral("工程保存失败，请检查目录权限。"));
         }
@@ -723,6 +862,12 @@ void MainWindow::projectInfo()
 void MainWindow::structureParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (dirtyParamPages.contains(ParamPage::Structure)) {
+        selectTreeItem(QStringLiteral("结构参数"));
+        stackedWidget->setCurrentWidget(structureWidget);
         return;
     }
 
@@ -811,11 +956,18 @@ void MainWindow::saveStructureParams()
         QStringLiteral("成功"),
         QStringLiteral("结构参数已保存。")
     );
+    clearParamPageDirty(ParamPage::Structure);
 }
 
 void MainWindow::explosiveParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (dirtyParamPages.contains(ParamPage::Explosive)) {
+        selectTreeItem(QStringLiteral("炸药参数"));
+        stackedWidget->setCurrentWidget(explosiveWidget);
         return;
     }
 
@@ -886,11 +1038,18 @@ void MainWindow::saveExplosiveParams()
         QStringLiteral("成功"),
         QStringLiteral("炸药参数已保存。")
     );
+    clearParamPageDirty(ParamPage::Explosive);
 }
 
 void MainWindow::moldParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (dirtyParamPages.contains(ParamPage::Mold)) {
+        selectTreeItem(QStringLiteral("模具参数"));
+        stackedWidget->setCurrentWidget(moldWidget);
         return;
     }
 
@@ -961,11 +1120,18 @@ void MainWindow::saveMoldParams()
         QStringLiteral("成功"),
         QStringLiteral("模具参数已保存。")
     );
+    clearParamPageDirty(ParamPage::Mold);
 }
 
 void MainWindow::boundaryParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (dirtyParamPages.contains(ParamPage::Boundary)) {
+        selectTreeItem(QStringLiteral("边界条件"));
+        stackedWidget->setCurrentWidget(boundaryWidget);
         return;
     }
 
@@ -1036,11 +1202,18 @@ void MainWindow::saveBoundaryParams()
         QStringLiteral("成功"),
         QStringLiteral("边界条件已保存。")
     );
+    clearParamPageDirty(ParamPage::Boundary);
 }
 
 void MainWindow::simulationParams()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (dirtyParamPages.contains(ParamPage::Simulation)) {
+        selectTreeItem(QStringLiteral("仿真设置"));
+        stackedWidget->setCurrentWidget(simulationWidget);
         return;
     }
 
@@ -1111,6 +1284,7 @@ void MainWindow::saveSimulationParams()
         QStringLiteral("成功"),
         QStringLiteral("仿真设置已保存。")
     );
+    clearParamPageDirty(ParamPage::Simulation);
 }
 
 void MainWindow::checkParams()
@@ -1127,6 +1301,10 @@ void MainWindow::checkParams()
 void MainWindow::generateFiles()
 {
     if (!isProjectLoaded) {
+        return;
+    }
+
+    if (!ensureNoUnsavedParameters()) {
         return;
     }
 
@@ -1289,6 +1467,21 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
     setParameterPagesReadOnly(simulationManager->isActive());
     updateUIStates();
 
+    if (state == SimulationState::Stopped
+        || state == SimulationState::Finished
+        || state == SimulationState::Failed) {
+        if (projectDirectoryMissing) {
+            stopWatchingProject();
+            isProjectLoaded = false;
+            currentProject = ProjectConfig();
+            projectDirectoryMissing = false;
+            stackedWidget->setCurrentIndex(0);
+            setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程"));
+            updateUIStates();
+            startWatchingProject();
+        }
+    }
+
     if (state == SimulationState::T0Running
         || state == SimulationState::T1Running
         || state == SimulationState::Stopping) {
@@ -1393,6 +1586,10 @@ void MainWindow::showSimulationPreparePage()
         return;
     }
 
+    if (!ensureNoUnsavedParameters()) {
+        return;
+    }
+
     selectTreeItem(QStringLiteral("开始仿真"));
 
     if (simulationManager->isActive()) {
@@ -1434,19 +1631,17 @@ void MainWindow::startSimulation()
         return;
     }
 
+    if (!ensureNoUnsavedParameters()) {
+        return;
+    }
+
     if (simulationManager->isActive()) {
         selectTreeItem(QStringLiteral("开始仿真"));
         stackedWidget->setCurrentWidget(simulationMonitorWidget);
         return;
     }
 
-    if (simulationManager->hasLockFiles()) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("提示"),
-            QStringLiteral("上一次仿真正在清理，请稍候。")
-        );
+    if (!promptAndClearStaleJobLock()) {
         return;
     }
 
@@ -1526,9 +1721,8 @@ void MainWindow::updateUIStates()
     if (stopSimulationAction) {
         const SimulationState state = simulationManager->state();
         const bool canStop =
-            isProjectLoaded
-            && (state == SimulationState::T0Running
-                || state == SimulationState::T1Running);
+            state == SimulationState::T0Running
+            || state == SimulationState::T1Running;
 
         stopSimulationAction->setEnabled(canStop);
     }
@@ -1965,10 +2159,22 @@ void MainWindow::onProjectDirectoryChanged()
     }
 
     for (QTreeWidgetItem *item : itemsToDelete) {
+        if (simulationManager->isActive()
+            && isProjectLoaded
+            && item->data(0, Qt::UserRole).toString() == currentProject.projectPath) {
+            projectDirectoryMissing = true;
+            if (simulationMonitorWidget) {
+                simulationMonitorWidget->appendLog(
+                    QStringLiteral("[SYS] 工程目录暂不可访问")
+                );
+            }
+            continue;
+        }
+
         delete item;
     }
 
-    if (currentProjectDeleted) {
+    if (currentProjectDeleted && !simulationManager->isActive()) {
         stopWatchingProject();
         isProjectLoaded = false;
         currentProject = ProjectConfig();

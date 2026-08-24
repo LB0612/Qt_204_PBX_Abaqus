@@ -31,6 +31,13 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
     
     hLayout->addWidget(edit); 
     
+    connect(
+        edit,
+        &QLineEdit::textEdited,
+        this,
+        &BaseParamWidget::parameterEdited
+    );
+
     if (!unit.isEmpty()) {
         QLabel *unitLabel = new QLabel(unit);
 

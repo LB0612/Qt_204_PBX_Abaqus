@@ -62,6 +62,7 @@ protected:
 
 signals:
     void backClicked(); // 返回按钮信号
+    void parameterEdited();
 };
 
 #endif // BASEPARAMWIDGET_H
