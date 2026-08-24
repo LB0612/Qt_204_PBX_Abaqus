@@ -1,15 +1,12 @@
 #include "ProjectInputHash.h"
 
 #include <QByteArray>
-#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QProcess>
-#include <QRegularExpression>
 #include <QSaveFile>
 
 namespace ProjectInputHash {
@@ -71,96 +68,6 @@ QString postProcessManifestPath(const QString &projectPath)
 {
     return QDir(QDir(projectPath).filePath(QStringLiteral("results")))
         .filePath(QStringLiteral("postprocess_manifest.json"));
-}
-
-bool runVersionCheck(
-    const QString &executablePath,
-    QString &errorMessage)
-{
-    QProcess process;
-    process.start(executablePath, {QStringLiteral("-version")});
-
-    if (!process.waitForStarted(5000)) {
-        errorMessage =
-            QStringLiteral("无法启动后处理组件：%1").arg(executablePath);
-        return false;
-    }
-
-    if (!process.waitForFinished(10000)) {
-        process.kill();
-        process.waitForFinished(3000);
-        errorMessage =
-            QStringLiteral("后处理组件无响应：%1").arg(executablePath);
-        return false;
-    }
-
-    if (process.exitStatus() != QProcess::NormalExit
-        || process.exitCode() != 0) {
-        errorMessage =
-            QStringLiteral("后处理组件版本检查失败：%1").arg(executablePath);
-        return false;
-    }
-
-    return true;
-}
-
-bool ffmpegHasLibx264Encoder(
-    const QString &ffmpegPath,
-    QString &errorMessage)
-{
-    QProcess process;
-    process.start(
-        ffmpegPath,
-        {
-            QStringLiteral("-hide_banner"),
-            QStringLiteral("-encoders"),
-        }
-    );
-
-    if (!process.waitForStarted(5000)) {
-        errorMessage =
-            QStringLiteral("无法启动 FFmpeg 编码器检查：%1").arg(ffmpegPath);
-        return false;
-    }
-
-    if (!process.waitForFinished(30000)) {
-        process.kill();
-        process.waitForFinished(3000);
-        errorMessage =
-            QStringLiteral("FFmpeg 编码器检查无响应：%1").arg(ffmpegPath);
-        return false;
-    }
-
-    if (process.exitStatus() != QProcess::NormalExit
-        || process.exitCode() != 0) {
-        errorMessage =
-            QStringLiteral(
-                "FFmpeg 编码器列表检查失败：%1（exitCode=%2）"
-            ).arg(ffmpegPath).arg(process.exitCode());
-        return false;
-    }
-
-    const QString output =
-        QString::fromUtf8(
-            process.readAllStandardOutput()
-            + process.readAllStandardError()
-        );
-
-    static const QRegularExpression encoderLine(
-        QStringLiteral(R"(^\s*V[SDIANX\.]+\s+libx264\s)"),
-        QRegularExpression::MultilineOption
-    );
-
-    if (!encoderLine.match(output).hasMatch()) {
-        errorMessage =
-            QStringLiteral(
-                "当前 FFmpeg 未包含 libx264 编码器：\n%1\n\n"
-                "请安装带 libx264 的完整 FFmpeg 后再运行后处理。"
-            ).arg(ffmpegPath);
-        return false;
-    }
-
-    return true;
 }
 
 QString framePngPath(
@@ -358,6 +265,16 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         json.value(QStringLiteral("temperatureVideoFrames")).toInt();
     manifest.stressVideoFrames =
         json.value(QStringLiteral("stressVideoFrames")).toInt();
+    manifest.cureVideoBytes =
+        json.value(QStringLiteral("cureVideoBytes")).toVariant().toLongLong();
+    manifest.temperatureVideoBytes =
+        json.value(QStringLiteral("temperatureVideoBytes"))
+            .toVariant()
+            .toLongLong();
+    manifest.stressVideoBytes =
+        json.value(QStringLiteral("stressVideoBytes"))
+            .toVariant()
+            .toLongLong();
     manifest.videoFps =
         json.value(QStringLiteral("videoFps")).toInt();
 
@@ -370,10 +287,16 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         && manifest.odbFrames == manifest.temperatureVideoFrames
         && manifest.odbFrames == manifest.stressVideoFrames;
 
+    const bool bytesRecorded =
+        manifest.cureVideoBytes > 0
+        && manifest.temperatureVideoBytes > 0
+        && manifest.stressVideoBytes > 0;
+
     manifest.valid =
-        manifest.version == 1
+        manifest.version == 2
         && !manifest.postSha256.isEmpty()
-        && countsMatch;
+        && countsMatch
+        && bytesRecorded;
 
     return manifest;
 }
@@ -408,66 +331,6 @@ bool isValidPngFile(const QString &path)
 
     const QByteArray tail = file.read(12);
     return tail.contains("IEND");
-}
-
-int countVideoFrames(const QString &videoPath, QString &errorMessage)
-{
-    const QString ffprobePath = bundledFfprobePath();
-    if (!QFile::exists(ffprobePath)) {
-        errorMessage =
-            QStringLiteral("FFprobe 不存在：%1").arg(ffprobePath);
-        return -1;
-    }
-
-    QProcess process;
-    process.start(
-        ffprobePath,
-        {
-            QStringLiteral("-v"),
-            QStringLiteral("error"),
-            QStringLiteral("-select_streams"),
-            QStringLiteral("v:0"),
-            QStringLiteral("-count_frames"),
-            QStringLiteral("-show_entries"),
-            QStringLiteral("stream=nb_read_frames"),
-            QStringLiteral("-of"),
-            QStringLiteral("default=nokey=1:noprint_wrappers=1"),
-            videoPath,
-        }
-    );
-
-    if (!process.waitForStarted(5000)) {
-        errorMessage =
-            QStringLiteral("无法启动 FFprobe：%1").arg(videoPath);
-        return -1;
-    }
-
-    if (!process.waitForFinished(-1)) {
-        process.kill();
-        process.waitForFinished(3000);
-        errorMessage =
-            QStringLiteral("FFprobe 统计帧数失败：%1").arg(videoPath);
-        return -1;
-    }
-
-    if (process.exitStatus() != QProcess::NormalExit
-        || process.exitCode() != 0) {
-        errorMessage =
-            QStringLiteral("FFprobe 失败：%1").arg(videoPath);
-        return -1;
-    }
-
-    const QString text =
-        QString::fromUtf8(process.readAllStandardOutput()).trimmed();
-    bool ok = false;
-    const int frames = text.toInt(&ok);
-    if (!ok || frames < 0) {
-        errorMessage =
-            QStringLiteral("FFprobe 返回无效帧数：%1").arg(videoPath);
-        return -1;
-    }
-
-    return frames;
 }
 
 bool validatePostProcessOutputs(
@@ -516,29 +379,51 @@ bool validatePostProcessOutputs(
         }
     }
 
-    const QStringList mp4Paths = {
-        cureBase + QStringLiteral(".mp4"),
-        tempBase + QStringLiteral(".mp4"),
-        stressBase + QStringLiteral(".mp4"),
+    const struct {
+        QString aviPath;
+        qint64 expectedBytes;
+        int expectedVideoFrames;
+    } aviSets[] = {
+        {
+            cureBase + QStringLiteral(".avi"),
+            manifest.cureVideoBytes,
+            manifest.cureVideoFrames,
+        },
+        {
+            tempBase + QStringLiteral(".avi"),
+            manifest.temperatureVideoBytes,
+            manifest.temperatureVideoFrames,
+        },
+        {
+            stressBase + QStringLiteral(".avi"),
+            manifest.stressVideoBytes,
+            manifest.stressVideoFrames,
+        },
     };
 
-    for (const QString &mp4Path : mp4Paths) {
-        const QFileInfo info(mp4Path);
+    for (const auto &aviSet : aviSets) {
+        const QFileInfo info(aviSet.aviPath);
         if (!info.exists() || info.size() <= 0) {
             errorMessage =
-                QStringLiteral("MP4 缺失或为空：%1").arg(mp4Path);
+                QStringLiteral("AVI 缺失或为空：%1").arg(aviSet.aviPath);
             return false;
         }
 
-        QString probeError;
-        const int frames = countVideoFrames(mp4Path, probeError);
-        if (frames != expectedFrames) {
+        if (info.size() != aviSet.expectedBytes) {
             errorMessage =
-                probeError.isEmpty()
-                    ? QStringLiteral(
-                        "MP4 帧数不匹配：%1（期望 %2）"
-                    ).arg(mp4Path).arg(expectedFrames)
-                    : probeError;
+                QStringLiteral(
+                    "AVI 文件大小不匹配：%1（期望 %2 字节，实际 %3 字节）"
+                ).arg(aviSet.aviPath)
+                    .arg(aviSet.expectedBytes)
+                    .arg(info.size());
+            return false;
+        }
+
+        if (aviSet.expectedVideoFrames != expectedFrames) {
+            errorMessage =
+                QStringLiteral(
+                    "AVI 帧数记录不匹配：%1（期望 %2）"
+                ).arg(aviSet.aviPath).arg(expectedFrames);
             return false;
         }
     }
@@ -598,56 +483,6 @@ QString currentJobLockPath(const QString &projectPath)
 {
     return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
         .filePath(currentJobName(projectPath) + QStringLiteral(".lck"));
-}
-
-QString bundledFfmpegPath()
-{
-    return QDir(QCoreApplication::applicationDirPath())
-        .filePath(QStringLiteral("tools/ffmpeg/ffmpeg.exe"));
-}
-
-QString bundledFfprobePath()
-{
-    return QDir(QCoreApplication::applicationDirPath())
-        .filePath(QStringLiteral("tools/ffmpeg/ffprobe.exe"));
-}
-
-bool bundledFfmpegAvailable(QString &errorMessage)
-{
-    const QString ffmpegPath = bundledFfmpegPath();
-    const QString ffprobePath = bundledFfprobePath();
-
-    if (!QFile::exists(ffmpegPath)) {
-        errorMessage =
-            QStringLiteral(
-                "后处理组件缺失：\n%1\n\n"
-                "请重新安装完整程序。"
-            ).arg(ffmpegPath);
-        return false;
-    }
-
-    if (!QFile::exists(ffprobePath)) {
-        errorMessage =
-            QStringLiteral(
-                "后处理组件缺失：\n%1\n\n"
-                "请重新安装完整程序。"
-            ).arg(ffprobePath);
-        return false;
-    }
-
-    if (!runVersionCheck(ffmpegPath, errorMessage)) {
-        return false;
-    }
-
-    if (!runVersionCheck(ffprobePath, errorMessage)) {
-        return false;
-    }
-
-    if (!ffmpegHasLibx264Encoder(ffmpegPath, errorMessage)) {
-        return false;
-    }
-
-    return true;
 }
 
 } // namespace ProjectInputHash

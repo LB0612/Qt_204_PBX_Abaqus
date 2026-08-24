@@ -535,12 +535,6 @@ bool SimulationManager::checkReady(QString &errorMessage) const
         return false;
     }
 
-    QString ffmpegError;
-    if (!ProjectInputHash::bundledFfmpegAvailable(ffmpegError)) {
-        errorMessage = ffmpegError;
-        return false;
-    }
-
     return true;
 }
 
@@ -665,7 +659,7 @@ void SimulationManager::appendProcessLog(
                     );
                 emit progressUpdated(qBound(70, percent, 99));
             }
-        } else if (text.contains(QStringLiteral("MP4 generated"))) {
+        } else if (text.contains(QStringLiteral("AVI generated"))) {
             emit progressUpdated(95);
         }
     }
@@ -1127,14 +1121,6 @@ QProcessEnvironment SimulationManager::buildT2ProcessEnvironment() const
     QProcessEnvironment env =
         QProcessEnvironment::systemEnvironment();
 
-    env.insert(
-        QStringLiteral("PBX_FFMPEG_EXE"),
-        ProjectInputHash::bundledFfmpegPath()
-    );
-    env.insert(
-        QStringLiteral("PBX_FFPROBE_EXE"),
-        ProjectInputHash::bundledFfprobePath()
-    );
     env.insert(
         QStringLiteral("PBX_POST_SHA256"),
         calculatePostFingerprint()

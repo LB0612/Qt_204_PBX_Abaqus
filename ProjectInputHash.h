@@ -7,7 +7,7 @@ namespace ProjectInputHash {
 
 constexpr int GENERATION_MANIFEST_VERSION = 2;
 constexpr int CALCULATION_PIPELINE_VERSION = 2;
-constexpr int POSTPROCESS_PIPELINE_VERSION = 1;
+constexpr int POSTPROCESS_PIPELINE_VERSION = 2;
 
 QString hashConfigFiles(const QString &projectPath);
 QString hashGeneratedFiles(const QString &projectPath);
@@ -34,6 +34,9 @@ struct PostProcessManifest
     int cureVideoFrames = 0;
     int temperatureVideoFrames = 0;
     int stressVideoFrames = 0;
+    qint64 cureVideoBytes = 0;
+    qint64 temperatureVideoBytes = 0;
+    qint64 stressVideoBytes = 0;
     int videoFps = 0;
     bool valid = false;
 };
@@ -49,7 +52,6 @@ bool writeGenerationManifest(
 PostProcessManifest readPostProcessManifest(const QString &projectPath);
 
 bool isValidPngFile(const QString &path);
-int countVideoFrames(const QString &videoPath, QString &errorMessage);
 bool validatePostProcessOutputs(const QString &projectPath, QString &errorMessage);
 
 QString resultsDirectory(const QString &projectPath);
@@ -64,10 +66,6 @@ QString solverOdbPath(const QString &projectPath);
 
 QString currentJobName(const QString &projectPath);
 QString currentJobLockPath(const QString &projectPath);
-
-QString bundledFfmpegPath();
-QString bundledFfprobePath();
-bool bundledFfmpegAvailable(QString &errorMessage);
 
 } // namespace ProjectInputHash
 
