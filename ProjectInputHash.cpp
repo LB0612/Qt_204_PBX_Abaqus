@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QSaveFile>
 
 namespace ProjectInputHash {
@@ -112,8 +113,7 @@ bool ffmpegHasLibx264Encoder(
         ffmpegPath,
         {
             QStringLiteral("-hide_banner"),
-            QStringLiteral("-h"),
-            QStringLiteral("encoder=libx264"),
+            QStringLiteral("-encoders"),
         }
     );
 
@@ -123,11 +123,20 @@ bool ffmpegHasLibx264Encoder(
         return false;
     }
 
-    if (!process.waitForFinished(10000)) {
+    if (!process.waitForFinished(30000)) {
         process.kill();
         process.waitForFinished(3000);
         errorMessage =
             QStringLiteral("FFmpeg 编码器检查无响应：%1").arg(ffmpegPath);
+        return false;
+    }
+
+    if (process.exitStatus() != QProcess::NormalExit
+        || process.exitCode() != 0) {
+        errorMessage =
+            QStringLiteral(
+                "FFmpeg 编码器列表检查失败：%1（exitCode=%2）"
+            ).arg(ffmpegPath).arg(process.exitCode());
         return false;
     }
 
@@ -137,7 +146,12 @@ bool ffmpegHasLibx264Encoder(
             + process.readAllStandardError()
         );
 
-    if (!output.contains(QStringLiteral("libx264"), Qt::CaseInsensitive)) {
+    static const QRegularExpression encoderLine(
+        QStringLiteral(R"(^\s*V[SDIANX\.]+\s+libx264\s)"),
+        QRegularExpression::MultilineOption
+    );
+
+    if (!encoderLine.match(output).hasMatch()) {
         errorMessage =
             QStringLiteral(
                 "当前 FFmpeg 未包含 libx264 编码器：\n%1\n\n"
@@ -428,11 +442,11 @@ int countVideoFrames(const QString &videoPath, QString &errorMessage)
         return -1;
     }
 
-    if (!process.waitForFinished(30000)) {
+    if (!process.waitForFinished(-1)) {
         process.kill();
         process.waitForFinished(3000);
         errorMessage =
-            QStringLiteral("FFprobe 超时：%1").arg(videoPath);
+            QStringLiteral("FFprobe 统计帧数失败：%1").arg(videoPath);
         return -1;
     }
 
