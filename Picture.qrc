@@ -1,20 +1,19 @@
 <RCC>
-    <qresource prefix="/new/prefix1">
-        <file>toolbar_picture/back.png</file>
-        <file>toolbar_picture/cailiaocanshu.png</file>
-        <file>toolbar_picture/check.png</file>
-        <file>toolbar_picture/close.png</file>
-        <file>toolbar_picture/closeall.png</file>
-        <file>toolbar_picture/create.png</file>
-        <file>toolbar_picture/fangzhenshezhi.png</file>
-        <file>toolbar_picture/file.png</file>
-        <file>toolbar_picture/help.png</file>
-        <file>toolbar_picture/information.png</file>
-        <file>toolbar_picture/jiegoucanshu.png</file>
-        <file>toolbar_picture/open.png</file>
-        <file>toolbar_picture/save.png</file>
-        <file>toolbar_picture/setup.png</file>
-        <file>toolbar_picture/start.png</file>
+    <qresource prefix="/toolbar">
+        <file alias="back.png">toolbar_picture/back.png</file>
+        <file alias="cailiaocanshu.png">toolbar_picture/cailiaocanshu.png</file>
+        <file alias="check.png">toolbar_picture/check.png</file>
+        <file alias="close.png">toolbar_picture/close.png</file>
+        <file alias="closeall.png">toolbar_picture/closeall.png</file>
+        <file alias="create.png">toolbar_picture/create.png</file>
+        <file alias="fangzhenshezhi.png">toolbar_picture/fangzhenshezhi.png</file>
+        <file alias="file.png">toolbar_picture/file.png</file>
+        <file alias="help.png">toolbar_picture/help.png</file>
+        <file alias="information.png">toolbar_picture/information.png</file>
+        <file alias="jiegoucanshu.png">toolbar_picture/jiegoucanshu.png</file>
+        <file alias="open.png">toolbar_picture/open.png</file>
+        <file alias="save.png">toolbar_picture/save.png</file>
+        <file alias="setup.png">toolbar_picture/setup.png</file>
+        <file alias="start.png">toolbar_picture/start.png</file>
     </qresource>
-
 </RCC>

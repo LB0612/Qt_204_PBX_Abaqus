@@ -125,7 +125,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     setStyleSheet(R"(
     QMainWindow {
-        border-image: url(:/new/prefix1/toolbar_picture/back.png) 0 0 0 0 stretch stretch;
+        border-image: url(:/toolbar/back.png) 0 0 0 0 stretch stretch;
     }
     )");
 
@@ -333,59 +333,59 @@ void MainWindow::createPureStyleToolBar()
         return act;
     };
 
-    addBtn(QStringLiteral("新建工程"), QStringLiteral(":/new/prefix1/toolbar_picture/create.png"), &MainWindow::newProject, false);
-    addBtn(QStringLiteral("打开工程"), QStringLiteral(":/new/prefix1/toolbar_picture/open.png"), &MainWindow::openProject, false);
+    addBtn(QStringLiteral("新建工程"), QStringLiteral(":/toolbar/create.png"), &MainWindow::newProject, false);
+    addBtn(QStringLiteral("打开工程"), QStringLiteral(":/toolbar/open.png"), &MainWindow::openProject, false);
 
-    QAction *saveAct = new QAction(QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/save.png")), QStringLiteral("保存工程"), this);
+    QAction *saveAct = new QAction(QIcon(QStringLiteral(":/toolbar/save.png")), QStringLiteral("保存工程"), this);
     connect(saveAct, &QAction::triggered, this, [this]() { saveProject(false); });
     toolBar->addAction(saveAct);
     projectDependentActions.append(saveAct);
 
-    addBtn(QStringLiteral("关闭工程"), QStringLiteral(":/new/prefix1/toolbar_picture/close.png"), &MainWindow::exitProject);
+    addBtn(QStringLiteral("关闭工程"), QStringLiteral(":/toolbar/close.png"), &MainWindow::exitProject);
 
     toolBar->addSeparator();
 
-    addBtn(QStringLiteral("工程信息"), QStringLiteral(":/new/prefix1/toolbar_picture/information.png"), &MainWindow::projectInfo);
+    addBtn(QStringLiteral("工程信息"), QStringLiteral(":/toolbar/information.png"), &MainWindow::projectInfo);
     addBtn(
         QStringLiteral("炸药参数"),
-        QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png"),
+        QStringLiteral(":/toolbar/cailiaocanshu.png"),
         &MainWindow::explosiveParams
     );
     addBtn(
         QStringLiteral("结构参数"),
-        QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"),
+        QStringLiteral(":/toolbar/jiegoucanshu.png"),
         &MainWindow::structureParams
     );
     addBtn(
         QStringLiteral("模具参数"),
-        QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png"),
+        QStringLiteral(":/toolbar/jiegoucanshu.png"),
         &MainWindow::moldParams
     );
     addBtn(
         QStringLiteral("边界条件"),
-        QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"),
+        QStringLiteral(":/toolbar/fangzhenshezhi.png"),
         &MainWindow::boundaryParams
     );
     addBtn(
         QStringLiteral("仿真设置"),
-        QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png"),
+        QStringLiteral(":/toolbar/fangzhenshezhi.png"),
         &MainWindow::simulationParams
     );
 
     toolBar->addSeparator();
 
-    addBtn(QStringLiteral("参数检查"), QStringLiteral(":/new/prefix1/toolbar_picture/check.png"), &MainWindow::checkParams);
+    addBtn(QStringLiteral("参数检查"), QStringLiteral(":/toolbar/check.png"), &MainWindow::checkParams);
     QAction *generateAction =
         addBtn(
             QStringLiteral("生成文件"),
-            QStringLiteral(":/new/prefix1/toolbar_picture/file.png"),
+            QStringLiteral(":/toolbar/file.png"),
             &MainWindow::generateFiles
         );
     simulationLockedActions << generateAction;
-    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/new/prefix1/toolbar_picture/start.png"), &MainWindow::showSimulationPreparePage);
+    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/toolbar/start.png"), &MainWindow::showSimulationPreparePage);
 
     stopSimulationAction = new QAction(
-        QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/close.png")),
+        QIcon(QStringLiteral(":/toolbar/close.png")),
         QStringLiteral("终止仿真"),
         this
     );
@@ -400,12 +400,12 @@ void MainWindow::createPureStyleToolBar()
 
     toolBar->addSeparator();
 
-    addBtn(QStringLiteral("系统设置"), QStringLiteral(":/new/prefix1/toolbar_picture/setup.png"), &MainWindow::settings, false);
-    addBtn(QStringLiteral("关于"), QStringLiteral(":/new/prefix1/toolbar_picture/help.png"), &MainWindow::help, false);
+    addBtn(QStringLiteral("系统设置"), QStringLiteral(":/toolbar/setup.png"), &MainWindow::settings, false);
+    addBtn(QStringLiteral("关于"), QStringLiteral(":/toolbar/help.png"), &MainWindow::help, false);
 
-    QAction *closeAppAct = new QAction(QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/closeall.png")), QStringLiteral("关闭"), this);
+    QAction *closeAppAct = new QAction(QIcon(QStringLiteral(":/toolbar/closeall.png")), QStringLiteral("关闭"), this);
     if (closeAppAct->icon().isNull()) {
-        closeAppAct->setIcon(QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/close.png")));
+        closeAppAct->setIcon(QIcon(QStringLiteral(":/toolbar/close.png")));
     }
     connect(closeAppAct, &QAction::triggered, this, &MainWindow::close);
     toolBar->addAction(closeAppAct);
@@ -458,7 +458,7 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
 
     QTreeWidgetItem *projectItem = new QTreeWidgetItem(root);
     projectItem->setText(0, name);
-    projectItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/file.png")));
+    projectItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/file.png")));
     projectItem->setData(0, Qt::UserRole, path);
     projectItem->setData(0, ROLE_NODE_TYPE, NODE_PROJECT);
     projectItem->setExpanded(true);
@@ -472,7 +472,7 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     infoItem->setText(0, QStringLiteral("工程信息"));
     infoItem->setData(0, Qt::UserRole, path);
     infoItem->setData(0, ROLE_NODE_TYPE, NODE_PROJECT_INFO);
-    infoItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/information.png")));
+    infoItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/information.png")));
 
     QFont childFont = infoItem->font(0);
     childFont.setPointSize(13);
@@ -483,49 +483,49 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     explosiveItem->setText(0, QStringLiteral("炸药参数"));
     explosiveItem->setData(0, Qt::UserRole, path);
     explosiveItem->setData(0, ROLE_NODE_TYPE, NODE_EXPLOSIVE);
-    explosiveItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/cailiaocanshu.png")));
+    explosiveItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/cailiaocanshu.png")));
     explosiveItem->setFont(0, childFont);
 
     QTreeWidgetItem *structureItem = new QTreeWidgetItem(projectItem);
     structureItem->setText(0, QStringLiteral("结构参数"));
     structureItem->setData(0, Qt::UserRole, path);
     structureItem->setData(0, ROLE_NODE_TYPE, NODE_STRUCTURE);
-    structureItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
+    structureItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/jiegoucanshu.png")));
     structureItem->setFont(0, childFont);
 
     QTreeWidgetItem *moldItem = new QTreeWidgetItem(projectItem);
     moldItem->setText(0, QStringLiteral("模具参数"));
     moldItem->setData(0, Qt::UserRole, path);
     moldItem->setData(0, ROLE_NODE_TYPE, NODE_MOLD);
-    moldItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/jiegoucanshu.png")));
+    moldItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/jiegoucanshu.png")));
     moldItem->setFont(0, childFont);
 
     QTreeWidgetItem *boundaryItem = new QTreeWidgetItem(projectItem);
     boundaryItem->setText(0, QStringLiteral("边界条件"));
     boundaryItem->setData(0, Qt::UserRole, path);
     boundaryItem->setData(0, ROLE_NODE_TYPE, NODE_BOUNDARY);
-    boundaryItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png")));
+    boundaryItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/fangzhenshezhi.png")));
     boundaryItem->setFont(0, childFont);
 
     QTreeWidgetItem *simulationItem = new QTreeWidgetItem(projectItem);
     simulationItem->setText(0, QStringLiteral("仿真设置"));
     simulationItem->setData(0, Qt::UserRole, path);
     simulationItem->setData(0, ROLE_NODE_TYPE, NODE_SIMULATION);
-    simulationItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/fangzhenshezhi.png")));
+    simulationItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/fangzhenshezhi.png")));
     simulationItem->setFont(0, childFont);
 
     QTreeWidgetItem *checkItem = new QTreeWidgetItem(projectItem);
     checkItem->setText(0, QStringLiteral("参数检查"));
     checkItem->setData(0, Qt::UserRole, path);
     checkItem->setData(0, ROLE_NODE_TYPE, NODE_PARAMETER_CHECK);
-    checkItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/check.png")));
+    checkItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/check.png")));
     checkItem->setFont(0, childFont);
 
     QTreeWidgetItem *startItem = new QTreeWidgetItem(projectItem);
     startItem->setText(0, QStringLiteral("开始仿真"));
     startItem->setData(0, Qt::UserRole, path);
     startItem->setData(0, ROLE_NODE_TYPE, NODE_START_SIMULATION);
-    startItem->setIcon(0, QIcon(QStringLiteral(":/new/prefix1/toolbar_picture/start.png")));
+    startItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/start.png")));
     startItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);

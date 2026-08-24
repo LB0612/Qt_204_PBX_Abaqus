@@ -1,11 +1,10 @@
-# Qt / CMake build artifacts
+# Qt / qmake build artifacts
 build/
 **/build/
-*_autogen/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
+release/
+debug/
 Makefile
+Makefile.*
 *.pro.user
 *.pro.user.*
 *.autosave
