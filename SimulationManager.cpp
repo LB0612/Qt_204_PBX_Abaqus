@@ -5,14 +5,15 @@
 #include "MoldConfigManager.h"
 #include "BoundaryConfigManager.h"
 #include "SimulationConfigManager.h"
+#include "ProjectInputHash.h"
 
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
+#include <QSaveFile>
 #include <QTimer>
-#include <QCryptographicHash>
 
 namespace {
 
@@ -42,22 +43,31 @@ bool promoteRunningInputFingerprint(const QString &projectDir)
     const QString runningPath = runningInputFingerprintPath(projectDir);
     const QString lastPath = lastSuccessInputFingerprintPath(projectDir);
 
-    if (!QFile::exists(runningPath)) {
+    QFile runningFile(runningPath);
+    if (!runningFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }
 
-    QFile::remove(lastPath);
+    const QByteArray content = runningFile.readAll().trimmed();
+    runningFile.close();
 
-    if (QFile::rename(runningPath, lastPath)) {
-        return true;
+    if (content.isEmpty()) {
+        return false;
     }
 
-    if (QFile::copy(runningPath, lastPath)) {
-        QFile::remove(runningPath);
-        return true;
+    QSaveFile lastFile(lastPath);
+    if (!lastFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        return false;
     }
 
-    return false;
+    lastFile.write(content);
+    lastFile.write("\n");
+    if (!lastFile.commit()) {
+        return false;
+    }
+
+    QFile::remove(runningPath);
+    return true;
 }
 
 } // namespace
@@ -251,35 +261,7 @@ void SimulationManager::handleTerminateRequestFailure(const QString &reason)
 
 QString SimulationManager::calculateInputFingerprint() const
 {
-    if (m_projectPath.isEmpty()) {
-        return QString();
-    }
-
-    static const QStringList relativePaths = {
-        QStringLiteral("config/structure.json"),
-        QStringLiteral("config/explosive.json"),
-        QStringLiteral("config/mold.json"),
-        QStringLiteral("config/boundary.json"),
-        QStringLiteral("config/simulation.json"),
-        QStringLiteral("abaqus/t0.py"),
-        QStringLiteral("abaqus/t1.py"),
-        QStringLiteral("abaqus/335K.for"),
-    };
-
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    const QDir projectDir(m_projectPath);
-
-    for (const QString &relativePath : relativePaths) {
-        QFile file(projectDir.filePath(relativePath));
-        if (!file.open(QIODevice::ReadOnly)) {
-            return QString();
-        }
-
-        hash.addData(relativePath.toUtf8());
-        hash.addData(file.readAll());
-    }
-
-    return QString::fromLatin1(hash.result().toHex());
+    return ProjectInputHash::hashSolverInput(m_projectPath);
 }
 
 bool SimulationManager::saveRunFingerprint(const QString &filePath) const
@@ -289,24 +271,24 @@ bool SimulationManager::saveRunFingerprint(const QString &filePath) const
         return false;
     }
 
-    QFile file(filePath);
+    QSaveFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
         return false;
     }
 
     file.write(fingerprint.toLatin1());
     file.write("\n");
-    return true;
+    return file.commit();
 }
 
-bool SimulationManager::fingerprintsMatch() const
+bool SimulationManager::fingerprintMatchesStored(
+    const QString &storedPath) const
 {
-    if (m_projectPath.isEmpty()) {
+    if (m_projectPath.isEmpty() || storedPath.isEmpty()) {
         return false;
     }
 
-    const QString lastPath = lastSuccessInputFingerprintPath(m_projectPath);
-    QFile file(lastPath);
+    QFile file(storedPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }
@@ -326,8 +308,29 @@ bool SimulationManager::fingerprintsMatch() const
     return stored == current;
 }
 
+bool SimulationManager::fingerprintsMatch() const
+{
+    return fingerprintMatchesStored(
+        lastSuccessInputFingerprintPath(m_projectPath)
+    );
+}
+
+bool SimulationManager::recoverSuccessFingerprintIfPossible()
+{
+    if (m_projectPath.isEmpty()) {
+        return false;
+    }
+
+    const QString runningPath = runningInputFingerprintPath(m_projectPath);
+    if (!fingerprintMatchesStored(runningPath)) {
+        return false;
+    }
+
+    return promoteRunningInputFingerprint(m_projectPath);
+}
+
 bool SimulationManager::hasValidPreviousResult(
-    QString &message) const
+    QString &message)
 {
     if (m_projectPath.isEmpty()) {
         return false;
@@ -376,7 +379,9 @@ bool SimulationManager::hasValidPreviousResult(
     }
 
     if (!fingerprintsMatch()) {
-        return false;
+        if (!recoverSuccessFingerprintIfPossible()) {
+            return false;
+        }
     }
 
     const QFileInfo flagInfo(flagPath);
@@ -402,32 +407,65 @@ bool SimulationManager::checkReady(QString &errorMessage) const
     const QString abaqusDir =
         QDir(projectDir).filePath(QStringLiteral("abaqus"));
 
-    const QString t0Path =
-        QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
-
     const QStringList files = {
-        t0Path,
+        QDir(abaqusDir).filePath(QStringLiteral("t0.py")),
         QDir(abaqusDir).filePath(QStringLiteral("t1.py")),
-        QDir(abaqusDir).filePath(QStringLiteral("335K.for"))
+        QDir(abaqusDir).filePath(QStringLiteral("335K.for")),
     };
 
-    for (const QString &file : files) {
-        if (!QFile::exists(file)) {
+    for (const QString &filePath : files) {
+        const QFileInfo info(filePath);
+
+        if (!info.exists()) {
             errorMessage =
-                QStringLiteral("缺少文件:\n%1").arg(file);
+                QStringLiteral("缺少文件:\n%1").arg(filePath);
+            return false;
+        }
+
+        if (info.size() <= 0) {
+            errorMessage =
+                QStringLiteral("Abaqus 生成文件无效：\n%1")
+                    .arg(filePath);
             return false;
         }
     }
 
-    const QString generationFlagPath =
-        QDir(abaqusDir).filePath(
-            QStringLiteral("generation_complete.flag")
-        );
+    const ProjectInputHash::GenerationManifest manifest =
+        ProjectInputHash::readGenerationManifest(projectDir);
 
-    if (!QFile::exists(generationFlagPath)) {
+    if (!manifest.valid) {
         errorMessage = QStringLiteral(
             "Abaqus 文件尚未完整生成，"
             "请重新点击“生成文件”。"
+        );
+        return false;
+    }
+
+    const QString currentConfigHash =
+        ProjectInputHash::hashConfigFiles(projectDir);
+    const QString currentGeneratedHash =
+        ProjectInputHash::hashGeneratedFiles(projectDir);
+
+    if (currentConfigHash.isEmpty() || currentGeneratedHash.isEmpty()) {
+        errorMessage = QStringLiteral(
+            "无法读取当前参数或 Abaqus 文件内容，"
+            "请重新生成文件。"
+        );
+        return false;
+    }
+
+    if (currentConfigHash != manifest.configSha256) {
+        errorMessage = QStringLiteral(
+            "当前保存参数与已生成的 Abaqus 文件不一致，"
+            "请重新生成文件后再开始仿真。"
+        );
+        return false;
+    }
+
+    if (currentGeneratedHash != manifest.generatedSha256) {
+        errorMessage = QStringLiteral(
+            "当前 Abaqus 文件与生成记录不一致，"
+            "请重新生成文件。"
         );
         return false;
     }
@@ -460,58 +498,6 @@ bool SimulationManager::checkReady(QString &errorMessage) const
     if (!SimulationConfigManager::load(projectDir, simulation)) {
         errorMessage = QStringLiteral("请先填写并保存仿真设置。");
         return false;
-    }
-
-    const QDateTime generationTime =
-        QFileInfo(generationFlagPath).lastModified();
-
-    const QStringList configFiles = {
-        QDir(projectDir).filePath(QStringLiteral("config/structure.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/explosive.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/mold.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/boundary.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/simulation.json"))
-    };
-
-    for (const QString &configFile : configFiles) {
-        const QFileInfo info(configFile);
-
-        if (!info.exists()) {
-            errorMessage = QStringLiteral(
-                "参数配置文件缺失，"
-                "请重新保存参数。"
-            );
-            return false;
-        }
-
-        if (info.lastModified() > generationTime) {
-            errorMessage = QStringLiteral(
-                "参数在 Abaqus 文件生成后"
-                "发生过修改，"
-                "请重新生成文件后再开始仿真。"
-            );
-            return false;
-        }
-    }
-
-    for (const QString &filePath : files) {
-        const QFileInfo info(filePath);
-
-        if (!info.exists() || info.size() <= 0) {
-            errorMessage =
-                QStringLiteral("Abaqus 生成文件无效：\n%1")
-                    .arg(filePath);
-            return false;
-        }
-
-        if (info.lastModified() > generationTime) {
-            errorMessage = QStringLiteral(
-                "Abaqus 文件在完整生成后"
-                "又发生过修改，"
-                "请重新生成文件。"
-            );
-            return false;
-        }
     }
 
     const QString abaqusPath = m_abaqusPath;
@@ -1062,15 +1048,37 @@ bool SimulationManager::hasLockFiles() const
         return false;
     }
 
-    const QDir abaqusDir(
-        QDir(m_projectPath).filePath(QStringLiteral("abaqus"))
-    );
-    const QStringList locks =
-        abaqusDir.entryList(
-            QStringList() << QStringLiteral("*.lck"),
-            QDir::Files
-        );
-    return !locks.isEmpty();
+    return QFile::exists(currentJobLockPath());
+}
+
+QString SimulationManager::currentJobLockPath() const
+{
+    if (m_projectPath.isEmpty()) {
+        return QString();
+    }
+
+    return ProjectInputHash::currentJobLockPath(m_projectPath);
+}
+
+bool SimulationManager::clearCurrentJobLock(QString &errorMessage) const
+{
+    const QString lockPath = currentJobLockPath();
+    if (lockPath.isEmpty()) {
+        errorMessage = QStringLiteral("当前未打开工程。");
+        return false;
+    }
+
+    if (!QFile::exists(lockPath)) {
+        errorMessage = QStringLiteral("当前 Job 锁文件不存在。");
+        return false;
+    }
+
+    if (!QFile::remove(lockPath)) {
+        errorMessage = QStringLiteral("无法删除当前 Job 锁文件。");
+        return false;
+    }
+
+    return true;
 }
 
 void SimulationManager::sendAbaqusTerminateCommand()

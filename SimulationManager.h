@@ -37,7 +37,10 @@ public:
 
     bool checkReady(QString &errorMessage) const;
     bool hasLockFiles() const;
-    bool hasValidPreviousResult(QString &message) const;
+    bool hasValidPreviousResult(QString &message);
+
+    QString currentJobLockPath() const;
+    bool clearCurrentJobLock(QString &errorMessage) const;
 
     void startTask(const QString &projectPath, const QString &abaqusPath);
     void stopTask();
@@ -87,6 +90,8 @@ private:
     QString calculateInputFingerprint() const;
     bool saveRunFingerprint(const QString &filePath) const;
     bool fingerprintsMatch() const;
+    bool fingerprintMatchesStored(const QString &storedPath) const;
+    bool recoverSuccessFingerprintIfPossible();
 
     QString m_projectPath;
     QString m_abaqusPath;

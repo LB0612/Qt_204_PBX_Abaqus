@@ -1,7 +1,10 @@
 #include "AbaqusFileGenerator.h"
 
+#include "ProjectInputHash.h"
+
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QSaveFile>
 #include <QStringList>
 
@@ -78,9 +81,6 @@ bool AbaqusFileGenerator::generate(
         );
 
     QFile::remove(generationFlagPath);
-    QFile::remove(t0OutputPath);
-    QFile::remove(t1OutputPath);
-    QFile::remove(forOutputPath);
 
     QString content;
     if (!loadTemplate(
@@ -161,13 +161,6 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    if (!saveFile(t0OutputPath, content, errorMessage)) {
-        return false;
-    }
-
-    // =========================================================
-    // 生成 335K.for
-    // =========================================================
     QString forContent;
     if (!loadTemplate(
             QStringLiteral(":/simulation/templates/335K.for"),
@@ -176,13 +169,6 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    if (!saveFile(forOutputPath, forContent, errorMessage)) {
-        return false;
-    }
-
-    // =========================================================
-    // 生成 t1.py
-    // =========================================================
     QString t1Content;
     if (!loadTemplate(
             QStringLiteral(":/simulation/templates/t1.py"),
@@ -265,6 +251,14 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
+    if (!saveFile(t0OutputPath, content, errorMessage)) {
+        return false;
+    }
+
+    if (!saveFile(forOutputPath, forContent, errorMessage)) {
+        return false;
+    }
+
     if (!saveFile(t1OutputPath, t1Content, errorMessage)) {
         return false;
     }
@@ -276,26 +270,28 @@ bool AbaqusFileGenerator::generate(
     };
 
     for (const QString &file : generatedFiles) {
-        if (!QFile::exists(file)) {
-            errorMessage = QStringLiteral("生成文件缺失：%1").arg(file);
+        const QFileInfo info(file);
+        if (!info.exists() || info.size() <= 0) {
+            errorMessage = QStringLiteral("生成文件缺失或无效：%1").arg(file);
             return false;
         }
     }
 
-    QSaveFile generationFlag(generationFlagPath);
-    if (!generationFlag.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        errorMessage = QStringLiteral(
-            "无法写入 Abaqus 文件生成完成标志。"
-        );
+    const QString configSha256 =
+        ProjectInputHash::hashConfigFiles(projectPath);
+    const QString generatedSha256 =
+        ProjectInputHash::hashGeneratedFiles(projectPath);
+
+    if (configSha256.isEmpty() || generatedSha256.isEmpty()) {
+        errorMessage = QStringLiteral("无法计算生成文件指纹。");
         return false;
     }
 
-    generationFlag.write(QByteArray("success\n"));
-
-    if (!generationFlag.commit()) {
-        errorMessage = QStringLiteral(
-            "Abaqus 文件生成完成标志保存失败。"
-        );
+    if (!ProjectInputHash::writeGenerationManifest(
+            projectPath,
+            configSha256,
+            generatedSha256,
+            errorMessage)) {
         return false;
     }
 

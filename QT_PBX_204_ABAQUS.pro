@@ -13,6 +13,7 @@ SOURCES += \
     ProjectManager.cpp \
     ProjectInfoWidget.cpp \
     SimulationManager.cpp \
+    ProjectInputHash.cpp \
     NewProjectDialog.cpp \
     OpenProjectDialog.cpp \
     SettingsDialog.cpp \
@@ -37,6 +38,7 @@ HEADERS += \
     ProjectManager.h \
     ProjectInfoWidget.h \
     SimulationManager.h \
+    ProjectInputHash.h \
     NewProjectDialog.h \
     OpenProjectDialog.h \
     SettingsDialog.h \
