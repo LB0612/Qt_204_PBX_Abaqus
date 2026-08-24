@@ -1,47 +1,328 @@
+#include <QProcess>
+
 #include "SimulationManager.h"
 
-#include "StructureConfigManager.h"
+#include "BoundaryConfigManager.h"
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
-#include "BoundaryConfigManager.h"
-#include "SimulationConfigManager.h"
 #include "ProjectInputHash.h"
+#include "SimulationConfigManager.h"
+#include "StructureConfigManager.h"
 
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QProcess>
+#include <QProcessEnvironment>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QTimer>
 
-namespace {
-
-QString runningInputFingerprintPath(const QString &projectDir)
+SimulationManager::SimulationManager(QObject *parent)
+    : QObject(parent)
 {
-    return QDir(QDir(projectDir).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("running_input.sha256"));
 }
 
-QString lastSuccessInputFingerprintPath(const QString &projectDir)
+SimulationManager::~SimulationManager()
 {
-    return QDir(QDir(projectDir).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("last_success_input.sha256"));
+    if (simulationTimer) {
+        simulationTimer->stop();
+    }
+    if (abaqusProcess && abaqusProcess->state() != QProcess::NotRunning) {
+        abaqusProcess->kill();
+        abaqusProcess->waitForFinished(3000);
+    }
 }
 
-void removeRunningInputFingerprint(const QString &projectDir)
+SimulationState SimulationManager::state() const
 {
-    if (projectDir.isEmpty()) {
-        return;
+    return simulationState;
+}
+
+QString SimulationManager::projectPath() const
+{
+    return m_projectPath;
+}
+
+bool SimulationManager::isActive() const
+{
+    return simulationState == SimulationState::T0Running
+        || simulationState == SimulationState::T1Running
+        || simulationState == SimulationState::T2Running
+        || simulationState == SimulationState::Stopping;
+}
+
+QString SimulationManager::activeProjectPath() const
+{
+    return runningProjectPath.isEmpty()
+        ? m_projectPath
+        : runningProjectPath;
+}
+
+QString SimulationManager::activeJobLockPath() const
+{
+    const QString projectPath = activeProjectPath();
+    if (projectPath.isEmpty()) {
+        return QString();
     }
 
-    QFile::remove(runningInputFingerprintPath(projectDir));
+    return ProjectInputHash::currentJobLockPath(projectPath);
 }
 
-bool promoteRunningInputFingerprint(const QString &projectDir)
+void SimulationManager::setProjectContext(
+    const QString &projectPath,
+    const QString &abaqusPath)
 {
-    const QString runningPath = runningInputFingerprintPath(projectDir);
-    const QString lastPath = lastSuccessInputFingerprintPath(projectDir);
+    m_projectPath = projectPath;
+    m_abaqusPath = abaqusPath;
+}
+
+void SimulationManager::setForceFullRerun(bool forceFullRerun)
+{
+    m_forceFullRerun = forceFullRerun;
+}
+
+void SimulationManager::setSimulationState(SimulationState state)
+{
+    if (simulationState == state) {
+        return;
+    }
+    simulationState = state;
+    emit stateChanged(simulationState);
+}
+
+void SimulationManager::startTask(
+    const QString &projectPath,
+    const QString &abaqusPath)
+{
+    m_projectPath = projectPath;
+    m_abaqusPath = abaqusPath;
+    startTaskInternal();
+}
+
+SimulationResumeMode SimulationManager::detectResumeMode() const
+{
+    if (m_forceFullRerun) {
+        return SimulationResumeMode::FullRun;
+    }
+
+    if (hasCompletePostProcess()) {
+        return SimulationResumeMode::AlreadyComplete;
+    }
+
+    if (hasValidSolverResult()) {
+        return SimulationResumeMode::PostProcessOnly;
+    }
+
+    return SimulationResumeMode::FullRun;
+}
+
+QString SimulationManager::resumeModeMessage(
+    SimulationResumeMode mode) const
+{
+    switch (mode) {
+    case SimulationResumeMode::PostProcessOnly:
+        return QStringLiteral(
+            "Abaqus 求解已完成，检测到后处理尚未完整完成。"
+            "继续运行将仅恢复图片/视频生成，不会重新进行 Abaqus 求解。");
+    case SimulationResumeMode::AlreadyComplete:
+        return QStringLiteral(
+            "当前计算及后处理结果已经完整生成，无需重复运行。");
+    case SimulationResumeMode::FullRun:
+        return QString();
+    }
+
+    return QString();
+}
+
+bool SimulationManager::hasValidPreviousResult(QString &message)
+{
+    if (m_projectPath.isEmpty()) {
+        return false;
+    }
+
+    if (!hasCompletePostProcess()) {
+        return false;
+    }
+
+    const QString projectDir = m_projectPath;
+    const QString odbPath = ProjectInputHash::solverOdbPath(projectDir);
+    const QString t2FlagPath =
+        ProjectInputHash::t2FinishedFlagPath(projectDir);
+
+    const QFileInfo flagInfo(t2FlagPath);
+    const QDateTime completedTime = flagInfo.lastModified();
+
+    message = QStringLiteral(
+        "检测到当前工程上一次仿真及后处理已经正常完成，"
+        "且当前输入与上一次完全一致。\n\n"
+        "完成时间：%1\n"
+        "结果文件：%2\n\n"
+        "通常不需要重复计算。"
+    ).arg(
+        completedTime.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")),
+        odbPath
+    );
+
+    return true;
+}
+
+bool SimulationManager::readSuccessFlag(const QString &flagPath) const
+{
+    QFile flagFile(flagPath);
+    if (!flagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    const QString flagContent =
+        QString::fromUtf8(flagFile.readAll()).trimmed();
+    flagFile.close();
+
+    return flagContent == QStringLiteral("success");
+}
+
+bool SimulationManager::hasValidSolverResult() const
+{
+    if (m_projectPath.isEmpty()) {
+        return false;
+    }
+
+    const QString projectDir = m_projectPath;
+
+    if (!readSuccessFlag(ProjectInputHash::t1FinishedFlagPath(projectDir))) {
+        return false;
+    }
+
+    if (!QFile::exists(ProjectInputHash::solverOdbPath(projectDir))) {
+        return false;
+    }
+
+    if (QFile::exists(ProjectInputHash::currentJobLockPath(projectDir))) {
+        return false;
+    }
+
+    if (!fingerprintsMatch()) {
+        if (!const_cast<SimulationManager *>(this)
+                ->recoverSuccessFingerprintIfPossible()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool SimulationManager::hasCompletePostProcess() const
+{
+    if (m_projectPath.isEmpty()) {
+        return false;
+    }
+
+    if (!hasValidSolverResult()) {
+        return false;
+    }
+
+    const QString projectDir = m_projectPath;
+
+    if (!readSuccessFlag(ProjectInputHash::t2FinishedFlagPath(projectDir))) {
+        return false;
+    }
+
+    if (!postFingerprintsMatch()) {
+        if (!const_cast<SimulationManager *>(this)
+                ->recoverSuccessPostFingerprintIfPossible()) {
+            return false;
+        }
+    }
+
+    const ProjectInputHash::PostProcessManifest manifest =
+        ProjectInputHash::readPostProcessManifest(projectDir);
+
+    if (!manifest.valid) {
+        return false;
+    }
+
+    const QString currentPost = calculatePostFingerprint();
+    if (currentPost.isEmpty()
+        || manifest.postSha256 != currentPost) {
+        return false;
+    }
+
+    return true;
+}
+
+QString SimulationManager::calculateInputFingerprint() const
+{
+    return ProjectInputHash::hashSolverInput(m_projectPath);
+}
+
+QString SimulationManager::calculatePostFingerprint() const
+{
+    return ProjectInputHash::hashPostProcessInput(m_projectPath);
+}
+
+bool SimulationManager::saveRunFingerprint(
+    const QString &filePath,
+    const QString &fingerprint) const
+{
+    if (fingerprint.isEmpty()) {
+        return false;
+    }
+
+    QSaveFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        return false;
+    }
+
+    file.write(fingerprint.toLatin1());
+    file.write("\n");
+    return file.commit();
+}
+
+bool SimulationManager::fingerprintMatchesStored(
+    const QString &storedPath,
+    const QString &currentFingerprint) const
+{
+    if (m_projectPath.isEmpty()
+        || storedPath.isEmpty()
+        || currentFingerprint.isEmpty()) {
+        return false;
+    }
+
+    QFile file(storedPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    const QString stored =
+        QString::fromLatin1(file.readAll()).trimmed();
+    file.close();
+
+    return !stored.isEmpty() && stored == currentFingerprint;
+}
+
+bool SimulationManager::fingerprintsMatch() const
+{
+    return fingerprintMatchesStored(
+        ProjectInputHash::lastSuccessInputFingerprintPath(m_projectPath),
+        calculateInputFingerprint()
+    );
+}
+
+bool SimulationManager::postFingerprintsMatch() const
+{
+    return fingerprintMatchesStored(
+        ProjectInputHash::lastSuccessPostFingerprintPath(m_projectPath),
+        calculatePostFingerprint()
+    );
+}
+
+bool SimulationManager::promoteRunningInputFingerprint(
+    const QString &projectPath) const
+{
+    const QString runningPath =
+        ProjectInputHash::runningInputFingerprintPath(projectPath);
+    const QString lastPath =
+        ProjectInputHash::lastSuccessInputFingerprintPath(projectPath);
 
     QFile runningFile(runningPath);
     if (!runningFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -70,254 +351,39 @@ bool promoteRunningInputFingerprint(const QString &projectDir)
     return true;
 }
 
-} // namespace
-
-
-SimulationManager::SimulationManager(QObject *parent)
-    : QObject(parent)
+bool SimulationManager::promoteRunningPostFingerprint(
+    const QString &projectPath) const
 {
-}
+    const QString runningPath =
+        ProjectInputHash::runningPostFingerprintPath(projectPath);
+    const QString lastPath =
+        ProjectInputHash::lastSuccessPostFingerprintPath(projectPath);
 
-SimulationManager::~SimulationManager()
-{
-    if (simulationTimer) {
-        simulationTimer->stop();
-    }
-    if (abaqusProcess && abaqusProcess->state() != QProcess::NotRunning) {
-        abaqusProcess->kill();
-        abaqusProcess->waitForFinished(3000);
-    }
-}
-
-SimulationState SimulationManager::state() const
-{
-    return simulationState;
-}
-
-QString SimulationManager::projectPath() const
-{
-    return m_projectPath;
-}
-
-QString SimulationManager::activeProjectPath() const
-{
-    return runningProjectPath.isEmpty()
-        ? m_projectPath
-        : runningProjectPath;
-}
-
-QString SimulationManager::activeJobLockPath() const
-{
-    const QString projectPath = activeProjectPath();
-    if (projectPath.isEmpty()) {
-        return QString();
-    }
-
-    return ProjectInputHash::currentJobLockPath(projectPath);
-}
-
-void SimulationManager::setProjectContext(const QString &projectPath, const QString &abaqusPath)
-{
-    m_projectPath = projectPath;
-    m_abaqusPath = abaqusPath;
-}
-
-void SimulationManager::startTask(const QString &projectPath, const QString &abaqusPath)
-{
-    m_projectPath = projectPath;
-    m_abaqusPath = abaqusPath;
-    startTaskInternal();
-}
-
-void SimulationManager::continueLockWait()
-{
-    if (m_lockWaitTimer) {
-        m_lockWaitTries = 0;
-        m_lockWaitTimer->start();
-    }
-}
-
-void SimulationManager::respondToForceKillPrompt(bool continueWaiting)
-{
-    if (!m_lockWaitPath.isEmpty() && !QFile::exists(m_lockWaitPath)) {
-        if (m_lockWaitTimer) {
-            m_lockWaitTimer->deleteLater();
-            m_lockWaitTimer = nullptr;
-        }
-        m_lockWaitTries = 0;
-        m_lockWaitPath.clear();
-        onAbaqusJobTerminateFinished();
-        return;
-    }
-
-    if (continueWaiting) {
-        continueLockWait();
-        return;
-    }
-
-    if (m_lockWaitTimer) {
-        m_lockWaitTimer->deleteLater();
-        m_lockWaitTimer = nullptr;
-    }
-    m_lockWaitTries = 0;
-    m_lockWaitPath.clear();
-
-    forceCloseTrackedProcesses();
-}
-
-bool SimulationManager::isActive() const
-{
-    return simulationState == SimulationState::T0Running
-        || simulationState == SimulationState::T1Running
-        || simulationState == SimulationState::Stopping;
-}
-
-void SimulationManager::setSimulationState(SimulationState state)
-{
-    if (simulationState == state) {
-        return;
-    }
-    simulationState = state;
-    emit stateChanged(simulationState);
-}
-
-void SimulationManager::clearRunningSimulationContext(
-    const bool removeRunningFingerprint)
-{
-    const QString projectPath =
-        runningProjectPath.isEmpty()
-            ? m_projectPath
-            : runningProjectPath;
-    if (removeRunningFingerprint) {
-        removeRunningInputFingerprint(projectPath);
-    }
-
-    currentJobName.clear();
-    runningProjectPath.clear();
-    runningAbaqusPath.clear();
-
-    simulationMsgPath.clear();
-    simulationStaPath.clear();
-    simulationDatPath.clear();
-
-    simulationMsgReadOffset = 0;
-    simulationStaReadOffset = 0;
-    simulationMsgPending.clear();
-    simulationStaPending.clear();
-    simulationTotalTime = 0.0;
-}
-
-void SimulationManager::handleTerminateRequestFailure(const QString &reason)
-{
-    emit logReceived(
-        QStringLiteral("[ERROR] ") + reason
-    );
-
-    const QString lockPath = activeJobLockPath();
-
-    const bool processEnded =
-        !abaqusProcess
-        || abaqusProcess->state() == QProcess::NotRunning;
-
-    const bool lockGone =
-        currentJobName.isEmpty()
-        || !QFile::exists(lockPath);
-
-    if (processEnded) {
-        if (lockGone) {
-            emit logReceived(
-                QStringLiteral(
-                    "[SYS] 主仿真进程已结束且锁文件不存在，"
-                    "继续终止收尾"
-                )
-            );
-
-            onAbaqusJobTerminateFinished();
-            return;
-        }
-
-        emit statusChanged(
-            QStringLiteral("等待Abaqus释放Job锁")
-        );
-
-        emit logReceived(
-            QStringLiteral(
-                "[SYS] 主进程已结束，"
-                "但Job锁文件仍存在，继续等待释放"
-            )
-        );
-
-        waitForJobLockRelease(lockPath);
-        return;
-    }
-
-    simulationUserStopped = false;
-
-    setSimulationState(SimulationState::T1Running);
-
-    emit statusChanged(
-        QStringLiteral("终止请求失败，仿真仍在运行")
-    );
-
-    emit logReceived(
-        QStringLiteral("[ERROR] Abaqus Job 可能仍在运行")
-    );
-}
-
-QString SimulationManager::calculateInputFingerprint() const
-{
-    return ProjectInputHash::hashSolverInput(m_projectPath);
-}
-
-bool SimulationManager::saveRunFingerprint(const QString &filePath) const
-{
-    const QString fingerprint = calculateInputFingerprint();
-    if (fingerprint.isEmpty()) {
+    QFile runningFile(runningPath);
+    if (!runningFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }
 
-    QSaveFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+    const QByteArray content = runningFile.readAll().trimmed();
+    runningFile.close();
+
+    if (content.isEmpty()) {
         return false;
     }
 
-    file.write(fingerprint.toLatin1());
-    file.write("\n");
-    return file.commit();
-}
-
-bool SimulationManager::fingerprintMatchesStored(
-    const QString &storedPath) const
-{
-    if (m_projectPath.isEmpty() || storedPath.isEmpty()) {
+    QSaveFile lastFile(lastPath);
+    if (!lastFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
         return false;
     }
 
-    QFile file(storedPath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    lastFile.write(content);
+    lastFile.write("\n");
+    if (!lastFile.commit()) {
         return false;
     }
 
-    const QString stored = QString::fromLatin1(file.readAll()).trimmed();
-    file.close();
-
-    if (stored.isEmpty()) {
-        return false;
-    }
-
-    const QString current = calculateInputFingerprint();
-    if (current.isEmpty()) {
-        return false;
-    }
-
-    return stored == current;
-}
-
-bool SimulationManager::fingerprintsMatch() const
-{
-    return fingerprintMatchesStored(
-        lastSuccessInputFingerprintPath(m_projectPath)
-    );
+    QFile::remove(runningPath);
+    return true;
 }
 
 bool SimulationManager::recoverSuccessFingerprintIfPossible()
@@ -326,84 +392,34 @@ bool SimulationManager::recoverSuccessFingerprintIfPossible()
         return false;
     }
 
-    const QString runningPath = runningInputFingerprintPath(m_projectPath);
-    if (!fingerprintMatchesStored(runningPath)) {
+    const QString runningPath =
+        ProjectInputHash::runningInputFingerprintPath(m_projectPath);
+
+    if (!fingerprintMatchesStored(
+            runningPath,
+            calculateInputFingerprint())) {
         return false;
     }
 
     return promoteRunningInputFingerprint(m_projectPath);
 }
 
-bool SimulationManager::hasValidPreviousResult(
-    QString &message)
+bool SimulationManager::recoverSuccessPostFingerprintIfPossible()
 {
     if (m_projectPath.isEmpty()) {
         return false;
     }
 
-    const QString projectDir = m_projectPath;
+    const QString runningPath =
+        ProjectInputHash::runningPostFingerprintPath(m_projectPath);
 
-    const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
-
-    const QString jobName =
-        ProjectInputHash::currentJobName(projectDir);
-
-    const QString flagPath =
-        QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"));
-
-    const QString odbPath =
-        QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
-
-    const QString lockPath =
-        ProjectInputHash::currentJobLockPath(projectDir);
-
-    if (!QFile::exists(flagPath)) {
+    if (!fingerprintMatchesStored(
+            runningPath,
+            calculatePostFingerprint())) {
         return false;
     }
 
-    if (!QFile::exists(odbPath)) {
-        return false;
-    }
-
-    if (QFile::exists(lockPath)) {
-        return false;
-    }
-
-    QFile flagFile(flagPath);
-    if (!flagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    const QString flagContent =
-        QString::fromUtf8(flagFile.readAll()).trimmed();
-    flagFile.close();
-
-    if (flagContent != QStringLiteral("success")) {
-        return false;
-    }
-
-    if (!fingerprintsMatch()) {
-        if (!recoverSuccessFingerprintIfPossible()) {
-            return false;
-        }
-    }
-
-    const QFileInfo flagInfo(flagPath);
-    const QDateTime completedTime = flagInfo.lastModified();
-
-    message = QStringLiteral(
-        "检测到当前工程上一次仿真已经正常完成，"
-        "且当前计算输入与上一次完全一致。\n\n"
-        "完成时间：%1\n"
-        "结果文件：%2\n\n"
-        "通常不需要重复计算。"
-    ).arg(
-        completedTime.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")),
-        odbPath
-    );
-
-    return true;
+    return promoteRunningPostFingerprint(m_projectPath);
 }
 
 bool SimulationManager::checkReady(QString &errorMessage) const
@@ -415,6 +431,7 @@ bool SimulationManager::checkReady(QString &errorMessage) const
     const QStringList files = {
         QDir(abaqusDir).filePath(QStringLiteral("t0.py")),
         QDir(abaqusDir).filePath(QStringLiteral("t1.py")),
+        QDir(abaqusDir).filePath(QStringLiteral("t2.py")),
         QDir(abaqusDir).filePath(QStringLiteral("335K.for")),
     };
 
@@ -511,7 +528,140 @@ bool SimulationManager::checkReady(QString &errorMessage) const
         return false;
     }
 
+    QString ffmpegError;
+    if (!ProjectInputHash::bundledFfmpegAvailable(ffmpegError)) {
+        errorMessage = ffmpegError;
+        return false;
+    }
+
     return true;
+}
+
+void SimulationManager::prepareRunContext()
+{
+    const QString projectDir = m_projectPath;
+
+    runningProjectPath = projectDir;
+    runningAbaqusPath = m_abaqusPath;
+
+    const QString logsDir =
+        QDir(projectDir).filePath(QStringLiteral("logs"));
+    QDir().mkpath(logsDir);
+
+    t0LogPath = QDir(logsDir).filePath(QStringLiteral("t0.log"));
+    t1LogPath = QDir(logsDir).filePath(QStringLiteral("t1.log"));
+    t2LogPath = QDir(logsDir).filePath(QStringLiteral("t2.log"));
+
+    currentJobName = ProjectInputHash::currentJobName(projectDir);
+
+    simulationUserStopped = false;
+
+    emit monitorResetRequested();
+    emit progressUpdated(0);
+    emit jobChanged(currentJobName);
+    emit statusChanged(
+        QStringLiteral("正在启动 Abaqus...")
+    );
+    emit logReceived(
+        QStringLiteral("[SYS] 开始仿真")
+    );
+}
+
+void SimulationManager::clearRunArtifactsForFullRun()
+{
+    const QString projectDir = m_projectPath;
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+
+    QFile::remove(
+        QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"))
+    );
+    QFile::remove(
+        ProjectInputHash::t1FinishedFlagPath(projectDir)
+    );
+    QFile::remove(
+        ProjectInputHash::t2FinishedFlagPath(projectDir)
+    );
+    QFile::remove(
+        QDir(abaqusDir).filePath(QStringLiteral("stop.flag"))
+    );
+
+    auto clearLogFile = [](const QString &logPath) {
+        QFile logFile(logPath);
+        if (logFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            logFile.close();
+        }
+    };
+
+    clearLogFile(t0LogPath);
+    clearLogFile(t1LogPath);
+    clearLogFile(t2LogPath);
+
+    clearRunningPostContext(true);
+
+    const QString jobName = ProjectInputHash::currentJobName(projectDir);
+    QFile::remove(
+        QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg"))
+    );
+    QFile::remove(
+        QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"))
+    );
+    QFile::remove(
+        QDir(abaqusDir).filePath(jobName + QStringLiteral(".dat"))
+    );
+}
+
+void SimulationManager::appendProcessLog(
+    const QString &logPath,
+    const QByteArray &data,
+    bool isError)
+{
+    if (data.isEmpty()) {
+        return;
+    }
+
+    QFile logFile(logPath);
+    if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        logFile.write(data);
+    }
+
+    const QString text = QString::fromLocal8Bit(data);
+    if (text.contains(QStringLiteral("License Manager"))
+        || text.contains(QStringLiteral("checked out"))) {
+        emit logReceived(
+            QStringLiteral("[ABAQUS] ") + text
+        );
+    } else if (isError) {
+        emit logReceived(
+            QStringLiteral("[ERROR] ") + text
+        );
+    } else {
+        emit logReceived(
+            QStringLiteral("[SYS] ") + text
+        );
+    }
+
+    if (simulationState == SimulationState::T2Running) {
+        const QRegularExpression framePattern(
+            QStringLiteral("exported frame (\\d+) / (\\d+)")
+        );
+        const QRegularExpressionMatch match =
+            framePattern.match(text);
+        if (match.hasMatch()) {
+            const int current = match.captured(1).toInt();
+            const int total = match.captured(2).toInt();
+            if (total > 0) {
+                const int percent =
+                    70 + static_cast<int>(
+                        (static_cast<double>(current + 1)
+                         / static_cast<double>(total + 1)) * 29.0
+                    );
+                emit progressUpdated(qBound(70, percent, 99));
+            }
+        } else if (text.contains(QStringLiteral("MP4 generated"))) {
+            emit progressUpdated(95);
+        }
+    }
 }
 
 void SimulationManager::startTaskInternal()
@@ -543,99 +693,79 @@ void SimulationManager::startTaskInternal()
         return;
     }
 
-    // m_projectPath 已是工程根目录，例如 D:/Test01
-    const QString projectDir = m_projectPath;
-    const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+    const SimulationResumeMode resumeMode = detectResumeMode();
+    const bool forceFullRerun = m_forceFullRerun;
+    m_forceFullRerun = false;
 
-    if (!saveRunFingerprint(runningInputFingerprintPath(projectDir))) {
+    if (resumeMode == SimulationResumeMode::AlreadyComplete
+        && !forceFullRerun) {
         emit errorOccurred(
-            QStringLiteral("仿真无法启动"),
-            QStringLiteral("无法记录本次仿真输入指纹。")
+            QStringLiteral("提示"),
+            resumeModeMessage(SimulationResumeMode::AlreadyComplete)
         );
         return;
     }
 
+    prepareRunContext();
+
+    if (resumeMode == SimulationResumeMode::PostProcessOnly
+        && !forceFullRerun) {
+        emit logReceived(
+            QStringLiteral(
+                "[SYS] 检测到有效求解结果，跳过后处理恢复运行"
+            )
+        );
+        emit phaseChanged(
+            QStringLiteral("阶段: 后处理恢复(t2)")
+        );
+
+        const QString postFingerprint = calculatePostFingerprint();
+        if (!saveRunFingerprint(
+                ProjectInputHash::runningPostFingerprintPath(m_projectPath),
+                postFingerprint)) {
+            emit errorOccurred(
+                QStringLiteral("仿真无法启动"),
+                QStringLiteral("无法记录本次后处理输入指纹。")
+            );
+            clearRunningSimulationContext(false);
+            return;
+        }
+
+        startT2Stage();
+        return;
+    }
+
+  // Full run
+    clearRunArtifactsForFullRun();
+
+    const QString inputFingerprint = calculateInputFingerprint();
+    if (!saveRunFingerprint(
+            ProjectInputHash::runningInputFingerprintPath(m_projectPath),
+            inputFingerprint)) {
+        emit errorOccurred(
+            QStringLiteral("仿真无法启动"),
+            QStringLiteral("无法记录本次仿真输入指纹。")
+        );
+        clearRunningSimulationContext(false);
+        return;
+    }
+
+    startT0Stage();
+}
+
+void SimulationManager::startT0Stage()
+{
+    const QString projectDir = activeProjectPath();
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
     const QString t0Path =
         QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
-    const QString t1Path =
-        QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
-
-    const QString abaqusPath = m_abaqusPath;
-
-    const QString logsDir =
-        QDir(projectDir).filePath(QStringLiteral("logs"));
-    QDir().mkpath(logsDir);
-    const QString t0LogPath =
-        QDir(logsDir).filePath(QStringLiteral("t0.log"));
-    const QString t1LogPath =
-        QDir(logsDir).filePath(QStringLiteral("t1.log"));
-
-    auto clearLogFile = [](const QString &logPath) {
-        QFile logFile(logPath);
-        if (logFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            logFile.close();
-        }
-    };
-    auto appendProcessLog =
-        [this](const QString &logPath, const QByteArray &data, bool isError) {
-            if (data.isEmpty()) {
-                return;
-            }
-            QFile logFile(logPath);
-            if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
-                logFile.write(data);
-            }
-            const QString text = QString::fromLocal8Bit(data);
-            if (text.contains(QStringLiteral("License Manager"))
-                || text.contains(QStringLiteral("checked out"))) {
-                emit logReceived(
-                    QStringLiteral("[ABAQUS] ") + text
-                );
-            } else if (isError) {
-                emit logReceived(
-                    QStringLiteral("[ERROR] ") + text
-                );
-            } else {
-                emit logReceived(
-                    QStringLiteral("[SYS] ") + text
-                );
-            }
-        };
-
-    clearLogFile(t0LogPath);
-    clearLogFile(t1LogPath);
-
-    QFile::remove(
-        QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"))
-    );
-    QFile::remove(
-        QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"))
-    );
-    QFile::remove(
-        QDir(abaqusDir).filePath(QStringLiteral("stop.flag"))
-    );
-
-    simulationUserStopped = false;
-
-    runningProjectPath = projectDir;
-    runningAbaqusPath = abaqusPath;
-
-    currentJobName.clear();
+    const QString abaqusPath = runningAbaqusPath;
 
     setSimulationState(SimulationState::T0Running);
-
-    emit monitorResetRequested();
-    emit progressUpdated(0);
-    emit jobChanged(QString());
-    emit statusChanged(
-        QStringLiteral("正在启动 Abaqus...")
-    );
+    emit progressUpdated(5);
     emit phaseChanged(
         QStringLiteral("阶段: 模型建立(t0)")
-    );
-    emit logReceived(
-        QStringLiteral("[SYS] 开始仿真")
     );
 
     if (abaqusProcess) {
@@ -643,7 +773,6 @@ void SimulationManager::startTaskInternal()
         abaqusProcess = nullptr;
     }
 
-    // ---------- 阶段 1：t0.py ----------
     QProcess *t0Process = new QProcess(this);
     abaqusProcess = t0Process;
     t0Process->setWorkingDirectory(abaqusDir);
@@ -652,7 +781,7 @@ void SimulationManager::startTaskInternal()
         t0Process,
         &QProcess::readyReadStandardOutput,
         this,
-        [this, t0Process, t0LogPath, appendProcessLog]() {
+        [this, t0Process]() {
             appendProcessLog(
                 t0LogPath,
                 t0Process->readAllStandardOutput(),
@@ -665,7 +794,7 @@ void SimulationManager::startTaskInternal()
         t0Process,
         &QProcess::readyReadStandardError,
         this,
-        [this, t0Process, t0LogPath, appendProcessLog]() {
+        [this, t0Process]() {
             appendProcessLog(
                 t0LogPath,
                 t0Process->readAllStandardError(),
@@ -678,352 +807,29 @@ void SimulationManager::startTaskInternal()
         t0Process,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [this, t0Process, t1Path, abaqusPath, abaqusDir, projectDir, t1LogPath, appendProcessLog](
-            int exitCode,
-            QProcess::ExitStatus exitStatus
-        ) {
-            if (abaqusProcess == t0Process) {
-                abaqusProcess = nullptr;
-            }
-            t0Process->deleteLater();
-
-            if (simulationUserStopped
-                || simulationState == SimulationState::Stopping
-                || simulationState == SimulationState::Stopped) {
-                return;
-            }
-
-            if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-                setSimulationState(SimulationState::Failed);
-                clearRunningSimulationContext();
-                emit statusChanged(
-                    QStringLiteral("t0.py 执行失败")
-                );
-                emit logReceived(
-                    QStringLiteral("[SYS] t0.py 执行失败")
-                );
-                emit errorOccurred(QStringLiteral("错误"), QStringLiteral("t0.py 执行失败。"));
-                return;
-            }
-
-            const QString caePath =
-                QDir(abaqusDir).filePath(QStringLiteral("guhua.cae"));
-            if (!QFile::exists(caePath)) {
-                setSimulationState(SimulationState::Failed);
-                clearRunningSimulationContext();
-                emit statusChanged(
-                    QStringLiteral("未生成 guhua.cae")
-                );
-                emit logReceived(
-                    QStringLiteral("[SYS] t0 执行完成，但未生成 guhua.cae")
-                );
-                emit errorOccurred(QStringLiteral("错误"), QStringLiteral("t0 执行完成，但未生成 guhua.cae。"));
-                return;
-            }
-
-            const QString flagPath =
-                QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"));
-
-            QFile flagFile(flagPath);
-            if (!flagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                setSimulationState(SimulationState::Failed);
-                clearRunningSimulationContext();
-                emit statusChanged(
-                    QStringLiteral("t0执行失败")
-                );
-                emit logReceived(
-                    QStringLiteral("[SYS] t0未生成完成标志")
-                );
-                emit errorOccurred(QStringLiteral("错误"), QStringLiteral("t0 未正常完成（缺少完成标志）。"));
-                return;
-            }
-
-            const QString flagContent =
-                QString::fromUtf8(flagFile.readAll()).trimmed();
-            flagFile.close();
-
-            if (flagContent != QStringLiteral("success")) {
-                setSimulationState(SimulationState::Failed);
-                clearRunningSimulationContext();
-                emit statusChanged(
-                    QStringLiteral("t0执行失败")
-                );
-                emit logReceived(
-                    QStringLiteral("[SYS] t0完成标志内容无效")
-                );
-                emit errorOccurred(QStringLiteral("错误"), QStringLiteral("t0 未正常完成（完成标志无效）。"));
-                return;
-            }
-
-            emit logReceived(
-                QStringLiteral("[SYS] 模型生成完成，启动 t1.py")
-            );
-            emit statusChanged(
-                QStringLiteral("Abaqus 求解中")
-            );
-            emit phaseChanged(
-                QStringLiteral("阶段: Abaqus求解(t1)")
-            );
-            setSimulationState(SimulationState::T1Running);
-
-            // ---------- 阶段 2：t1.py（t0 成功后新建进程）----------
-            abaqusProcess = new QProcess(this);
-            abaqusProcess->setWorkingDirectory(abaqusDir);
-
-            connect(
-                abaqusProcess,
-                &QProcess::readyReadStandardOutput,
-                this,
-                [this, t1LogPath, appendProcessLog]() {
-                    if (abaqusProcess) {
-                        appendProcessLog(
-                            t1LogPath,
-                            abaqusProcess->readAllStandardOutput(),
-                            false
-                        );
-                    }
-                }
-            );
-
-            connect(
-                abaqusProcess,
-                &QProcess::readyReadStandardError,
-                this,
-                [this, t1LogPath, appendProcessLog]() {
-                    if (abaqusProcess) {
-                        appendProcessLog(
-                            t1LogPath,
-                            abaqusProcess->readAllStandardError(),
-                            true
-                        );
-                    }
-                }
-            );
-
-            const QString jobName =
-                ProjectInputHash::currentJobName(projectDir);
-            currentJobName = jobName;
-            emit jobChanged(jobName);
-            simulationMsgPath =
-                QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg"));
-            simulationStaPath =
-                QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"));
-            simulationDatPath =
-                QDir(abaqusDir).filePath(jobName + QStringLiteral(".dat"));
-            simulationTotalTime = loadSimulationTotalTime();
-            simulationMsgReadOffset = 0;
-            simulationStaReadOffset = 0;
-            simulationMsgPending.clear();
-            simulationStaPending.clear();
-
-            QFile::remove(simulationMsgPath);
-            QFile::remove(simulationStaPath);
-            QFile::remove(simulationDatPath);
-
-            const QString odbPath =
-                QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
-            const QString t1FlagPath =
-                QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"));
-
-            connect(
-                abaqusProcess,
-                QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                this,
-                [this, odbPath, t1FlagPath](
-                    int t1ExitCode,
-                    QProcess::ExitStatus exitStatus
-                ) {
-                    if (abaqusProcess) {
-                        abaqusProcess->deleteLater();
-                        abaqusProcess = nullptr;
-                    }
-
-                    if (simulationTimer) {
-                        simulationTimer->stop();
-                    }
-
-                    if (simulationUserStopped
-                        || simulationState == SimulationState::Stopping
-                        || simulationState == SimulationState::Stopped) {
-                        return;
-                    }
-
-                    if (exitStatus != QProcess::NormalExit || t1ExitCode != 0) {
-                        setSimulationState(SimulationState::Failed);
-                        clearRunningSimulationContext();
-                        emit statusChanged(
-                            QStringLiteral("t1.py 执行失败")
-                        );
-                        emit logReceived(
-                            QStringLiteral("[SYS] t1.py 执行失败")
-                        );
-                        emit errorOccurred(QStringLiteral("错误"), QStringLiteral("t1.py 执行失败。"));
-                        return;
-                    }
-
-                    if (!QFile::exists(odbPath)) {
-                        setSimulationState(SimulationState::Failed);
-                        clearRunningSimulationContext();
-                        emit statusChanged(
-                            QStringLiteral("Abaqus 未生成计算结果")
-                        );
-                        emit logReceived(
-                            QStringLiteral("[SYS] Abaqus 未生成计算结果 ODB")
-                        );
-                        emit errorOccurred(QStringLiteral("错误"), QStringLiteral(
-                                "Abaqus 未生成计算结果。\n\n"
-                                "可能原因：\n"
-                                "1. 用户中断计算\n"
-                                "2. Abaqus 求解失败\n"
-                                "3. 用户子程序错误"
-                            ));
-                        return;
-                    }
-
-                    if (!QFile::exists(t1FlagPath)) {
-                        setSimulationState(SimulationState::Failed);
-                        clearRunningSimulationContext();
-                        emit statusChanged(
-                            QStringLiteral("t1未正常完成")
-                        );
-                        emit logReceived(
-                            QStringLiteral("[SYS] t1未生成完成标志")
-                        );
-                        emit errorOccurred(QStringLiteral("错误"), QStringLiteral("t1 未正常完成（缺少完成标志）。"));
-                        return;
-                    }
-
-                    QFile t1FlagFile(t1FlagPath);
-                    if (!t1FlagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                        setSimulationState(SimulationState::Failed);
-                        clearRunningSimulationContext();
-                        emit statusChanged(
-                            QStringLiteral("t1未正常完成")
-                        );
-                        emit logReceived(
-                            QStringLiteral("[SYS] t1完成标志无法读取")
-                        );
-                        emit errorOccurred(
-                            QStringLiteral("错误"),
-                            QStringLiteral("t1 未正常完成（无法读取完成标志）。")
-                        );
-                        return;
-                    }
-
-                    const QString t1FlagContent =
-                        QString::fromUtf8(t1FlagFile.readAll()).trimmed();
-                    t1FlagFile.close();
-
-                    if (t1FlagContent != QStringLiteral("success")) {
-                        setSimulationState(SimulationState::Failed);
-                        clearRunningSimulationContext();
-                        emit statusChanged(
-                            QStringLiteral("t1未正常完成")
-                        );
-                        emit logReceived(
-                            QStringLiteral("[SYS] t1完成标志内容无效")
-                        );
-                        emit errorOccurred(
-                            QStringLiteral("错误"),
-                            QStringLiteral("t1 未正常完成（完成标志无效）。")
-                        );
-                        return;
-                    }
-
-                    const QString finishedProjectPath =
-                        runningProjectPath.isEmpty()
-                            ? m_projectPath
-                            : runningProjectPath;
-                    const bool promoted =
-                        promoteRunningInputFingerprint(
-                            finishedProjectPath
-                        );
-
-                    setSimulationState(SimulationState::Finished);
-                    clearRunningSimulationContext(promoted);
-                    emit statusChanged(
-                        QStringLiteral("固化仿真完成")
-                    );
-                    emit phaseChanged(
-                        QStringLiteral("阶段: 完成")
-                    );
-                    emit progressUpdated(100);
-                    emit logReceived(
-                        QStringLiteral("[SYS] 固化仿真完成")
-                    );
-                    if (!promoted) {
-                        emit logReceived(
-                            QStringLiteral(
-                                "[SYS] 成功指纹写入失败，"
-                                "将在下次打开时恢复"
-                            )
-                        );
-                    }
-                    emit simulationFinished();
-                }
-            );
-
-            emit logReceived(
-                QStringLiteral("[SYS] 启动 t1.py")
-            );
-            abaqusProcess->start(
-                abaqusPath,
-                QStringList()
-                    << QStringLiteral("cae")
-                    << QStringLiteral("script=") + t1Path
-            );
-
-            if (!abaqusProcess->waitForStarted(10000)) {
-                abaqusProcess->deleteLater();
-                abaqusProcess = nullptr;
-                if (simulationTimer) {
-                    simulationTimer->stop();
-                }
-                setSimulationState(SimulationState::Failed);
-                clearRunningSimulationContext();
-                emit statusChanged(
-                    QStringLiteral("无法启动 t1.py")
-                );
-                emit errorOccurred(QStringLiteral("错误"), QStringLiteral("无法启动 t1.py。"));
-                return;
-            }
-
-            if (!simulationTimer) {
-                simulationTimer = new QTimer(this);
-                connect(
-                    simulationTimer,
-                    &QTimer::timeout,
-                    this,
-                    &SimulationManager::updateAbaqusLog
-                );
-            }
-            simulationTimer->start(1000);
-        }
+        &SimulationManager::handleT0Finished
     );
 
     emit logReceived(
         QStringLiteral("[SYS] 启动 t0.py")
     );
-    abaqusProcess->start(
+    t0Process->start(
         abaqusPath,
         QStringList()
             << QStringLiteral("cae")
             << QStringLiteral("script=") + t0Path
     );
 
-    if (!abaqusProcess->waitForStarted(10000)) {
-        abaqusProcess->deleteLater();
-        abaqusProcess = nullptr;
-
-        setSimulationState(SimulationState::Failed);
-        clearRunningSimulationContext();
-
-        emit statusChanged(
-            QStringLiteral("无法启动 t0.py")
+    if (!t0Process->waitForStarted(10000)) {
+        if (abaqusProcess == t0Process) {
+            abaqusProcess = nullptr;
+        }
+        t0Process->deleteLater();
+        failSolverStage(
+            QStringLiteral("无法启动 t0.py"),
+            QStringLiteral("[SYS] 无法启动 t0.py"),
+            QStringLiteral("无法启动 t0.py。")
         );
-
-        emit errorOccurred(QStringLiteral("错误"), QStringLiteral("无法启动 t0.py。"));
-
         return;
     }
 
@@ -1032,8 +838,603 @@ void SimulationManager::startTaskInternal()
     );
 }
 
+void SimulationManager::handleT0Finished(
+    int exitCode,
+    QProcess::ExitStatus exitStatus)
+{
+    QProcess *t0Process = abaqusProcess;
+    if (t0Process) {
+        if (abaqusProcess == t0Process) {
+            abaqusProcess = nullptr;
+        }
+        t0Process->deleteLater();
+    }
+
+    if (simulationUserStopped
+        || simulationState == SimulationState::Stopping
+        || simulationState == SimulationState::Stopped) {
+        return;
+    }
+
+    if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+        failSolverStage(
+            QStringLiteral("t0.py 执行失败"),
+            QStringLiteral("[SYS] t0.py 执行失败"),
+            QStringLiteral("t0.py 执行失败。")
+        );
+        return;
+    }
+
+    const QString projectDir = activeProjectPath();
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+
+    const QString caePath =
+        QDir(abaqusDir).filePath(QStringLiteral("guhua.cae"));
+    if (!QFile::exists(caePath)) {
+        failSolverStage(
+            QStringLiteral("未生成 guhua.cae"),
+            QStringLiteral("[SYS] t0 执行完成，但未生成 guhua.cae"),
+            QStringLiteral("t0 执行完成，但未生成 guhua.cae。")
+        );
+        return;
+    }
+
+    const QString flagPath =
+        QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"));
+    if (!readSuccessFlag(flagPath)) {
+        failSolverStage(
+            QStringLiteral("t0执行失败"),
+            QStringLiteral("[SYS] t0未正常完成"),
+            QStringLiteral("t0 未正常完成（缺少或无效完成标志）。")
+        );
+        return;
+    }
+
+    emit progressUpdated(10);
+    emit logReceived(
+        QStringLiteral("[SYS] 模型生成完成，启动 t1.py")
+    );
+    startT1Stage();
+}
+
+void SimulationManager::startT1Stage()
+{
+    const QString projectDir = activeProjectPath();
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+    const QString t1Path =
+        QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
+    const QString abaqusPath = runningAbaqusPath;
+
+    setSimulationState(SimulationState::T1Running);
+    emit statusChanged(
+        QStringLiteral("Abaqus 求解中")
+    );
+    emit phaseChanged(
+        QStringLiteral("阶段: Abaqus求解(t1)")
+    );
+
+    currentJobName = ProjectInputHash::currentJobName(projectDir);
+    emit jobChanged(currentJobName);
+
+    simulationMsgPath =
+        QDir(abaqusDir).filePath(currentJobName + QStringLiteral(".msg"));
+    simulationStaPath =
+        QDir(abaqusDir).filePath(currentJobName + QStringLiteral(".sta"));
+    simulationDatPath =
+        QDir(abaqusDir).filePath(currentJobName + QStringLiteral(".dat"));
+    simulationTotalTime = loadSimulationTotalTime();
+    simulationMsgReadOffset = 0;
+    simulationStaReadOffset = 0;
+    simulationMsgPending.clear();
+    simulationStaPending.clear();
+
+    QFile::remove(simulationMsgPath);
+    QFile::remove(simulationStaPath);
+    QFile::remove(simulationDatPath);
+
+    if (abaqusProcess) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
+
+    abaqusProcess = new QProcess(this);
+    abaqusProcess->setWorkingDirectory(abaqusDir);
+
+    connect(
+        abaqusProcess,
+        &QProcess::readyReadStandardOutput,
+        this,
+        [this]() {
+            if (abaqusProcess) {
+                appendProcessLog(
+                    t1LogPath,
+                    abaqusProcess->readAllStandardOutput(),
+                    false
+                );
+            }
+        }
+    );
+
+    connect(
+        abaqusProcess,
+        &QProcess::readyReadStandardError,
+        this,
+        [this]() {
+            if (abaqusProcess) {
+                appendProcessLog(
+                    t1LogPath,
+                    abaqusProcess->readAllStandardError(),
+                    true
+                );
+            }
+        }
+    );
+
+    connect(
+        abaqusProcess,
+        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this,
+        &SimulationManager::handleT1Finished
+    );
+
+    emit logReceived(
+        QStringLiteral("[SYS] 启动 t1.py")
+    );
+    abaqusProcess->start(
+        abaqusPath,
+        QStringList()
+            << QStringLiteral("cae")
+            << QStringLiteral("script=") + t1Path
+    );
+
+    if (!abaqusProcess->waitForStarted(10000)) {
+        if (simulationTimer) {
+            simulationTimer->stop();
+        }
+        QProcess *failedProcess = abaqusProcess;
+        abaqusProcess = nullptr;
+        if (failedProcess) {
+            failedProcess->deleteLater();
+        }
+        failSolverStage(
+            QStringLiteral("无法启动 t1.py"),
+            QStringLiteral("[SYS] 无法启动 t1.py"),
+            QStringLiteral("无法启动 t1.py。")
+        );
+        return;
+    }
+
+    if (!simulationTimer) {
+        simulationTimer = new QTimer(this);
+        connect(
+            simulationTimer,
+            &QTimer::timeout,
+            this,
+            &SimulationManager::updateAbaqusLog
+        );
+    }
+    simulationTimer->start(1000);
+}
+
+void SimulationManager::handleT1Finished(
+    int exitCode,
+    QProcess::ExitStatus exitStatus)
+{
+    if (abaqusProcess) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
+
+    if (simulationTimer) {
+        simulationTimer->stop();
+    }
+
+    if (simulationUserStopped
+        || simulationState == SimulationState::Stopping
+        || simulationState == SimulationState::Stopped) {
+        return;
+    }
+
+    if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+        failSolverStage(
+            QStringLiteral("t1.py 执行失败"),
+            QStringLiteral("[SYS] t1.py 执行失败"),
+            QStringLiteral("t1.py 执行失败。")
+        );
+        return;
+    }
+
+    const QString projectDir = activeProjectPath();
+    const QString odbPath = ProjectInputHash::solverOdbPath(projectDir);
+    const QString t1FlagPath =
+        ProjectInputHash::t1FinishedFlagPath(projectDir);
+
+    if (!QFile::exists(odbPath)) {
+        failSolverStage(
+            QStringLiteral("Abaqus 未生成计算结果"),
+            QStringLiteral("[SYS] Abaqus 未生成计算结果 ODB"),
+            QStringLiteral(
+                "Abaqus 未生成计算结果。\n\n"
+                "可能原因：\n"
+                "1. 用户中断计算\n"
+                "2. Abaqus 求解失败\n"
+                "3. 用户子程序错误"
+            )
+        );
+        return;
+    }
+
+    if (!readSuccessFlag(t1FlagPath)) {
+        failSolverStage(
+            QStringLiteral("t1未正常完成"),
+            QStringLiteral("[SYS] t1未正常完成"),
+            QStringLiteral("t1 未正常完成（缺少或无效完成标志）。")
+        );
+        return;
+    }
+
+    const bool promoted =
+        promoteRunningInputFingerprint(projectDir);
+    if (!promoted) {
+        emit logReceived(
+            QStringLiteral(
+                "[SYS] 求解成功指纹写入失败，"
+                "将在下次打开时恢复"
+            )
+        );
+    } else {
+        emit logReceived(
+            QStringLiteral("[SYS] 求解成功指纹已保存")
+        );
+    }
+
+    emit logReceived(
+        QStringLiteral("[SYS] Abaqus 求解完成，启动后处理")
+    );
+
+    const QString postFingerprint = calculatePostFingerprint();
+    if (!saveRunFingerprint(
+            ProjectInputHash::runningPostFingerprintPath(projectDir),
+            postFingerprint)) {
+        failPostProcessStage(
+            QStringLiteral("无法记录后处理指纹"),
+            QStringLiteral("[SYS] 无法记录后处理输入指纹"),
+            QStringLiteral(
+                "Abaqus 求解已经成功，但无法记录后处理输入指纹。"
+            )
+        );
+        return;
+    }
+
+    startT2Stage();
+}
+
+QProcessEnvironment SimulationManager::buildT2ProcessEnvironment() const
+{
+    QProcessEnvironment env =
+        QProcessEnvironment::systemEnvironment();
+
+    env.insert(
+        QStringLiteral("PBX_FFMPEG_EXE"),
+        ProjectInputHash::bundledFfmpegPath()
+    );
+    env.insert(
+        QStringLiteral("PBX_FFPROBE_EXE"),
+        ProjectInputHash::bundledFfprobePath()
+    );
+    env.insert(
+        QStringLiteral("PBX_POST_SHA256"),
+        calculatePostFingerprint()
+    );
+    env.insert(
+        QStringLiteral("PBX_T2_RESET"),
+        QStringLiteral("0")
+    );
+
+    return env;
+}
+
+void SimulationManager::startT2Stage()
+{
+    const QString projectDir = activeProjectPath();
+    const QString abaqusDir =
+        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+    const QString t2Path =
+        QDir(abaqusDir).filePath(QStringLiteral("t2.py"));
+    const QString abaqusPath = runningAbaqusPath;
+
+    setSimulationState(SimulationState::T2Running);
+    emit statusChanged(
+        QStringLiteral("后处理中")
+    );
+    emit phaseChanged(
+        QStringLiteral("阶段: 后处理(t2)")
+    );
+    emit progressUpdated(70);
+
+    QFile t2LogFile(t2LogPath);
+    if (t2LogFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        t2LogFile.close();
+    }
+
+    if (abaqusProcess) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
+
+    abaqusProcess = new QProcess(this);
+    abaqusProcess->setWorkingDirectory(abaqusDir);
+    abaqusProcess->setProcessEnvironment(buildT2ProcessEnvironment());
+
+    connect(
+        abaqusProcess,
+        &QProcess::readyReadStandardOutput,
+        this,
+        [this]() {
+            if (abaqusProcess) {
+                appendProcessLog(
+                    t2LogPath,
+                    abaqusProcess->readAllStandardOutput(),
+                    false
+                );
+            }
+        }
+    );
+
+    connect(
+        abaqusProcess,
+        &QProcess::readyReadStandardError,
+        this,
+        [this]() {
+            if (abaqusProcess) {
+                appendProcessLog(
+                    t2LogPath,
+                    abaqusProcess->readAllStandardError(),
+                    true
+                );
+            }
+        }
+    );
+
+    connect(
+        abaqusProcess,
+        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+        this,
+        &SimulationManager::handleT2Finished
+    );
+
+    emit logReceived(
+        QStringLiteral("[SYS] 启动 t2.py")
+    );
+    abaqusProcess->start(
+        abaqusPath,
+        QStringList()
+            << QStringLiteral("cae")
+            << QStringLiteral("script=") + t2Path
+    );
+
+    if (!abaqusProcess->waitForStarted(10000)) {
+        QProcess *failedProcess = abaqusProcess;
+        abaqusProcess = nullptr;
+        if (failedProcess) {
+            failedProcess->deleteLater();
+        }
+        failPostProcessStage(
+            QStringLiteral("无法启动 t2.py"),
+            QStringLiteral("[SYS] 无法启动 t2.py"),
+            QStringLiteral(
+                "Abaqus 求解已经成功，但无法启动后处理进程。"
+            )
+        );
+    }
+}
+
+void SimulationManager::handleT2Finished(
+    int exitCode,
+    QProcess::ExitStatus exitStatus)
+{
+    if (abaqusProcess) {
+        abaqusProcess->deleteLater();
+        abaqusProcess = nullptr;
+    }
+
+    if (simulationUserStopped
+        || simulationState == SimulationState::Stopping
+        || simulationState == SimulationState::Stopped) {
+        return;
+    }
+
+    if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+        failPostProcessStage(
+            QStringLiteral("t2.py 执行失败"),
+            QStringLiteral("[ERROR] Post-processing failed."),
+            QStringLiteral(
+                "Abaqus 求解已经成功，ODB 结果已安全保存，"
+                "但后处理未完整完成。再次开始仿真时将仅继续后处理，"
+                "不会重新进行 Abaqus 求解。"
+            )
+        );
+        return;
+    }
+
+    const QString projectDir = activeProjectPath();
+    const QString t2FlagPath =
+        ProjectInputHash::t2FinishedFlagPath(projectDir);
+
+    if (!readSuccessFlag(t2FlagPath)) {
+        failPostProcessStage(
+            QStringLiteral("后处理未正常完成"),
+            QStringLiteral("[ERROR] Post-processing failed."),
+            QStringLiteral(
+                "Abaqus 求解已经成功，ODB 结果已安全保存，"
+                "但后处理未完整完成。再次开始仿真时将仅继续后处理，"
+                "不会重新进行 Abaqus 求解。"
+            )
+        );
+        return;
+    }
+
+    const ProjectInputHash::PostProcessManifest manifest =
+        ProjectInputHash::readPostProcessManifest(projectDir);
+
+    if (!manifest.valid) {
+        failPostProcessStage(
+            QStringLiteral("后处理清单无效"),
+            QStringLiteral("[ERROR] Post-processing failed."),
+            QStringLiteral(
+                "Abaqus 求解已经成功，ODB 结果已安全保存，"
+                "但后处理清单无效。再次开始仿真时将仅继续后处理，"
+                "不会重新进行 Abaqus 求解。"
+            )
+        );
+        return;
+    }
+
+    const QString currentPost = calculatePostFingerprint();
+    if (currentPost.isEmpty()
+        || manifest.postSha256 != currentPost) {
+        failPostProcessStage(
+            QStringLiteral("后处理指纹不匹配"),
+            QStringLiteral("[ERROR] Post-processing failed."),
+            QStringLiteral(
+                "Abaqus 求解已经成功，ODB 结果已安全保存，"
+                "但后处理指纹不匹配。再次开始仿真时将仅继续后处理，"
+                "不会重新进行 Abaqus 求解。"
+            )
+        );
+        return;
+    }
+
+    const bool promoted =
+        promoteRunningPostFingerprint(projectDir);
+    if (!promoted) {
+        emit logReceived(
+            QStringLiteral(
+                "[SYS] 后处理成功指纹写入失败，"
+                "将在下次打开时恢复"
+            )
+        );
+    }
+
+    finishSimulationSuccess();
+}
+
+void SimulationManager::finishSimulationSuccess()
+{
+    setSimulationState(SimulationState::Finished);
+    clearRunningSimulationContext(false);
+    clearRunningPostContext(true);
+
+    emit statusChanged(
+        QStringLiteral("固化仿真完成")
+    );
+    emit phaseChanged(
+        QStringLiteral("阶段: 完成")
+    );
+    emit progressUpdated(100);
+    emit logReceived(
+        QStringLiteral("[SYS] 固化仿真完成")
+    );
+    emit simulationFinished();
+}
+
+void SimulationManager::failSolverStage(
+    const QString &statusText,
+    const QString &logText,
+    const QString &errorText)
+{
+    setSimulationState(SimulationState::Failed);
+    clearRunningSimulationContext(true);
+    clearRunningPostContext(true);
+
+    emit statusChanged(statusText);
+    emit logReceived(logText);
+    emit errorOccurred(QStringLiteral("错误"), errorText);
+}
+
+void SimulationManager::failPostProcessStage(
+    const QString &statusText,
+    const QString &logText,
+    const QString &errorText)
+{
+    setSimulationState(SimulationState::PostProcessFailed);
+
+    emit logReceived(
+        QStringLiteral("[SYS] Abaqus solver result preserved.")
+    );
+    emit statusChanged(statusText);
+    emit logReceived(logText);
+    emit logReceived(
+        QStringLiteral("[SYS] Next run will resume t2 only.")
+    );
+    emit errorOccurred(
+        QStringLiteral("后处理未完成"),
+        errorText
+    );
+
+    clearRunningSimulationContext(false);
+}
+
+void SimulationManager::clearRunningSimulationContext(
+    bool removeRunningFingerprint)
+{
+    const QString projectPath = activeProjectPath();
+    if (removeRunningFingerprint && !projectPath.isEmpty()) {
+        QFile::remove(
+            ProjectInputHash::runningInputFingerprintPath(projectPath)
+        );
+    }
+
+    currentJobName.clear();
+    runningProjectPath.clear();
+    runningAbaqusPath.clear();
+
+    simulationMsgPath.clear();
+    simulationStaPath.clear();
+    simulationDatPath.clear();
+
+    simulationMsgReadOffset = 0;
+    simulationStaReadOffset = 0;
+    simulationMsgPending.clear();
+    simulationStaPending.clear();
+    simulationTotalTime = 0.0;
+}
+
+void SimulationManager::clearRunningPostContext(
+    bool removeRunningPostFingerprint)
+{
+    const QString projectPath = activeProjectPath();
+    if (removeRunningPostFingerprint && !projectPath.isEmpty()) {
+        QFile::remove(
+            ProjectInputHash::runningPostFingerprintPath(projectPath)
+        );
+    }
+}
+
 void SimulationManager::stopTask()
 {
+    if (simulationState == SimulationState::T2Running) {
+        simulationUserStopped = true;
+        setSimulationState(SimulationState::Stopping);
+
+        emit statusChanged(
+            QStringLiteral("正在停止后处理")
+        );
+        emit logReceived(
+            QStringLiteral("[SYS] 用户请求停止后处理")
+        );
+        emit logReceived(
+            QStringLiteral(
+                "[SYS] 当前无运行中的 Job，"
+                "正在请求后处理进程退出"
+            )
+        );
+        closeAbaqusProcesses();
+        return;
+    }
+
     if (simulationState != SimulationState::T0Running
         && simulationState != SimulationState::T1Running) {
         return;
@@ -1054,9 +1455,10 @@ void SimulationManager::stopTask()
         return;
     }
 
-    // t0 阶段尚无 Job：请求 CAE 退出，由 finished → finishStopState
     emit logReceived(
-        QStringLiteral("[SYS] 当前无 Job，正在请求模型建立进程退出")
+        QStringLiteral(
+            "[SYS] 当前无 Job，正在请求模型建立进程退出"
+        )
     );
     closeAbaqusProcesses();
 }
@@ -1100,17 +1502,105 @@ bool SimulationManager::clearCurrentJobLock(QString &errorMessage) const
     return true;
 }
 
+void SimulationManager::continueLockWait()
+{
+    if (m_lockWaitTimer) {
+        m_lockWaitTries = 0;
+        m_lockWaitTimer->start();
+    }
+}
+
+void SimulationManager::respondToForceKillPrompt(bool continueWaiting)
+{
+    if (!m_lockWaitPath.isEmpty() && !QFile::exists(m_lockWaitPath)) {
+        if (m_lockWaitTimer) {
+            m_lockWaitTimer->deleteLater();
+            m_lockWaitTimer = nullptr;
+        }
+        m_lockWaitTries = 0;
+        m_lockWaitPath.clear();
+        onAbaqusJobTerminateFinished();
+        return;
+    }
+
+    if (continueWaiting) {
+        continueLockWait();
+        return;
+    }
+
+    if (m_lockWaitTimer) {
+        m_lockWaitTimer->deleteLater();
+        m_lockWaitTimer = nullptr;
+    }
+    m_lockWaitTries = 0;
+    m_lockWaitPath.clear();
+
+    forceCloseTrackedProcesses();
+}
+
+void SimulationManager::handleTerminateRequestFailure(const QString &reason)
+{
+    emit logReceived(
+        QStringLiteral("[ERROR] ") + reason
+    );
+
+    const QString lockPath = activeJobLockPath();
+
+    const bool processEnded =
+        !abaqusProcess
+        || abaqusProcess->state() == QProcess::NotRunning;
+
+    const bool lockGone =
+        currentJobName.isEmpty()
+        || !QFile::exists(lockPath);
+
+    if (processEnded) {
+        if (lockGone) {
+            emit logReceived(
+                QStringLiteral(
+                    "[SYS] 主仿真进程已结束且锁文件不存在，"
+                    "继续终止收尾"
+                )
+            );
+
+            onAbaqusJobTerminateFinished();
+            return;
+        }
+
+        emit statusChanged(
+            QStringLiteral("等待Abaqus释放Job锁")
+        );
+
+        emit logReceived(
+            QStringLiteral(
+                "[SYS] 主进程已结束，"
+                "但Job锁文件仍存在，继续等待释放"
+            )
+        );
+
+        waitForJobLockRelease(lockPath);
+        return;
+    }
+
+    simulationUserStopped = false;
+
+    setSimulationState(SimulationState::T1Running);
+
+    emit statusChanged(
+        QStringLiteral("终止请求失败，仿真仍在运行")
+    );
+
+    emit logReceived(
+        QStringLiteral("[ERROR] Abaqus Job 可能仍在运行")
+    );
+}
+
 void SimulationManager::sendAbaqusTerminateCommand()
 {
-    const QString projectPath =
-        runningProjectPath.isEmpty()
-            ? m_projectPath
-            : runningProjectPath;
-
-    const QString abaqusPath =
-        runningAbaqusPath.isEmpty()
-            ? m_abaqusPath
-            : runningAbaqusPath;
+    const QString projectPath = activeProjectPath();
+    const QString abaqusPath = runningAbaqusPath.isEmpty()
+        ? m_abaqusPath
+        : runningAbaqusPath;
 
     if (abaqusPath.isEmpty() || !QFile::exists(abaqusPath)) {
         handleTerminateRequestFailure(
@@ -1139,7 +1629,9 @@ void SimulationManager::sendAbaqusTerminateCommand()
         this,
         [this, terminateProcess]() {
             const QString text =
-                QString::fromLocal8Bit(terminateProcess->readAllStandardOutput());
+                QString::fromLocal8Bit(
+                    terminateProcess->readAllStandardOutput()
+                );
             if (!text.trimmed().isEmpty()) {
                 emit logReceived(
                     QStringLiteral("[ABAQUS] ") + text
@@ -1153,7 +1645,9 @@ void SimulationManager::sendAbaqusTerminateCommand()
         this,
         [this, terminateProcess]() {
             const QString text =
-                QString::fromLocal8Bit(terminateProcess->readAllStandardError());
+                QString::fromLocal8Bit(
+                    terminateProcess->readAllStandardError()
+                );
             if (!text.trimmed().isEmpty()) {
                 emit logReceived(
                     QStringLiteral("[ABAQUS] ") + text
@@ -1165,7 +1659,7 @@ void SimulationManager::sendAbaqusTerminateCommand()
         terminateProcess,
         QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
         this,
-        [this, terminateProcess, jobName, projectPath](
+        [this, terminateProcess, projectPath](
             int exitCode,
             QProcess::ExitStatus exitStatus
         ) {
@@ -1269,7 +1763,6 @@ void SimulationManager::onAbaqusJobTerminateFinished()
         simulationTimer->stop();
     }
 
-    // 给 Abaqus 释放模块的时间，避免立刻 taskkill 触发未知消息框
     QTimer::singleShot(
         3000,
         this,
@@ -1501,9 +1994,20 @@ void SimulationManager::finishStopState()
         abaqusProcess = nullptr;
     }
 
+    const QString projectPath = activeProjectPath();
+    const bool preserveResults =
+        !projectPath.isEmpty()
+        && readSuccessFlag(
+            ProjectInputHash::t1FinishedFlagPath(projectPath))
+        && QFile::exists(
+            ProjectInputHash::lastSuccessInputFingerprintPath(
+                projectPath
+            ));
+
     setSimulationState(SimulationState::Stopped);
     simulationUserStopped = false;
-    clearRunningSimulationContext();
+    clearRunningSimulationContext(!preserveResults);
+    clearRunningPostContext(!preserveResults);
 
     emit statusChanged(
         QStringLiteral("仿真已终止")
@@ -1539,8 +2043,7 @@ void SimulationManager::readAbaqusLogFile(
     const QString &path,
     const QString &tag,
     qint64 &readOffset,
-    QByteArray &pendingData
-)
+    QByteArray &pendingData)
 {
     if (path.isEmpty()) {
         return;
@@ -1652,21 +2155,25 @@ void SimulationManager::updateProgressFromStaLine(const QString &line)
     }
 
     int percent =
-        static_cast<int>(
-            currentTime / simulationTotalTime * 100.0
+        10 + static_cast<int>(
+            currentTime / simulationTotalTime * 60.0
         );
 
-    percent = qBound(0, percent, 99);
+    percent = qBound(10, percent, 70);
 
     emit progressUpdated(percent);
 }
 
 double SimulationManager::loadSimulationTotalTime()
 {
+    const QString projectPath = activeProjectPath();
+    if (projectPath.isEmpty()) {
+        return 0.0;
+    }
+
     SimulationConfig config;
-    if (SimulationConfigManager::load(m_projectPath, config)) {
+    if (SimulationConfigManager::load(projectPath, config)) {
         return config.timeLength;
     }
     return 0.0;
 }
-

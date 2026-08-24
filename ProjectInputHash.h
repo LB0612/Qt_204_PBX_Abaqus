@@ -5,12 +5,14 @@
 
 namespace ProjectInputHash {
 
-constexpr int GENERATION_MANIFEST_VERSION = 1;
-constexpr int CALCULATION_PIPELINE_VERSION = 1;
+constexpr int GENERATION_MANIFEST_VERSION = 2;
+constexpr int CALCULATION_PIPELINE_VERSION = 2;
+constexpr int POSTPROCESS_PIPELINE_VERSION = 1;
 
 QString hashConfigFiles(const QString &projectPath);
 QString hashGeneratedFiles(const QString &projectPath);
 QString hashSolverInput(const QString &projectPath);
+QString hashPostProcessInput(const QString &projectPath);
 
 struct GenerationManifest
 {
@@ -18,6 +20,21 @@ struct GenerationManifest
     QString status;
     QString configSha256;
     QString generatedSha256;
+    bool valid = false;
+};
+
+struct PostProcessManifest
+{
+    int version = 0;
+    QString postSha256;
+    int odbFrames = 0;
+    int curePngFrames = 0;
+    int temperaturePngFrames = 0;
+    int stressPngFrames = 0;
+    int cureVideoFrames = 0;
+    int temperatureVideoFrames = 0;
+    int stressVideoFrames = 0;
+    int videoFps = 0;
     bool valid = false;
 };
 
@@ -29,8 +46,23 @@ bool writeGenerationManifest(
     QString &errorMessage
 );
 
+PostProcessManifest readPostProcessManifest(const QString &projectPath);
+
+QString runningInputFingerprintPath(const QString &projectPath);
+QString lastSuccessInputFingerprintPath(const QString &projectPath);
+QString runningPostFingerprintPath(const QString &projectPath);
+QString lastSuccessPostFingerprintPath(const QString &projectPath);
+
+QString t1FinishedFlagPath(const QString &projectPath);
+QString t2FinishedFlagPath(const QString &projectPath);
+QString solverOdbPath(const QString &projectPath);
+
 QString currentJobName(const QString &projectPath);
 QString currentJobLockPath(const QString &projectPath);
+
+QString bundledFfmpegPath();
+QString bundledFfprobePath();
+bool bundledFfmpegAvailable(QString &errorMessage);
 
 } // namespace ProjectInputHash
 

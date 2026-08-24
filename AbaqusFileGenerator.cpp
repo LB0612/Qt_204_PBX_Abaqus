@@ -73,6 +73,8 @@ bool AbaqusFileGenerator::generate(
         projectDir.filePath(QStringLiteral("abaqus/t0.py"));
     const QString t1OutputPath =
         projectDir.filePath(QStringLiteral("abaqus/t1.py"));
+    const QString t2OutputPath =
+        projectDir.filePath(QStringLiteral("abaqus/t2.py"));
     const QString forOutputPath =
         projectDir.filePath(QStringLiteral("abaqus/335K.for"));
     const QString generationFlagPath =
@@ -182,15 +184,36 @@ bool AbaqusFileGenerator::generate(
         QStringLiteral("{{CAE_FILE_PATH}}"),
         QStringLiteral("{{USER_SUBROUTINE_PATH}}"),
         QStringLiteral("{{JOB_NAME}}"),
-        QStringLiteral("{{RESULT_STRESS_PATH}}"),
-        QStringLiteral("{{RESULT_TEMP_PATH}}"),
-        QStringLiteral("{{RESULT_CURE_PATH}}")
     };
 
     for (const QString &placeholder : t1RequiredPlaceholders) {
         if (!t1Content.contains(placeholder)) {
             errorMessage =
                 QStringLiteral("t1 模板缺少占位符：%1").arg(placeholder);
+            return false;
+        }
+    }
+
+    QString t2Content;
+    if (!loadTemplate(
+            QStringLiteral(":/simulation/templates/t2.py"),
+            t2Content,
+            errorMessage)) {
+        return false;
+    }
+
+    const QStringList t2RequiredPlaceholders = {
+        QStringLiteral("{{ABAQUS_WORK_DIR}}"),
+        QStringLiteral("{{JOB_NAME}}"),
+        QStringLiteral("{{RESULT_STRESS_PATH}}"),
+        QStringLiteral("{{RESULT_TEMP_PATH}}"),
+        QStringLiteral("{{RESULT_CURE_PATH}}"),
+    };
+
+    for (const QString &placeholder : t2RequiredPlaceholders) {
+        if (!t2Content.contains(placeholder)) {
+            errorMessage =
+                QStringLiteral("t2 模板缺少占位符：%1").arg(placeholder);
             return false;
         }
     }
@@ -242,12 +265,20 @@ bool AbaqusFileGenerator::generate(
     t1Content.replace(QStringLiteral("{{CAE_FILE_PATH}}"), caeFilePath);
     t1Content.replace(QStringLiteral("{{USER_SUBROUTINE_PATH}}"), userSubroutinePath);
     t1Content.replace(QStringLiteral("{{JOB_NAME}}"), jobName);
-    t1Content.replace(QStringLiteral("{{RESULT_STRESS_PATH}}"), resultStressPath);
-    t1Content.replace(QStringLiteral("{{RESULT_TEMP_PATH}}"), resultTempPath);
-    t1Content.replace(QStringLiteral("{{RESULT_CURE_PATH}}"), resultCurePath);
+
+    t2Content.replace(QStringLiteral("{{ABAQUS_WORK_DIR}}"), abaqusWorkDir);
+    t2Content.replace(QStringLiteral("{{JOB_NAME}}"), jobName);
+    t2Content.replace(QStringLiteral("{{RESULT_STRESS_PATH}}"), resultStressPath);
+    t2Content.replace(QStringLiteral("{{RESULT_TEMP_PATH}}"), resultTempPath);
+    t2Content.replace(QStringLiteral("{{RESULT_CURE_PATH}}"), resultCurePath);
 
     if (t1Content.contains(QLatin1String("{{"))) {
         errorMessage = QStringLiteral("t1 模板占位符替换失败。");
+        return false;
+    }
+
+    if (t2Content.contains(QLatin1String("{{"))) {
+        errorMessage = QStringLiteral("t2 模板占位符替换失败。");
         return false;
     }
 
@@ -263,9 +294,14 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
+    if (!saveFile(t2OutputPath, t2Content, errorMessage)) {
+        return false;
+    }
+
     const QStringList generatedFiles = {
         t0OutputPath,
         t1OutputPath,
+        t2OutputPath,
         forOutputPath
     };
 

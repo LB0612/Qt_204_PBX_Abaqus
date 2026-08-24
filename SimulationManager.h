@@ -3,9 +3,9 @@
 
 #include <QByteArray>
 #include <QObject>
+#include <QProcess>
 #include <QString>
-
-class QProcess;
+class QProcessEnvironment;
 class QTimer;
 
 enum class SimulationState
@@ -13,10 +13,19 @@ enum class SimulationState
     Idle,
     T0Running,
     T1Running,
+    T2Running,
     Stopping,
     Stopped,
     Finished,
-    Failed
+    Failed,
+    PostProcessFailed
+};
+
+enum class SimulationResumeMode
+{
+    FullRun,
+    PostProcessOnly,
+    AlreadyComplete
 };
 
 class SimulationManager : public QObject
@@ -33,10 +42,14 @@ public:
     bool isActive() const;
 
     void setProjectContext(const QString &projectPath, const QString &abaqusPath);
+    void setForceFullRerun(bool forceFullRerun);
 
     bool checkReady(QString &errorMessage) const;
     bool hasLockFiles() const;
+
+    SimulationResumeMode detectResumeMode() const;
     bool hasValidPreviousResult(QString &message);
+    QString resumeModeMessage(SimulationResumeMode mode) const;
 
     QString currentJobLockPath() const;
     bool clearCurrentJobLock(QString &errorMessage) const;
@@ -63,7 +76,30 @@ signals:
 private:
     void startTaskInternal();
     void setSimulationState(SimulationState state);
+
+    void prepareRunContext();
+    void clearRunArtifactsForFullRun();
+    void appendProcessLog(
+        const QString &logPath,
+        const QByteArray &data,
+        bool isError
+    );
+
+    void startT0Stage();
+    void handleT0Finished(int exitCode, QProcess::ExitStatus exitStatus);
+
+    void startT1Stage();
+    void handleT1Finished(int exitCode, QProcess::ExitStatus exitStatus);
+
+    void startT2Stage();
+    void handleT2Finished(int exitCode, QProcess::ExitStatus exitStatus);
+
+    void finishSimulationSuccess();
+    void failSolverStage(const QString &statusText, const QString &logText, const QString &errorText);
+    void failPostProcessStage(const QString &statusText, const QString &logText, const QString &errorText);
+
     void clearRunningSimulationContext(bool removeRunningFingerprint = true);
+    void clearRunningPostContext(bool removeRunningPostFingerprint = true);
 
     void handleTerminateRequestFailure(const QString &reason);
     void sendAbaqusTerminateCommand();
@@ -86,10 +122,24 @@ private:
     double loadSimulationTotalTime();
 
     QString calculateInputFingerprint() const;
-    bool saveRunFingerprint(const QString &filePath) const;
+    QString calculatePostFingerprint() const;
+    bool saveRunFingerprint(const QString &filePath, const QString &fingerprint) const;
     bool fingerprintsMatch() const;
-    bool fingerprintMatchesStored(const QString &storedPath) const;
+    bool postFingerprintsMatch() const;
+    bool fingerprintMatchesStored(
+        const QString &storedPath,
+        const QString &currentFingerprint
+    ) const;
     bool recoverSuccessFingerprintIfPossible();
+    bool recoverSuccessPostFingerprintIfPossible();
+    bool promoteRunningInputFingerprint(const QString &projectPath) const;
+    bool promoteRunningPostFingerprint(const QString &projectPath) const;
+
+    bool hasValidSolverResult() const;
+    bool hasCompletePostProcess() const;
+    bool readSuccessFlag(const QString &flagPath) const;
+
+    QProcessEnvironment buildT2ProcessEnvironment() const;
 
     QString activeProjectPath() const;
     QString activeJobLockPath() const;
@@ -109,7 +159,12 @@ private:
     QByteArray simulationStaPending;
     double simulationTotalTime = 0.0;
 
+    QString t0LogPath;
+    QString t1LogPath;
+    QString t2LogPath;
+
     bool simulationUserStopped = false;
+    bool m_forceFullRerun = false;
     SimulationState simulationState = SimulationState::Idle;
 
     QString currentJobName;

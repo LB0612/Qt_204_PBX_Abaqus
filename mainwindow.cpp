@@ -1552,7 +1552,8 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
 
     if (state == SimulationState::Stopped
         || state == SimulationState::Finished
-        || state == SimulationState::Failed) {
+        || state == SimulationState::Failed
+        || state == SimulationState::PostProcessFailed) {
         if (projectDirectoryMissing) {
             stopWatchingProject();
             isProjectLoaded = false;
@@ -1567,6 +1568,7 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
 
     if (state == SimulationState::T0Running
         || state == SimulationState::T1Running
+        || state == SimulationState::T2Running
         || state == SimulationState::Stopping) {
         selectTreeItem(QStringLiteral("开始仿真"));
         stackedWidget->setCurrentWidget(simulationMonitorWidget);
@@ -1688,6 +1690,7 @@ void MainWindow::showSimulationPreparePage()
         currentProject.projectPath,
         SettingsDialog::getAbaqusPath()
     );
+    simulationManager->setForceFullRerun(false);
 
     QString previousResultMessage;
     if (simulationManager->hasValidPreviousResult(previousResultMessage)) {
@@ -1701,6 +1704,10 @@ void MainWindow::showSimulationPreparePage()
 
         if (action == PreviousResultCancel) {
             return;
+        }
+
+        if (action == PreviousResultRerun) {
+            simulationManager->setForceFullRerun(true);
         }
     }
 
@@ -1755,6 +1762,17 @@ void MainWindow::startSimulation()
         abaqusPath
     );
 
+    const SimulationResumeMode resumeMode =
+        simulationManager->detectResumeMode();
+    if (resumeMode == SimulationResumeMode::PostProcessOnly) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Information,
+            QStringLiteral("继续后处理"),
+            simulationManager->resumeModeMessage(resumeMode)
+        );
+    }
+
     selectTreeItem(QStringLiteral("开始仿真"));
     stackedWidget->setCurrentWidget(simulationMonitorWidget);
 
@@ -1768,7 +1786,8 @@ void MainWindow::stopSimulation()
 {
     const SimulationState state = simulationManager->state();
     if (state != SimulationState::T0Running
-        && state != SimulationState::T1Running) {
+        && state != SimulationState::T1Running
+        && state != SimulationState::T2Running) {
         showCenteredMessageBox(
             this,
             QMessageBox::Information,
@@ -1778,14 +1797,24 @@ void MainWindow::stopSimulation()
         return;
     }
 
+    QString confirmText =
+        QStringLiteral(
+            "确定终止当前Abaqus仿真吗？\n"
+            "未完成结果可能无法保存。"
+        );
+    if (state == SimulationState::T2Running) {
+        confirmText =
+            QStringLiteral(
+                "确定终止当前后处理吗？\n"
+                "Abaqus 求解结果和已生成的图片/视频将保留。"
+            );
+    }
+
     if (showCenteredMessageBox(
             this,
             QMessageBox::Question,
             QStringLiteral("终止仿真"),
-            QStringLiteral(
-                "确定终止当前Abaqus仿真吗？\n"
-                "未完成结果可能无法保存。"
-            ),
+            confirmText,
             QMessageBox::Yes | QMessageBox::No,
             QMessageBox::No
         ) != QMessageBox::Yes) {
@@ -1813,7 +1842,8 @@ void MainWindow::updateUIStates()
         const SimulationState state = simulationManager->state();
         const bool canStop =
             state == SimulationState::T0Running
-            || state == SimulationState::T1Running;
+            || state == SimulationState::T1Running
+            || state == SimulationState::T2Running;
 
         stopSimulationAction->setEnabled(canStop);
     }
@@ -1932,6 +1962,10 @@ void MainWindow::showPreviousSimulationLogs()
     loadLog(
         QStringLiteral("T1 LOG"),
         QDir(logsDir).filePath(QStringLiteral("t1.log"))
+    );
+    loadLog(
+        QStringLiteral("T2 LOG"),
+        QDir(logsDir).filePath(QStringLiteral("t2.log"))
     );
     loadLog(
         QStringLiteral("ABAQUS STA"),
