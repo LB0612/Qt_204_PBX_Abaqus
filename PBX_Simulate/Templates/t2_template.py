@@ -484,8 +484,8 @@ class _OpenDmlAviWriter(object):
         self._avih_total_frames_pos = 0
         self._strh_length_pos = 0
         self._dmlh_total_frames_pos = 0
-        self._odml_placeholder_pos = 0
-        self._odml_placeholder_size = ODML_PLACEHOLDER_SIZE
+        self._super_indx_placeholder_pos = 0
+        self._super_indx_placeholder_size = ODML_PLACEHOLDER_SIZE
 
         self._segment_riff_start = 0
         self._segment_riff_size_pos = 0
@@ -508,10 +508,11 @@ class _OpenDmlAviWriter(object):
                 self._finish_segment()
                 self._begin_segment(is_first=False)
 
+        chunk_start = self._file.tell()
         chunk = _riff_chunk(b'00db', frame_data)
-        offset_in_movi = self._file.tell() - self._segment_movi_data_start
         self._file.write(chunk)
-        self._segment_index_entries.append((offset_in_movi, len(frame_data)))
+        data_offset = (chunk_start + 8) - self._segment_movi_data_start
+        self._segment_index_entries.append((data_offset, len(frame_data)))
         self._total_frames += 1
 
     def close(self):
@@ -520,15 +521,11 @@ class _OpenDmlAviWriter(object):
 
         self._finish_segment()
         self._patch_headers()
-
-        if len(self._segment_meta) > 1:
-            self._write_super_index()
-
+        self._write_super_index()
         self._file.close()
 
     def _frame_chunk_size(self, frame_size):
-        chunk = _riff_chunk(b'00db', b'\x00' * frame_size)
-        return len(chunk)
+        return 8 + frame_size + (frame_size % 2)
 
     def _segment_payload_size(self):
         return self._file.tell() - self._segment_riff_start - 8
@@ -610,77 +607,81 @@ class _OpenDmlAviWriter(object):
         )
 
         avih_chunk = _riff_chunk(b'avih', avih)
+        strh_chunk = _riff_chunk(b'strh', strh)
+        strf_chunk = _riff_chunk(b'strf', strf)
+        super_indx_placeholder = _riff_chunk(
+            b'JUNK',
+            b'\x00' * (self._super_indx_placeholder_size - 8)
+        )
         strl = _riff_list(
             b'strl',
-            _riff_chunk(b'strh', strh)
-            + _riff_chunk(b'strf', strf)
+            strh_chunk + strf_chunk + super_indx_placeholder
         )
         dmlh_chunk = _riff_chunk(b'dmlh', struct.pack('<I', 0))
-        odml_placeholder = _riff_chunk(
-            b'JUNK',
-            b'\x00' * (self._odml_placeholder_size - 8)
-        )
+        odml = _riff_list(b'odml', dmlh_chunk)
 
         hdrl_start = self._file.tell()
-        hdrl_body = avih_chunk + strl + dmlh_chunk + odml_placeholder
+        hdrl_body = avih_chunk + strl + odml
         hdrl = _riff_list(b'hdrl', hdrl_body)
         body_start = hdrl_start + 12
 
         self._avih_total_frames_pos = body_start + 8 + 16
         self._strh_length_pos = body_start + len(avih_chunk) + 12 + 8 + 32
-        dmlh_pos = body_start + len(avih_chunk) + len(strl)
-        self._dmlh_total_frames_pos = dmlh_pos + 8
-        self._odml_placeholder_pos = dmlh_pos + len(dmlh_chunk)
+        self._dmlh_total_frames_pos = (
+            body_start + len(avih_chunk) + len(strl) + 12 + 8
+        )
+        self._super_indx_placeholder_pos = (
+            body_start
+            + len(avih_chunk)
+            + 12
+            + len(strh_chunk)
+            + len(strf_chunk)
+        )
 
         self._file.write(hdrl)
 
-    def _write_standard_index(self):
+    def _write_segment_index(self):
         entries = []
-        for offset, size in self._segment_index_entries:
-            entries.append(
-                struct.pack(
-                    '<II',
-                    offset | 0x80000000,
-                    size
-                )
-            )
+        for data_offset, size in self._segment_index_entries:
+            entries.append(struct.pack('<II', data_offset, size))
 
         body = struct.pack(
-            '<HBBI4s3I',
+            '<HBBI4sQI',
             2,
             0,
-            0,
+            1,
             len(self._segment_index_entries),
             b'00db',
-            0,
-            0,
+            self._segment_movi_data_start,
             0
         ) + b''.join(entries)
 
-        return _riff_chunk(b'indx', body)
+        return _riff_chunk(b'ix00', body)
 
     def _finish_segment(self):
         movi_end = self._file.tell()
         movi_body_size = movi_end - (self._segment_movi_size_pos + 4)
         self._file.seek(self._segment_movi_size_pos)
-        self._file.write(struct.pack('<I', movi_body_size + 4))
+        self._file.write(struct.pack('<I', movi_body_size))
         self._file.seek(movi_end)
 
-        indx_start = self._file.tell()
-        indx_chunk = self._write_standard_index()
-        self._file.write(indx_chunk)
-        indx_end = self._file.tell()
+        ix00_start = self._file.tell()
+        ix00_chunk = self._write_segment_index()
+        self._file.write(ix00_chunk)
+        ix00_end = self._file.tell()
 
-        riff_end = indx_end
+        riff_end = ix00_end
         riff_size = riff_end - self._segment_riff_start - 8
         self._file.seek(self._segment_riff_size_pos)
         self._file.write(struct.pack('<I', riff_size))
         self._file.seek(riff_end)
 
         self._segment_meta.append({
-            'indx_offset': indx_start,
-            'indx_size': indx_end - indx_start,
+            'ix00_offset': ix00_start,
+            'ix00_size': ix00_end - ix00_start,
             'entries': len(self._segment_index_entries),
+            'movi_data_start': self._segment_movi_data_start,
+            'movi_data_end': movi_end,
         })
 
     def _patch_headers(self):
@@ -699,24 +700,20 @@ class _OpenDmlAviWriter(object):
     def _write_super_index(self):
         entries = []
         for meta in self._segment_meta:
-            offset = meta['indx_offset']
             entries.append(
                 struct.pack(
-                    '<IIIIII',
-                    0,
-                    0x10,
-                    offset & 0xFFFFFFFF,
-                    (offset >> 32) & 0xFFFFFFFF,
-                    meta['indx_size'],
+                    '<QII',
+                    meta['ix00_offset'],
+                    meta['ix00_size'],
                     meta['entries']
                 )
             )
 
         body = struct.pack(
             '<HBBI4s3I',
-            6,
+            4,
             0,
-            1,
+            0,
             len(entries),
             b'00db',
             0,
@@ -724,107 +721,171 @@ class _OpenDmlAviWriter(object):
             0
         ) + b''.join(entries)
 
-        odml = _riff_list(b'odml', _riff_chunk(b'indx', body))
-
-        if len(odml) > self._odml_placeholder_size:
+        super_indx = _riff_chunk(b'indx', body)
+        if len(super_indx) > self._super_indx_placeholder_size:
             raise RuntimeError(
                 'OpenDML super index exceeds reserved header space.'
             )
 
-        padding_size = self._odml_placeholder_size - len(odml)
-        if padding_size > 0:
-            odml += b'\x00' * padding_size
+        remaining = self._super_indx_placeholder_size - len(super_indx)
+        padding = b''
+        if remaining >= 8:
+            padding = _riff_chunk(b'JUNK', b'\x00' * (remaining - 8))
 
-        self._file.seek(self._odml_placeholder_pos)
-        self._file.write(odml)
+        self._file.seek(self._super_indx_placeholder_pos)
+        self._file.write(super_indx + padding)
         self._file.seek(0, os.SEEK_END)
 
 
-def _count_avi_frames(path):
-    dmlh_total = None
-    avih_total = None
-    db_chunks = 0
+def _read_chunk_header(handle):
+    header = handle.read(8)
+    if len(header) < 8:
+        return None
+    fourcc, chunk_size = struct.unpack('<4sI', header)
+    return fourcc, chunk_size, handle.tell()
+
+
+def _validate_ix00_chunk(
+    handle,
+    ix00_start,
+    ix00_size,
+    movi_data_start,
+    movi_data_end,
+    file_size
+):
+    if ix00_start + 8 + ix00_size > file_size:
+        raise RuntimeError('ix00 chunk exceeds file size.')
+
+    handle.seek(ix00_start + 8)
+    header = handle.read(24)
+    if len(header) < 24:
+        raise RuntimeError('Truncated ix00 header.')
+
+    (
+        w_longs_per_entry,
+        b_index_sub_type,
+        b_index_type,
+        n_entries,
+        dw_chunk_id,
+        qw_base_offset,
+        dw_reserved3
+    ) = struct.unpack('<HBBI4sQI', header)
+
+    if w_longs_per_entry != 2:
+        raise RuntimeError('Invalid ix00 wLongsPerEntry.')
+    if b_index_type != 1:
+        raise RuntimeError('Invalid ix00 bIndexType.')
+    if dw_chunk_id != b'00db':
+        raise RuntimeError('Invalid ix00 dwChunkId.')
+    if qw_base_offset != movi_data_start:
+        raise RuntimeError('ix00 qwBaseOffset does not match movi data base.')
+    if dw_reserved3 != 0:
+        raise RuntimeError('Invalid ix00 reserved field.')
+
+    entry_bytes = n_entries * 8
+    entry_data = handle.read(entry_bytes)
+    if len(entry_data) < entry_bytes:
+        raise RuntimeError('Truncated ix00 index entries.')
+
+    for index in range(n_entries):
+        offset = index * 8
+        dw_offset, dw_size = struct.unpack(
+            '<II',
+            entry_data[offset:offset + 8]
+        )
+        payload_size = dw_size & 0x7FFFFFFF
+        data_abs = qw_base_offset + dw_offset
+
+        if payload_size <= 0:
+            raise RuntimeError('Invalid ix00 frame size at entry %d.' % index)
+        if data_abs < movi_data_start or data_abs + payload_size > movi_data_end:
+            raise RuntimeError(
+                'ix00 entry %d points outside movi data bounds.' % index
+            )
+        if data_abs < 8:
+            raise RuntimeError('ix00 entry %d has invalid data offset.' % index)
+
+        handle.seek(data_abs - 8)
+        chunk_header = handle.read(8)
+        if len(chunk_header) < 8:
+            raise RuntimeError('Missing 00db header for ix00 entry %d.' % index)
+
+        chunk_id, chunk_size = struct.unpack('<4sI', chunk_header)
+        if chunk_id != b'00db' or chunk_size != payload_size:
+            raise RuntimeError(
+                'Corrupt 00db chunk for ix00 entry %d.' % index
+            )
+
+    return n_entries
+
+
+def _validate_avi_structure(path, expected_frames):
+    file_size = os.path.getsize(path)
+    total_indexed_frames = 0
 
     with open(path, 'rb') as handle:
-        while True:
+        while handle.tell() < file_size:
+            riff_start = handle.tell()
             riff_header = handle.read(12)
             if len(riff_header) < 12:
                 break
 
             if riff_header[0:4] != b'RIFF':
-                break
+                raise RuntimeError('Invalid AVI root chunk.')
 
             riff_size, = struct.unpack('<I', riff_header[4:8])
             form_type = riff_header[8:12]
             if form_type not in (b'AVI ', b'AVIX'):
                 break
 
-            riff_end = handle.tell() + riff_size - 4
-            if riff_end < handle.tell():
-                break
+            riff_end = riff_start + 8 + riff_size
+            if riff_end > file_size:
+                raise RuntimeError('RIFF chunk exceeds file size.')
+
+            movi_data_start = 0
+            movi_data_end = 0
 
             while handle.tell() < riff_end:
-                chunk_header = handle.read(8)
-                if len(chunk_header) < 8:
+                chunk_info = _read_chunk_header(handle)
+                if chunk_info is None:
                     break
 
-                fourcc, chunk_size = struct.unpack('<4sI', chunk_header)
-                chunk_start = handle.tell()
+                fourcc, chunk_size, data_start = chunk_info
+                data_end = data_start + chunk_size
 
                 if fourcc == b'LIST':
                     list_type = handle.read(4)
-                    if list_type == b'hdrl':
-                        list_end = chunk_start + chunk_size
-                        while handle.tell() < list_end:
-                            child_header = handle.read(8)
-                            if len(child_header) < 8:
-                                break
-                            child_fourcc, child_size = struct.unpack(
-                                '<4sI',
-                                child_header
-                            )
-                            child_start = handle.tell()
+                    if list_type == b'movi':
+                        movi_data_start = handle.tell()
+                        movi_data_end = data_end
+                    handle.seek(data_end)
+                elif fourcc == b'ix00':
+                    if movi_data_start <= 0 or movi_data_end <= movi_data_start:
+                        raise RuntimeError('ix00 found without preceding movi list.')
 
-                            if child_fourcc == b'avih':
-                                data = handle.read(child_size)
-                                if len(data) >= 20:
-                                    avih_total = struct.unpack(
-                                        '<I',
-                                        data[16:20]
-                                    )[0]
-                            elif child_fourcc == b'dmlh':
-                                data = handle.read(child_size)
-                                if len(data) >= 4:
-                                    dmlh_total = struct.unpack(
-                                        '<I',
-                                        data[0:4]
-                                    )[0]
-                            else:
-                                handle.seek(child_start + child_size)
-
-                            handle.seek(
-                                _align_chunk_end(child_start + child_size)
-                            )
-                    else:
-                        handle.seek(chunk_start + chunk_size)
-                elif fourcc == b'00db':
-                    db_chunks += 1
-                    handle.seek(chunk_start + chunk_size)
+                    total_indexed_frames += _validate_ix00_chunk(
+                        handle,
+                        data_start - 8,
+                        chunk_size,
+                        movi_data_start,
+                        movi_data_end,
+                        file_size
+                    )
+                    handle.seek(data_end)
                 else:
-                    handle.seek(chunk_start + chunk_size)
+                    handle.seek(data_end)
 
-                handle.seek(_align_chunk_end(chunk_start + chunk_size))
+                handle.seek(_align_chunk_end(data_end))
 
             handle.seek(riff_end)
 
-    if dmlh_total is not None and dmlh_total > 0:
-        return dmlh_total
-    if avih_total is not None and avih_total > 0:
-        return avih_total
-    if db_chunks > 0:
-        return db_chunks
+    if total_indexed_frames != expected_frames:
+        raise RuntimeError(
+            'AVI index frame count mismatch: expected %d, got %d.'
+            % (expected_frames, total_indexed_frames)
+        )
 
-    raise RuntimeError('Unable to determine AVI frame count: %s' % path)
+    return total_indexed_frames
 
 
 def _avi_is_valid(avi_path, expected_frames):
@@ -832,7 +893,8 @@ def _avi_is_valid(avi_path, expected_frames):
         return False
 
     try:
-        return _count_avi_frames(avi_path) == expected_frames
+        _validate_avi_structure(avi_path, expected_frames)
+        return True
     except Exception as error:
         print('[POST] Existing AVI invalid: %s (%s)' % (avi_path, error))
         return False
@@ -856,13 +918,14 @@ def _generate_avi(frame_dir, frame_prefix, output_avi, expected_frames):
 
     writer.close()
 
-    actual_frames = _count_avi_frames(tmp_avi)
-    if actual_frames != expected_frames:
+    try:
+        actual_frames = _validate_avi_structure(tmp_avi, expected_frames)
+    except Exception as error:
         if os.path.isfile(tmp_avi):
             os.remove(tmp_avi)
         raise RuntimeError(
-            'AVI frame mismatch for %s: expected %d, got %d'
-            % (output_avi, expected_frames, actual_frames)
+            'AVI validation failed for %s: %s'
+            % (output_avi, error)
         )
 
     os.replace(tmp_avi, output_avi)
