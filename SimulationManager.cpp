@@ -12,6 +12,55 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QTimer>
+#include <QCryptographicHash>
+
+namespace {
+
+QString runningInputFingerprintPath(const QString &projectDir)
+{
+    return QDir(QDir(projectDir).filePath(QStringLiteral("abaqus")))
+        .filePath(QStringLiteral("running_input.sha256"));
+}
+
+QString lastSuccessInputFingerprintPath(const QString &projectDir)
+{
+    return QDir(QDir(projectDir).filePath(QStringLiteral("abaqus")))
+        .filePath(QStringLiteral("last_success_input.sha256"));
+}
+
+void removeRunningInputFingerprint(const QString &projectDir)
+{
+    if (projectDir.isEmpty()) {
+        return;
+    }
+
+    QFile::remove(runningInputFingerprintPath(projectDir));
+}
+
+bool promoteRunningInputFingerprint(const QString &projectDir)
+{
+    const QString runningPath = runningInputFingerprintPath(projectDir);
+    const QString lastPath = lastSuccessInputFingerprintPath(projectDir);
+
+    if (!QFile::exists(runningPath)) {
+        return false;
+    }
+
+    QFile::remove(lastPath);
+
+    if (QFile::rename(runningPath, lastPath)) {
+        return true;
+    }
+
+    if (QFile::copy(runningPath, lastPath)) {
+        QFile::remove(runningPath);
+        return true;
+    }
+
+    return false;
+}
+
+} // namespace
 
 
 SimulationManager::SimulationManager(QObject *parent)
@@ -112,6 +161,12 @@ void SimulationManager::setSimulationState(SimulationState state)
 
 void SimulationManager::clearRunningSimulationContext()
 {
+    const QString projectPath =
+        runningProjectPath.isEmpty()
+            ? m_projectPath
+            : runningProjectPath;
+    removeRunningInputFingerprint(projectPath);
+
     currentJobName.clear();
     runningProjectPath.clear();
     runningAbaqusPath.clear();
@@ -194,6 +249,83 @@ void SimulationManager::handleTerminateRequestFailure(const QString &reason)
     );
 }
 
+QString SimulationManager::calculateInputFingerprint() const
+{
+    if (m_projectPath.isEmpty()) {
+        return QString();
+    }
+
+    static const QStringList relativePaths = {
+        QStringLiteral("config/structure.json"),
+        QStringLiteral("config/explosive.json"),
+        QStringLiteral("config/mold.json"),
+        QStringLiteral("config/boundary.json"),
+        QStringLiteral("config/simulation.json"),
+        QStringLiteral("abaqus/t0.py"),
+        QStringLiteral("abaqus/t1.py"),
+        QStringLiteral("abaqus/335K.for"),
+    };
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    const QDir projectDir(m_projectPath);
+
+    for (const QString &relativePath : relativePaths) {
+        QFile file(projectDir.filePath(relativePath));
+        if (!file.open(QIODevice::ReadOnly)) {
+            return QString();
+        }
+
+        hash.addData(relativePath.toUtf8());
+        hash.addData(file.readAll());
+    }
+
+    return QString::fromLatin1(hash.result().toHex());
+}
+
+bool SimulationManager::saveRunFingerprint(const QString &filePath) const
+{
+    const QString fingerprint = calculateInputFingerprint();
+    if (fingerprint.isEmpty()) {
+        return false;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        return false;
+    }
+
+    file.write(fingerprint.toLatin1());
+    file.write("\n");
+    return true;
+}
+
+bool SimulationManager::fingerprintsMatch() const
+{
+    if (m_projectPath.isEmpty()) {
+        return false;
+    }
+
+    const QString lastPath = lastSuccessInputFingerprintPath(m_projectPath);
+    QFile file(lastPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    const QString stored = QString::fromLatin1(file.readAll()).trimmed();
+    file.close();
+
+    if (stored.isEmpty()) {
+        return false;
+    }
+
+    const QString current = calculateInputFingerprint();
+    if (current.isEmpty()) {
+        return false;
+    }
+
+    return stored == current;
+}
+
 bool SimulationManager::hasValidPreviousResult(
     QString &message) const
 {
@@ -243,53 +375,18 @@ bool SimulationManager::hasValidPreviousResult(
         return false;
     }
 
+    if (!fingerprintsMatch()) {
+        return false;
+    }
+
     const QFileInfo flagInfo(flagPath);
     const QDateTime completedTime = flagInfo.lastModified();
 
-    const QStringList generatedFiles = {
-        QDir(abaqusDir).filePath(QStringLiteral("t0.py")),
-        QDir(abaqusDir).filePath(QStringLiteral("t1.py")),
-        QDir(abaqusDir).filePath(QStringLiteral("335K.for"))
-    };
-
-    for (const QString &filePath : generatedFiles) {
-        const QFileInfo info(filePath);
-
-        if (!info.exists()) {
-            return false;
-        }
-
-        if (info.lastModified() > completedTime) {
-            return false;
-        }
-    }
-
-    const QStringList configFiles = {
-        QDir(projectDir).filePath(QStringLiteral("config/structure.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/explosive.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/mold.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/boundary.json")),
-        QDir(projectDir).filePath(QStringLiteral("config/simulation.json"))
-    };
-
-    for (const QString &filePath : configFiles) {
-        const QFileInfo info(filePath);
-
-        if (!info.exists()) {
-            return false;
-        }
-
-        if (info.lastModified() > completedTime) {
-            return false;
-        }
-    }
-
     message = QStringLiteral(
-        "检测到当前工程上一次仿真已经正常完成。\n\n"
+        "检测到当前工程上一次仿真已经正常完成，"
+        "且当前计算输入与上一次完全一致。\n\n"
         "完成时间：%1\n"
         "结果文件：%2\n\n"
-        "当前已保存参数和 Abaqus 文件"
-        "在上次完成后没有发生变化，"
         "通常不需要重复计算。"
     ).arg(
         completedTime.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")),
@@ -456,6 +553,15 @@ void SimulationManager::startTaskInternal()
     const QString projectDir = m_projectPath;
     const QString abaqusDir =
         QDir(projectDir).filePath(QStringLiteral("abaqus"));
+
+    if (!saveRunFingerprint(runningInputFingerprintPath(projectDir))) {
+        emit errorOccurred(
+            QStringLiteral("仿真无法启动"),
+            QStringLiteral("无法记录本次仿真输入指纹。")
+        );
+        return;
+    }
+
     const QString t0Path =
         QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
     const QString t1Path =
@@ -829,6 +935,12 @@ void SimulationManager::startTaskInternal()
                         );
                         return;
                     }
+
+                    const QString finishedProjectPath =
+                        runningProjectPath.isEmpty()
+                            ? m_projectPath
+                            : runningProjectPath;
+                    promoteRunningInputFingerprint(finishedProjectPath);
 
                     setSimulationState(SimulationState::Finished);
                     clearRunningSimulationContext();

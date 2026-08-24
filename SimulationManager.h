@@ -84,6 +84,10 @@ private:
     void updateProgressFromStaLine(const QString &line);
     double loadSimulationTotalTime();
 
+    QString calculateInputFingerprint() const;
+    bool saveRunFingerprint(const QString &filePath) const;
+    bool fingerprintsMatch() const;
+
     QString m_projectPath;
     QString m_abaqusPath;
 

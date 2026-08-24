@@ -1,5 +1,6 @@
 # Qt / qmake build artifacts
 build/
+build-*/
 **/build/
 release/
 debug/
