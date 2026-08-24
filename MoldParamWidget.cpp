@@ -26,11 +26,11 @@ void MoldParamWidget::setupUi()
     thermalConductivityEdit = createSciEdit();
     specificHeatEdit = createSciEdit();
 
-    addParamRow(scrollLayout, QStringLiteral("模具密度"), densityEdit);
-    addParamRow(scrollLayout, QStringLiteral("模具弹性模量"), elasticModulusEdit);
-    addParamRow(scrollLayout, QStringLiteral("模具泊松比"), poissonRatioEdit);
-    addParamRow(scrollLayout, QStringLiteral("模具热导率"), thermalConductivityEdit);
-    addParamRow(scrollLayout, QStringLiteral("模具比热容"), specificHeatEdit);
+    addParamRow(scrollLayout, QStringLiteral("模具密度"), densityEdit, QStringLiteral("kg/m³"));
+    addParamRow(scrollLayout, QStringLiteral("模具弹性模量"), elasticModulusEdit, QStringLiteral("Pa"));
+    addParamRow(scrollLayout, QStringLiteral("模具泊松比"), poissonRatioEdit, QStringLiteral("-"));
+    addParamRow(scrollLayout, QStringLiteral("模具热导率"), thermalConductivityEdit, QStringLiteral("W/(m·K)"));
+    addParamRow(scrollLayout, QStringLiteral("模具比热容"), specificHeatEdit, QStringLiteral("J/(kg·K)"));
 
     addSaveButton(scrollLayout, QStringLiteral("保存模具参数"), [this]() {
         emit saveRequested();

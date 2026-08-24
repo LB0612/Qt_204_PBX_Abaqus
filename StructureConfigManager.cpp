@@ -54,7 +54,7 @@ bool StructureConfigManager::save(
     }
 
     QJsonObject jsonObj;
-    jsonObj[QStringLiteral("schemaVersion")] = config.schemaVersion;
+    jsonObj[QStringLiteral("schemaVersion")] = STRUCTURE_SCHEMA_VERSION;
     jsonObj[QStringLiteral("chargeRadius")] = config.chargeRadius;
     jsonObj[QStringLiteral("chargeHeight")] = config.chargeHeight;
     jsonObj[QStringLiteral("shellThickness")] = config.shellThickness;

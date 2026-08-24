@@ -174,6 +174,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
 
     logEdit = new QTextEdit(logCard);
     logEdit->setReadOnly(true);
+    logEdit->document()->setMaximumBlockCount(10000);
     logEdit->setMinimumHeight(220);
     logEdit->setStyleSheet(
         QStringLiteral(
