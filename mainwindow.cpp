@@ -691,6 +691,33 @@ bool MainWindow::ensureNoUnsavedParameters()
     return true;
 }
 
+bool MainWindow::ensureValidProjectJobName()
+{
+    if (!isProjectLoaded) {
+        return false;
+    }
+
+    QString nameError;
+    if (ProjectManager::isValidProjectName(
+            currentProject.projectName,
+            nameError)) {
+        return true;
+    }
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Warning,
+        QStringLiteral("工程目录名称无效"),
+        QStringLiteral(
+            "工程目录名称不符合 Abaqus Job 命名要求，"
+            "请重命名工程目录。\n\n"
+            "当前目录名：%1"
+        ).arg(currentProject.projectName)
+    );
+
+    return false;
+}
+
 bool MainWindow::promptAndClearStaleJobLock()
 {
     if (!simulationManager->hasLockFiles()) {
@@ -1369,6 +1396,10 @@ void MainWindow::generateFiles()
         return;
     }
 
+    if (!ensureValidProjectJobName()) {
+        return;
+    }
+
     StructureConfig structure;
     if (!StructureConfigManager::load(currentProject.projectPath, structure)) {
         showCenteredMessageBox(
@@ -1647,6 +1678,10 @@ void MainWindow::showSimulationPreparePage()
         return;
     }
 
+    if (!ensureValidProjectJobName()) {
+        return;
+    }
+
     selectTreeItem(QStringLiteral("开始仿真"));
 
     if (simulationManager->isActive()) {
@@ -1689,6 +1724,10 @@ void MainWindow::startSimulation()
     }
 
     if (!ensureNoUnsavedParameters()) {
+        return;
+    }
+
+    if (!ensureValidProjectJobName()) {
         return;
     }
 

@@ -65,6 +65,7 @@ private:
     };
 
     bool ensureNoUnsavedParameters();
+    bool ensureValidProjectJobName();
     bool promptAndClearStaleJobLock();
 
     void connectParameterEditSignals();
