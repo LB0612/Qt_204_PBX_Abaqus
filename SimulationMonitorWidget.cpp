@@ -18,7 +18,7 @@ const char *kCardStyle =
 
 const char *kSectionTitleStyle =
     "font-family: 'Microsoft YaHei';"
-    "font-size: 14px;"
+    "font-size: 16px;"
     "font-weight: bold;"
     "color: #333333;"
     "border: none;"
@@ -26,7 +26,7 @@ const char *kSectionTitleStyle =
 
 const char *kBodyLabelStyle =
     "font-family: 'Microsoft YaHei';"
-    "font-size: 15px;"
+    "font-size: 16px;"
     "color: #555555;"
     "border: none;"
     "background: transparent;";
@@ -61,14 +61,14 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
         QStringLiteral("Abaqus固化仿真监控"),
         this
     );
-    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     titleLabel->setStyleSheet(
         QStringLiteral(
             "font-family: 'Microsoft YaHei';"
-            "font-size: 26px;"
+            "font-size: 20px;"
             "font-weight: bold;"
             "color: #333333;"
-            "padding: 8px 0 4px 0;"
+            "padding: 10px 0 10px 4px;"
         )
     );
     layout->addWidget(titleLabel);
@@ -138,7 +138,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     progressBar = new QProgressBar(progressCard);
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
-    progressBar->setFixedHeight(22);
+    progressBar->setFixedHeight(26);
     progressBar->setFormat(QStringLiteral("Abaqus分析进度 %p%"));
     progressBar->setTextVisible(true);
     progressBar->setStyleSheet(
@@ -148,7 +148,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
             "  border-radius: 6px;"
             "  text-align: center;"
             "  font-family: 'Microsoft YaHei';"
-            "  font-size: 14px;"
+            "  font-size: 16px;"
             "  background-color: #f5f5f5;"
             "  color: #333333;"
             "}"
@@ -182,7 +182,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
             "  border: 1px solid #dddddd;"
             "  border-radius: 6px;"
             "  font-family: Consolas, 'Courier New', monospace;"
-            "  font-size: 13px;"
+            "  font-size: 14px;"
             "  padding: 8px;"
             "  color: #333333;"
             "}"
