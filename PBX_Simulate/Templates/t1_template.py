@@ -318,123 +318,226 @@ def _write_uncompressed_avi(png_paths, avi_path, fps):
     if not png_paths:
         raise RuntimeError('No PNG frames; AVI cannot be created.')
 
+    tmp_path = avi_path + '.tmp'
+    if os.path.exists(tmp_path):
+        os.remove(tmp_path)
+
     width, height, first_frame = _make_avi_frame(png_paths[0])
-
-    frames = [first_frame]
     frame_size = len(first_frame)
-
-    for path in png_paths[1:]:
-        w, h, frame_data = _make_avi_frame(path)
-
-        if w != width or h != height:
-            raise RuntimeError('All PNG frames must have the same size.')
-
-        frames.append(frame_data)
-
-    total_frames = len(frames)
+    total_frames = len(png_paths)
     microseconds_per_frame = int(round(1000000.0 / fps))
-
-    avih = struct.pack(
-        '<IIIIIIIIII4I',
-        microseconds_per_frame,
-        frame_size * fps,
-        0,
-        0x10,
-        total_frames,
-        0,
-        1,
-        frame_size,
-        width,
-        height,
-        0,
-        0,
-        0,
-        0
-    )
-
-    strh = struct.pack(
-        '<4s4sIHHIIIIIIIIhhhh',
-        b'vids',
-        b'DIB ',
-        0,
-        0,
-        0,
-        0,
-        1,
-        fps,
-        0,
-        total_frames,
-        frame_size,
-        0xFFFFFFFF,
-        0,
-        0,
-        0,
-        width,
-        height
-    )
 
     raw_row_size = width * 3
     row_padding = (-raw_row_size) % 4
-    image_size = (raw_row_size + row_padding) * height
+    frame_chunk_size = 8 + frame_size
+    if frame_chunk_size % 2:
+        frame_chunk_size += 1
 
-    strf = struct.pack(
-        '<IiiHHIIiiII',
-        40,
-        width,
-        height,
-        1,
-        24,
-        0,
-        image_size,
-        0,
-        0,
-        0,
-        0
-    )
-
-    strl = _riff_list(
-        b'strl',
-        _riff_chunk(b'strh', strh)
-        + _riff_chunk(b'strf', strf)
-    )
-
-    hdrl = _riff_list(
-        b'hdrl',
-        _riff_chunk(b'avih', avih)
-        + strl
-    )
-
-    movi_payload = bytearray()
-    index_entries = []
-    offset = 4
-
-    for frame_data in frames:
-        frame_chunk = _riff_chunk(b'00db', frame_data)
-        movi_payload.extend(frame_chunk)
-
-        index_entries.append(
-            struct.pack(
-                '<4sIII',
-                b'00db',
+    movi_payload_size = frame_chunk_size * total_frames
+    idx1_payload_size = 16 * total_frames
+    riff_payload_size = (
+        4
+        + len(_riff_list(
+            b'hdrl',
+            _riff_chunk(b'avih', struct.pack(
+                '<IIIIIIIIII4I',
+                microseconds_per_frame,
+                frame_size * fps,
+                0,
                 0x10,
-                offset,
-                len(frame_data)
+                total_frames,
+                0,
+                1,
+                frame_size,
+                width,
+                height,
+                0,
+                0,
+                0,
+                0
+            ))
+            + _riff_list(
+                b'strl',
+                _riff_chunk(
+                    b'strh',
+                    struct.pack(
+                        '<4s4sIHHIIIIIIIIhhhh',
+                        b'vids',
+                        b'DIB ',
+                        0,
+                        0,
+                        0,
+                        0,
+                        1,
+                        fps,
+                        0,
+                        total_frames,
+                        frame_size,
+                        0xFFFFFFFF,
+                        0,
+                        0,
+                        0,
+                        width,
+                        height
+                    )
+                )
+                + _riff_chunk(
+                    b'strf',
+                    struct.pack(
+                        '<IiiHHIIiiII',
+                        40,
+                        width,
+                        height,
+                        1,
+                        24,
+                        0,
+                        (raw_row_size + row_padding) * height,
+                        0,
+                        0,
+                        0,
+                        0
+                    )
+                )
             )
-        )
+        ))
+        + len(_riff_list(b'movi', b''))
+        + movi_payload_size
+        + len(_riff_chunk(b'idx1', b''))
+        + idx1_payload_size
+    )
 
-        offset += len(frame_chunk)
+    if riff_payload_size > 0xFFFFFFFF:
+        raise RuntimeError('AVI exceeds classic RIFF size limit.')
 
-    movi = _riff_list(b'movi', bytes(movi_payload))
-    idx1 = _riff_chunk(b'idx1', b''.join(index_entries))
+    expected_total_size = 8 + riff_payload_size
 
-    riff_payload = b'AVI ' + hdrl + movi + idx1
+    def _write_frame_chunk(out_file, frame_data):
+        out_file.write(b'00db')
+        out_file.write(struct.pack('<I', len(frame_data)))
+        out_file.write(frame_data)
+        if len(frame_data) % 2:
+            out_file.write(b'\x00')
 
-    with open(avi_path, 'wb') as f:
-        f.write(
-            b'RIFF'
-            + struct.pack('<I', len(riff_payload))
-            + riff_payload
-        )
+    try:
+        with open(tmp_path, 'wb') as out:
+            out.write(b'RIFF')
+            out.write(struct.pack('<I', riff_payload_size))
+            out.write(b'AVI ')
+
+            avih = struct.pack(
+                '<IIIIIIIIII4I',
+                microseconds_per_frame,
+                frame_size * fps,
+                0,
+                0x10,
+                total_frames,
+                0,
+                1,
+                frame_size,
+                width,
+                height,
+                0,
+                0,
+                0,
+                0
+            )
+
+            strh = struct.pack(
+                '<4s4sIHHIIIIIIIIhhhh',
+                b'vids',
+                b'DIB ',
+                0,
+                0,
+                0,
+                0,
+                1,
+                fps,
+                0,
+                total_frames,
+                frame_size,
+                0xFFFFFFFF,
+                0,
+                0,
+                0,
+                width,
+                height
+            )
+
+            image_size = (raw_row_size + row_padding) * height
+            strf = struct.pack(
+                '<IiiHHIIiiII',
+                40,
+                width,
+                height,
+                1,
+                24,
+                0,
+                image_size,
+                0,
+                0,
+                0,
+                0
+            )
+
+            strl = _riff_list(
+                b'strl',
+                _riff_chunk(b'strh', strh)
+                + _riff_chunk(b'strf', strf)
+            )
+
+            hdrl = _riff_list(
+                b'hdrl',
+                _riff_chunk(b'avih', avih)
+                + strl
+            )
+            out.write(hdrl)
+
+            out.write(b'LIST')
+            out.write(struct.pack('<I', 4 + movi_payload_size))
+            out.write(b'movi')
+
+            _write_frame_chunk(out, first_frame)
+            del first_frame
+
+            for path in png_paths[1:]:
+                w, h, frame_data = _make_avi_frame(path)
+                if w != width or h != height:
+                    raise RuntimeError(
+                        'All PNG frames must have the same size.'
+                    )
+                _write_frame_chunk(out, frame_data)
+                del frame_data
+
+            out.write(b'idx1')
+            out.write(struct.pack('<I', idx1_payload_size))
+            for i in range(total_frames):
+                out.write(
+                    struct.pack(
+                        '<4sIII',
+                        b'00db',
+                        0x10,
+                        4 + i * frame_chunk_size,
+                        frame_size
+                    )
+                )
+
+            out.flush()
+
+        actual_size = os.path.getsize(tmp_path)
+        if actual_size != expected_total_size:
+            raise RuntimeError(
+                'AVI size mismatch: expected %d, got %d.'
+                % (expected_total_size, actual_size)
+            )
+
+        if os.path.exists(avi_path):
+            os.remove(avi_path)
+        os.rename(tmp_path, avi_path)
+
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
 
 
 # =========================================================
