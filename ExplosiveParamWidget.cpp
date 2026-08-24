@@ -30,15 +30,15 @@ void ExplosiveParamWidget::setupUi()
     specificHeatEdit = createSciEdit();
     expansionCoefficientEdit = createSciEdit();
 
-    addParamRow(scrollLayout, QStringLiteral("炸药密度"), densityEdit, QStringLiteral("kg/m³"));
-    addParamRow(scrollLayout, QStringLiteral("固化初始杨氏模量"), initialElasticModulusEdit, QStringLiteral("Pa"));
-    addParamRow(scrollLayout, QStringLiteral("固化初始泊松比"), initialPoissonRatioEdit, QStringLiteral("-"));
-    addParamRow(scrollLayout, QStringLiteral("固化结束杨氏模量"), finalElasticModulusEdit, QStringLiteral("Pa"));
-    addParamRow(scrollLayout, QStringLiteral("固化结束泊松比"), finalPoissonRatioEdit, QStringLiteral("-"));
-    addParamRow(scrollLayout, QStringLiteral("炸药传导率"), thermalConductivityEdit, QStringLiteral("W/(m·K)"));
-    addParamRow(scrollLayout, QStringLiteral("炸药屈服应力"), yieldStressEdit, QStringLiteral("Pa"));
-    addParamRow(scrollLayout, QStringLiteral("炸药比热"), specificHeatEdit, QStringLiteral("J/(kg·K)"));
-    addParamRow(scrollLayout, QStringLiteral("炸药膨胀系数"), expansionCoefficientEdit, QStringLiteral("1/K"));
+    addParamRow(scrollLayout, QStringLiteral("炸药密度（t/mm³）"), densityEdit);
+    addParamRow(scrollLayout, QStringLiteral("固化初始杨氏模量（MPa）"), initialElasticModulusEdit);
+    addParamRow(scrollLayout, QStringLiteral("固化初始泊松比"), initialPoissonRatioEdit);
+    addParamRow(scrollLayout, QStringLiteral("固化结束杨氏模量（MPa）"), finalElasticModulusEdit);
+    addParamRow(scrollLayout, QStringLiteral("固化结束泊松比"), finalPoissonRatioEdit);
+    addParamRow(scrollLayout, QStringLiteral("炸药传导率（W/(m·K)）"), thermalConductivityEdit);
+    addParamRow(scrollLayout, QStringLiteral("炸药屈服应力（MPa）"), yieldStressEdit);
+    addParamRow(scrollLayout, QStringLiteral("炸药比热（N·mm/(t·K)）"), specificHeatEdit);
+    addParamRow(scrollLayout, QStringLiteral("炸药膨胀系数（1/K）"), expansionCoefficientEdit);
 
     addSaveButton(scrollLayout, QStringLiteral("保存炸药参数"), [this]() {
         emit saveRequested();

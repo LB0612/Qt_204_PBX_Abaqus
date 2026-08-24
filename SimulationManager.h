@@ -66,7 +66,7 @@ signals:
 private:
     void startTaskInternal();
     void setSimulationState(SimulationState state);
-    void clearRunningSimulationContext();
+    void clearRunningSimulationContext(bool removeRunningFingerprint = true);
 
     void handleTerminateRequestFailure(const QString &reason);
     void sendAbaqusTerminateCommand();

@@ -169,13 +169,16 @@ void SimulationManager::setSimulationState(SimulationState state)
     emit stateChanged(simulationState);
 }
 
-void SimulationManager::clearRunningSimulationContext()
+void SimulationManager::clearRunningSimulationContext(
+    const bool removeRunningFingerprint)
 {
     const QString projectPath =
         runningProjectPath.isEmpty()
             ? m_projectPath
             : runningProjectPath;
-    removeRunningInputFingerprint(projectPath);
+    if (removeRunningFingerprint) {
+        removeRunningInputFingerprint(projectPath);
+    }
 
     currentJobName.clear();
     runningProjectPath.clear();
@@ -929,10 +932,13 @@ void SimulationManager::startTaskInternal()
                         runningProjectPath.isEmpty()
                             ? m_projectPath
                             : runningProjectPath;
-                    promoteRunningInputFingerprint(finishedProjectPath);
+                    const bool promoted =
+                        promoteRunningInputFingerprint(
+                            finishedProjectPath
+                        );
 
                     setSimulationState(SimulationState::Finished);
-                    clearRunningSimulationContext();
+                    clearRunningSimulationContext(promoted);
                     emit statusChanged(
                         QStringLiteral("固化仿真完成")
                     );
@@ -943,6 +949,14 @@ void SimulationManager::startTaskInternal()
                     emit logReceived(
                         QStringLiteral("[SYS] 固化仿真完成")
                     );
+                    if (!promoted) {
+                        emit logReceived(
+                            QStringLiteral(
+                                "[SYS] 成功指纹写入失败，"
+                                "将在下次打开时恢复"
+                            )
+                        );
+                    }
                     emit simulationFinished();
                 }
             );

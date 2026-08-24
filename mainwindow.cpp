@@ -534,6 +534,31 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     root->setExpanded(true);
 }
 
+void MainWindow::restoreCurrentProjectTreeSelection()
+{
+    if (!treeWidget || !isProjectLoaded) {
+        return;
+    }
+
+    QTreeWidgetItem *root = treeWidget->topLevelItem(0);
+    if (!root) {
+        return;
+    }
+
+    for (int i = 0; i < root->childCount(); ++i) {
+        QTreeWidgetItem *projectItem = root->child(i);
+        if (projectItem->data(0, Qt::UserRole).toString() != currentProject.projectPath) {
+            continue;
+        }
+
+        treeWidget->blockSignals(true);
+        treeWidget->setCurrentItem(projectItem);
+        treeWidget->scrollToItem(projectItem);
+        treeWidget->blockSignals(false);
+        return;
+    }
+}
+
 void MainWindow::selectTreeItem(const QString &itemName)
 {
     if (!treeWidget) {
@@ -711,6 +736,10 @@ void MainWindow::loadProjectToUi()
 
 void MainWindow::newProject()
 {
+    if (!ensureNoUnsavedParameters()) {
+        return;
+    }
+
     if (!ensureSimulationIdle(QStringLiteral("新建工程"))) {
         return;
     }
@@ -739,6 +768,10 @@ void MainWindow::newProject()
 
 void MainWindow::openProject()
 {
+    if (!ensureNoUnsavedParameters()) {
+        return;
+    }
+
     if (!ensureSimulationIdle(QStringLiteral("打开其他工程"))) {
         return;
     }
@@ -804,6 +837,10 @@ void MainWindow::exitProject()
                 "并等待终止完成后再关闭工程。"
             )
         );
+        return;
+    }
+
+    if (!ensureNoUnsavedParameters()) {
         return;
     }
 
@@ -1925,6 +1962,11 @@ void MainWindow::closeEvent(QCloseEvent *event)
         return;
     }
 
+    if (!ensureNoUnsavedParameters()) {
+        event->ignore();
+        return;
+    }
+
     if (showCenteredMessageBox(this, QMessageBox::Question, QStringLiteral("退出"), QStringLiteral("确定要退出吗？"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes) == QMessageBox::Yes) {
         event->accept();
     } else {
@@ -2014,6 +2056,20 @@ void MainWindow::onTreeItemClicked(
     // 如果切换到了另一个工程，重新加载该工程
     if (!isProjectLoaded ||
         path != currentProject.projectPath) {
+
+        if (!dirtyParamPages.isEmpty()) {
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("存在未保存修改"),
+                QStringLiteral(
+                    "当前工程存在未保存的参数修改，"
+                    "请先保存后再切换到其他工程。"
+                )
+            );
+            restoreCurrentProjectTreeSelection();
+            return;
+        }
 
         ProjectConfig config;
 

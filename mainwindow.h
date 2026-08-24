@@ -46,6 +46,7 @@ private:
     void createTreeWidget();
     void updateTreeStructure(const QString &name, const QString &path);
     void selectTreeItem(const QString &itemName);
+    void restoreCurrentProjectTreeSelection();
     void startWatchingProject();
     void stopWatchingProject();
     void loadProjectToUi();

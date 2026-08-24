@@ -14,9 +14,14 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
 { 
     QHBoxLayout *hLayout = new QHBoxLayout(); 
     
-    // 标签：180px宽，右对齐 
-    QLabel *lblName = new QLabel(name + "："); 
-    lblName->setFixedWidth(180); 
+    // 标签：240px宽，右对齐
+    QString displayName = name;
+    if (!unit.isEmpty()) {
+        displayName = name + QStringLiteral("（") + unit + QStringLiteral("）");
+    }
+
+    QLabel *lblName = new QLabel(displayName + QStringLiteral("："));
+    lblName->setFixedWidth(240); 
     lblName->setAlignment(Qt::AlignRight | Qt::AlignVCenter); 
     // 【修改】高度改为 40 
     lblName->setMinimumHeight(40); 
@@ -29,35 +34,14 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
     edit->setMinimumHeight(40); 
     edit->setStyleSheet("QLineEdit { font-family: 'Microsoft YaHei'; font-size: 16px; margin-left: 10px; padding-left: 5px; border: 1px solid #ccc; border-radius: 4px; } QLineEdit:focus { border: 1px solid #1890ff; }"); 
     
-    hLayout->addWidget(edit); 
-    
+    hLayout->addWidget(edit);
+
     connect(
         edit,
         &QLineEdit::textEdited,
         this,
         &BaseParamWidget::parameterEdited
     );
-
-    if (!unit.isEmpty()) {
-        QLabel *unitLabel = new QLabel(unit);
-
-        unitLabel->setFixedWidth(80);
-
-        unitLabel->setAlignment(
-            Qt::AlignLeft |
-            Qt::AlignVCenter
-        );
-
-        unitLabel->setStyleSheet(
-            QStringLiteral(
-                "font-family: 'Microsoft YaHei';"
-                "font-size: 15px;"
-                "color: #555;"
-            )
-        );
-
-        hLayout->addWidget(unitLabel);
-    }
 
     // 稍微增加一点行距 
     hLayout->setContentsMargins(0, 5, 0, 5); 

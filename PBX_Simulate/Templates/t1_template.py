@@ -530,9 +530,7 @@ def _write_uncompressed_avi(png_paths, avi_path, fps):
                 % (expected_total_size, actual_size)
             )
 
-        if os.path.exists(avi_path):
-            os.remove(avi_path)
-        os.rename(tmp_path, avi_path)
+        os.replace(tmp_path, avi_path)
 
     except Exception:
         if os.path.exists(tmp_path):
