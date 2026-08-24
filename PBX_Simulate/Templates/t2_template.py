@@ -617,7 +617,10 @@ class _OpenDmlAviWriter(object):
             b'strl',
             strh_chunk + strf_chunk + super_indx_placeholder
         )
-        dmlh_chunk = _riff_chunk(b'dmlh', struct.pack('<I', 0))
+        dmlh_chunk = _riff_chunk(
+            b'dmlh',
+            struct.pack('<I', 0) + b'\x00' * (61 * 4)
+        )
         odml = _riff_list(b'odml', dmlh_chunk)
 
         hdrl_start = self._file.tell()

@@ -5,7 +5,7 @@
 
 namespace ProjectInputHash {
 
-constexpr int GENERATION_MANIFEST_VERSION = 2;
+constexpr int GENERATION_MANIFEST_VERSION = 3;
 constexpr int CALCULATION_PIPELINE_VERSION = 2;
 constexpr int POSTPROCESS_PIPELINE_VERSION = 2;
 
