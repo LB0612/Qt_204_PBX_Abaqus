@@ -10,11 +10,10 @@
 #include <QStackedWidget>
 #include <QFileSystemWatcher>
 #include <QTimer>
-#include <QByteArray>
 #include <QMessageBox>
-#include <QProcess>
 
 #include "ProjectManager.h"
+#include "SimulationManager.h"
 #include "ProjectInfoWidget.h"
 #include "StructureParamWidget.h"
 #include "ExplosiveParamWidget.h"
@@ -27,17 +26,6 @@
 
 class NewProjectDialog;
 class OpenProjectDialog;
-
-enum class SimulationState
-{
-    Idle,
-    T0Running,
-    T1Running,
-    Stopping,
-    Stopped,
-    Finished,
-    Failed
-};
 
 class MainWindow : public QMainWindow
 {
@@ -60,37 +48,13 @@ private:
     void stopWatchingProject();
     void loadProjectToUi();
     void updateUIStates();
-    void updateAbaqusLog();
-    void readAbaqusLogFile(
-        const QString &path,
-        const QString &tag,
-        qint64 &readOffset,
-        QByteArray &pendingData
-    );
-    void updateProgressFromStaLine(const QString &line);
-    double loadSimulationTotalTime();
-    bool checkSimulationReady(QString &errorMessage);
-    bool hasAbaqusLockFiles() const;
-    bool hasValidPreviousSimulationResult(QString &message) const;
-    bool isSimulationActive() const;
+    void connectSimulationManager();
+
     bool ensureSimulationIdle(const QString &operation);
     bool ensureParameterWritable(const QString &parameterName);
 
     void setParameterPagesReadOnly(bool readOnly);
     void reloadParameterPagesFromSavedConfig();
-    void setSimulationState(SimulationState state);
-    void clearRunningSimulationContext();
-
-    void handleTerminateRequestFailure(const QString &reason);
-    void sendAbaqusTerminateCommand();
-    void waitForJobLockRelease(const QString &lockPath);
-    void onAbaqusJobTerminateFinished();
-
-    void closeAbaqusProcesses();
-    void forceCloseAbaqusProcesses();
-    bool isCurrentJobLockPresent() const;
-
-    void finishStopState();
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,
@@ -119,29 +83,15 @@ private:
     SimulationMonitorWidget *simulationMonitorWidget;
     SimulationPrepareWidget *simulationPrepareWidget;
 
+    SimulationManager *simulationManager = nullptr;
+
     QFileSystemWatcher *fileWatcher;
     QTimer *debounceTimer;
-    QProcess *abaqusProcess = nullptr;
-    QTimer *simulationTimer = nullptr;
-    QString simulationMsgPath;
-    QString simulationStaPath;
-    QString simulationDatPath;
-    qint64 simulationMsgReadOffset = 0;
-    qint64 simulationStaReadOffset = 0;
-    QByteArray simulationMsgPending;
-    QByteArray simulationStaPending;
-    double simulationTotalTime = 0.0;
 
     QList<QAction *> projectDependentActions;
     QList<QAction *> simulationLockedActions;
 
     QAction *stopSimulationAction = nullptr;
-    bool simulationUserStopped = false;
-    SimulationState simulationState = SimulationState::Idle;
-
-    QString currentJobName;
-    QString runningProjectPath;
-    QString runningAbaqusPath;
 
 private slots:
     void newProject();
@@ -167,6 +117,13 @@ private slots:
     void stopSimulation();
     void settings();
     void help();
+
+    void onSimulationStateChanged(SimulationState state);
+    void onForceKillRequested();
+    void onSimulationErrorOccurred(const QString &title, const QString &text);
+    void onSimulationFinished();
+    void onSimulationFailed(const QString &error);
+    void onSimulationStopped();
 
     void onTreeItemDoubleClicked(QTreeWidgetItem *item, int column);
     void onTreeItemClicked(QTreeWidgetItem *item, int column);

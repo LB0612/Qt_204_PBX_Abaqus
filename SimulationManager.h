@@ -1,10 +1,23 @@
 #ifndef SIMULATIONMANAGER_H
 #define SIMULATIONMANAGER_H
 
+#include <QByteArray>
 #include <QObject>
 #include <QString>
 
-#include "ProjectManager.h"
+class QProcess;
+class QTimer;
+
+enum class SimulationState
+{
+    Idle,
+    T0Running,
+    T1Running,
+    Stopping,
+    Stopped,
+    Finished,
+    Failed
+};
 
 class SimulationManager : public QObject
 {
@@ -12,18 +25,93 @@ class SimulationManager : public QObject
 
 public:
     explicit SimulationManager(QObject *parent = nullptr);
-    ~SimulationManager();
+    ~SimulationManager() override;
 
     static SimulationManager &instance();
 
-    void startTask(const QString &projectPath, const ProjectConfig &config);
-    void stopTask(const QString &projectPath);
-    bool isRunning(const QString &projectPath) const;
+    SimulationState state() const;
+    QString projectPath() const;
+    QString jobName() const;
+
+    bool isActive() const;
+
+    void setProjectContext(const QString &projectPath, const QString &abaqusPath);
+
+    bool checkReady(QString &errorMessage) const;
+    bool hasLockFiles() const;
+    bool hasValidPreviousResult(QString &message) const;
+
+    void startTask(const QString &projectPath, const QString &abaqusPath);
+    void stopTask();
+
+    void continueLockWait();
+    void respondToForceKillPrompt(bool continueWaiting);
+    void forceCloseTrackedProcesses();
 
 signals:
-    void logReceived(const QString &projectPath, const QString &log);
-    void progressUpdated(const QString &projectPath, int progress, const QString &status);
-    void taskFinished(const QString &projectPath, int exitCode);
+    void stateChanged(SimulationState state);
+    void statusChanged(const QString &text);
+    void phaseChanged(const QString &text);
+    void jobChanged(const QString &jobName);
+    void progressUpdated(int value);
+    void logReceived(const QString &text);
+    void monitorResetRequested();
+
+    void simulationFinished();
+    void simulationStopped();
+    void simulationFailed(const QString &error);
+    void errorOccurred(const QString &title, const QString &text);
+    void forceKillRequested();
+
+private:
+    void startTaskInternal();
+    void setSimulationState(SimulationState state);
+    void clearRunningSimulationContext();
+
+    void handleTerminateRequestFailure(const QString &reason);
+    void sendAbaqusTerminateCommand();
+    void waitForJobLockRelease(const QString &lockPath);
+    void onAbaqusJobTerminateFinished();
+
+    void closeAbaqusProcesses();
+    bool isCurrentJobLockPresent() const;
+    void finishStopState();
+
+    void updateAbaqusLog();
+    void readAbaqusLogFile(
+        const QString &path,
+        const QString &tag,
+        qint64 &readOffset,
+        QByteArray &pendingData
+    );
+    void updateProgressFromStaLine(const QString &line);
+    double loadSimulationTotalTime();
+
+    QString m_projectPath;
+    QString m_abaqusPath;
+
+    QProcess *abaqusProcess = nullptr;
+    QTimer *simulationTimer = nullptr;
+
+    QString simulationMsgPath;
+    QString simulationStaPath;
+    QString simulationDatPath;
+    qint64 simulationMsgReadOffset = 0;
+    qint64 simulationStaReadOffset = 0;
+    QByteArray simulationMsgPending;
+    QByteArray simulationStaPending;
+    double simulationTotalTime = 0.0;
+
+    bool simulationUserStopped = false;
+    SimulationState simulationState = SimulationState::Idle;
+
+    QString currentJobName;
+    QString runningProjectPath;
+    QString runningAbaqusPath;
+
+    QTimer *m_lockWaitTimer = nullptr;
+    int *m_lockWaitTries = nullptr;
+    QString m_lockWaitPath;
 };
 
 #endif
