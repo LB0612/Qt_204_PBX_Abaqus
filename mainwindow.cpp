@@ -701,6 +701,7 @@ void MainWindow::loadProjectToUi()
 {
     clearAllParamPageDirty();
     projectDirectoryMissing = false;
+    infoWidget->setProjectData(currentProject);
     reloadParameterPagesFromSavedConfig();
     setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程 - %1").arg(currentProject.projectName));
     selectTreeItem(QStringLiteral("工程信息"));
