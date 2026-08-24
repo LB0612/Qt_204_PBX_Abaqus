@@ -124,7 +124,6 @@ void OpenProjectDialog::scanProjects()
     }
 
     projectTable->setRowCount(0);
-    allProjects.clear();
     openBtn->setEnabled(false);
 
     const QStringList subDirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
@@ -134,8 +133,6 @@ void OpenProjectDialog::scanProjects()
         if (!ProjectManager::loadProject(fullPath, config)) {
             continue;
         }
-
-        allProjects.append(config);
 
         const int row = projectTable->rowCount();
         projectTable->insertRow(row);

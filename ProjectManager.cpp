@@ -155,9 +155,3 @@ bool ProjectManager::loadProject(
     config.schemaVersion = schemaVersion;
     return true;
 }
-
-bool ProjectManager::isValidProject(const QString &folderPath)
-{
-    ProjectConfig config;
-    return loadProject(folderPath, config);
-}

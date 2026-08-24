@@ -29,7 +29,6 @@ public:
 
     SimulationState state() const;
     QString projectPath() const;
-    QString jobName() const;
 
     bool isActive() const;
 
@@ -45,7 +44,6 @@ public:
     void startTask(const QString &projectPath, const QString &abaqusPath);
     void stopTask();
 
-    void continueLockWait();
     void respondToForceKillPrompt(bool continueWaiting);
     void forceCloseTrackedProcesses();
 
@@ -59,7 +57,6 @@ signals:
     void monitorResetRequested();
 
     void simulationFinished();
-    void simulationStopped();
     void errorOccurred(const QString &title, const QString &text);
     void forceKillRequested();
 
@@ -72,6 +69,7 @@ private:
     void sendAbaqusTerminateCommand();
     void waitForJobLockRelease(const QString &lockPath);
     void onAbaqusJobTerminateFinished();
+    void continueLockWait();
 
     void closeAbaqusProcesses();
     bool isCurrentJobLockPresent() const;
@@ -92,6 +90,9 @@ private:
     bool fingerprintsMatch() const;
     bool fingerprintMatchesStored(const QString &storedPath) const;
     bool recoverSuccessFingerprintIfPossible();
+
+    QString activeProjectPath() const;
+    QString activeJobLockPath() const;
 
     QString m_projectPath;
     QString m_abaqusPath;

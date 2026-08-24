@@ -228,7 +228,7 @@ bool AbaqusFileGenerator::generate(
             QDir(resultsDir).filePath(QStringLiteral("guhuadu"))
         );
 
-    QString jobName = projectDir.dirName() + QStringLiteral("_Job");
+    QString jobName = ProjectInputHash::currentJobName(projectPath);
     jobName.replace(QStringLiteral("'"), QStringLiteral("\\'"));
 
     abaqusWorkDir.replace(QStringLiteral("'"), QStringLiteral("\\'"));

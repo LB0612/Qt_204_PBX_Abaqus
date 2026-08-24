@@ -27,8 +27,6 @@ private:
     QTableWidget *projectTable;
     QPushButton *openBtn;
     QPushButton *cancelBtn;
-
-    QList<ProjectConfig> allProjects;
 };
 
 #endif

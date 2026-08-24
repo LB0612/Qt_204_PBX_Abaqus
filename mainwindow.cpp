@@ -8,17 +8,12 @@
 #include "MoldConfigManager.h"
 #include "BoundaryConfigManager.h"
 #include "SimulationConfigManager.h"
-#include "ParameterCheckWidget.h"
-#include "SimulationMonitorWidget.h"
-#include "SimulationPrepareWidget.h"
-#include "SimulationManager.h"
 #include "AbaqusFileGenerator.h"
+#include "ProjectInputHash.h"
 
 #include <QBrush>
 #include <QCloseEvent>
 #include <QColor>
-#include <QDateTime>
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -1904,7 +1899,7 @@ void MainWindow::showPreviousSimulationLogs()
         QDir(projectDir).filePath(QStringLiteral("logs"));
 
     const QString jobName =
-        QDir(projectDir).dirName() + QStringLiteral("_Job");
+        ProjectInputHash::currentJobName(projectDir);
 
     QStringList logSections;
 

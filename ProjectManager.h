@@ -39,10 +39,6 @@ public:
         const QString &folderPath,
         ProjectConfig &config
     );
-
-    static bool isValidProject(
-        const QString &folderPath
-    );
 };
 
 #endif // PROJECTMANAGER_H

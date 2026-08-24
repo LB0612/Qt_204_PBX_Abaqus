@@ -92,7 +92,7 @@ void NewProjectDialog::setupUi()
     mainLayout->addLayout(btnLayout);
 
     connect(browseBtn, &QPushButton::clicked, this, &NewProjectDialog::onBrowsePath);
-    connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+    connect(okBtn, &QPushButton::clicked, this, &NewProjectDialog::accept);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
     connect(nameEdit, &QLineEdit::textChanged, this, [this](const QString &) { updateOkButtonState(); });
     connect(pathEdit, &QLineEdit::textChanged, this, [this](const QString &) { updateOkButtonState(); });

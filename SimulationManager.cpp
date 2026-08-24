@@ -99,9 +99,21 @@ QString SimulationManager::projectPath() const
     return m_projectPath;
 }
 
-QString SimulationManager::jobName() const
+QString SimulationManager::activeProjectPath() const
 {
-    return currentJobName;
+    return runningProjectPath.isEmpty()
+        ? m_projectPath
+        : runningProjectPath;
+}
+
+QString SimulationManager::activeJobLockPath() const
+{
+    const QString projectPath = activeProjectPath();
+    if (projectPath.isEmpty()) {
+        return QString();
+    }
+
+    return ProjectInputHash::currentJobLockPath(projectPath);
 }
 
 void SimulationManager::setProjectContext(const QString &projectPath, const QString &abaqusPath)
@@ -201,17 +213,7 @@ void SimulationManager::handleTerminateRequestFailure(const QString &reason)
         QStringLiteral("[ERROR] ") + reason
     );
 
-    const QString projectPath =
-        runningProjectPath.isEmpty()
-            ? m_projectPath
-            : runningProjectPath;
-
-    const QString lockPath =
-        QDir(projectPath).filePath(
-            QStringLiteral("abaqus/")
-            + currentJobName
-            + QStringLiteral(".lck")
-        );
+    const QString lockPath = activeJobLockPath();
 
     const bool processEnded =
         !abaqusProcess
@@ -345,7 +347,7 @@ bool SimulationManager::hasValidPreviousResult(
         QDir(projectDir).filePath(QStringLiteral("abaqus"));
 
     const QString jobName =
-        QDir(projectDir).dirName() + QStringLiteral("_Job");
+        ProjectInputHash::currentJobName(projectDir);
 
     const QString flagPath =
         QDir(abaqusDir).filePath(QStringLiteral("t1_finished.flag"));
@@ -354,7 +356,7 @@ bool SimulationManager::hasValidPreviousResult(
         QDir(abaqusDir).filePath(jobName + QStringLiteral(".odb"));
 
     const QString lockPath =
-        QDir(abaqusDir).filePath(jobName + QStringLiteral(".lck"));
+        ProjectInputHash::currentJobLockPath(projectDir);
 
     if (!QFile::exists(flagPath)) {
         return false;
@@ -799,7 +801,7 @@ void SimulationManager::startTaskInternal()
             );
 
             const QString jobName =
-                QDir(projectDir).dirName() + QStringLiteral("_Job");
+                ProjectInputHash::currentJobName(projectDir);
             currentJobName = jobName;
             emit jobChanged(jobName);
             simulationMsgPath =
@@ -1177,12 +1179,7 @@ void SimulationManager::sendAbaqusTerminateCommand()
             }
 
             const QString lockPath =
-                QDir(projectPath)
-                    .filePath(
-                        QStringLiteral("abaqus/")
-                        + jobName
-                        + QStringLiteral(".lck")
-                    );
+                ProjectInputHash::currentJobLockPath(projectPath);
 
             waitForJobLockRelease(lockPath);
         }
@@ -1357,23 +1354,8 @@ bool SimulationManager::isCurrentJobLockPresent() const
         return false;
     }
 
-    const QString projectPath =
-        runningProjectPath.isEmpty()
-            ? m_projectPath
-            : runningProjectPath;
-
-    if (projectPath.isEmpty()) {
-        return false;
-    }
-
-    const QString lockPath =
-        QDir(projectPath).filePath(
-            QStringLiteral("abaqus/")
-            + currentJobName
-            + QStringLiteral(".lck")
-        );
-
-    return QFile::exists(lockPath);
+    const QString lockPath = activeJobLockPath();
+    return !lockPath.isEmpty() && QFile::exists(lockPath);
 }
 
 void SimulationManager::forceCloseTrackedProcesses()
@@ -1457,34 +1439,12 @@ void SimulationManager::forceCloseTrackedProcesses()
                 )
             );
 
-            const QString projectPath =
-                runningProjectPath.isEmpty()
-                    ? m_projectPath
-                    : runningProjectPath;
-
-            const QString lockPath =
-                QDir(projectPath).filePath(
-                    QStringLiteral("abaqus/")
-                    + currentJobName
-                    + QStringLiteral(".lck")
-                );
-
-            waitForJobLockRelease(lockPath);
+            waitForJobLockRelease(activeJobLockPath());
 
             return;
         }
 
-        const QString projectPath =
-            runningProjectPath.isEmpty()
-                ? m_projectPath
-                : runningProjectPath;
-
-        const QString lockPath =
-            QDir(projectPath).filePath(
-                QStringLiteral("abaqus/")
-                + currentJobName
-                + QStringLiteral(".lck")
-            );
+        const QString lockPath = activeJobLockPath();
 
         if (!QFile::remove(lockPath)
             && QFile::exists(lockPath)) {
@@ -1544,7 +1504,6 @@ void SimulationManager::finishStopState()
     setSimulationState(SimulationState::Stopped);
     simulationUserStopped = false;
     clearRunningSimulationContext();
-    emit simulationStopped();
 
     emit statusChanged(
         QStringLiteral("仿真已终止")

@@ -43,41 +43,12 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
         &BaseParamWidget::parameterEdited
     );
 
-    // 稍微增加一点行距 
-    hLayout->setContentsMargins(0, 5, 0, 5); 
-    layout->addLayout(hLayout); 
-    
-    // 注册
-    QString cleanName = name;
-    cleanName.remove(":"); cleanName.remove("：");
-    cleanName = cleanName.trimmed(); // 去除可能存在的空格
-    m_paramRegistry.append({cleanName, edit, unit, false}); 
-} 
+    hLayout->setContentsMargins(0, 5, 0, 5);
+    layout->addLayout(hLayout);
 
-// ================================================================= 
-// 2. 添加小标题 (高度增加至 120px，绝对不会切) 
-// ================================================================= 
-void BaseParamWidget::addSectionTitle(QBoxLayout* layout, const QString& title) 
-{ 
-    QLabel *lblTitle = new QLabel(title); 
-    lblTitle->setAlignment(Qt::AlignCenter); 
-    
-    // 【核心修改】高度加大到 120px 
-    // 120px 足够容纳最大的汉字和上下的边距，绝对不会再切了 
-    lblTitle->setMinimumHeight(120); 
-    lblTitle->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed); 
-    
-    // 样式：黑体，20px 
-    lblTitle->setStyleSheet("font-family: 'Microsoft YaHei'; font-weight: bold; font-size: 20px; margin-top: 15px; margin-bottom: 5px; color: #000; border-bottom: 1px solid #eee; padding-bottom: 5px;"); 
-    
-    layout->addWidget(lblTitle); 
-    
-    m_paramRegistry.append({title, nullptr, "", true}); 
-} 
+    m_paramEdits.append(edit);
+}
 
-// ================================================================= 
-// 3. 辅助函数 
-// ================================================================= 
 void BaseParamWidget::applyCommonStyles() { 
     this->setStyleSheet("background-color: white;"); 
 } 
@@ -170,9 +141,9 @@ QLineEdit* BaseParamWidget::createReadOnlyEdit() {
 
 void BaseParamWidget::setReadOnlyMode(bool readOnly)
 {
-    for (const ParamInfo &info : m_paramRegistry) {
-        if (info.edit) {
-            info.edit->setReadOnly(readOnly);
+    for (QLineEdit *edit : m_paramEdits) {
+        if (edit) {
+            edit->setReadOnly(readOnly);
         }
     }
 
