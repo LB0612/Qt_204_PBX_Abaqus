@@ -247,6 +247,13 @@ bool SimulationManager::hasCompletePostProcess() const
         return false;
     }
 
+    QString outputError;
+    if (!ProjectInputHash::validatePostProcessOutputs(
+            projectDir,
+            outputError)) {
+        return false;
+    }
+
     return true;
 }
 
@@ -719,6 +726,8 @@ void SimulationManager::startTaskInternal()
             QStringLiteral("阶段: 后处理恢复(t2)")
         );
 
+        updateT2ResetRequestForPostProcessOnly();
+
         const QString postFingerprint = calculatePostFingerprint();
         if (!saveRunFingerprint(
                 ProjectInputHash::runningPostFingerprintPath(m_projectPath),
@@ -1094,6 +1103,8 @@ void SimulationManager::handleT1Finished(
         QStringLiteral("[SYS] Abaqus 求解完成，启动后处理")
     );
 
+    m_t2ResetRequested = true;
+
     const QString postFingerprint = calculatePostFingerprint();
     if (!saveRunFingerprint(
             ProjectInputHash::runningPostFingerprintPath(projectDir),
@@ -1130,10 +1141,26 @@ QProcessEnvironment SimulationManager::buildT2ProcessEnvironment() const
     );
     env.insert(
         QStringLiteral("PBX_T2_RESET"),
-        QStringLiteral("0")
+        m_t2ResetRequested ? QStringLiteral("1") : QStringLiteral("0")
     );
 
     return env;
+}
+
+void SimulationManager::updateT2ResetRequestForPostProcessOnly()
+{
+    const QString currentPost = calculatePostFingerprint();
+    const QString runningPath =
+        ProjectInputHash::runningPostFingerprintPath(m_projectPath);
+    const QString lastPath =
+        ProjectInputHash::lastSuccessPostFingerprintPath(m_projectPath);
+
+    m_t2ResetRequested = true;
+
+    if (fingerprintMatchesStored(runningPath, currentPost)
+        || fingerprintMatchesStored(lastPath, currentPost)) {
+        m_t2ResetRequested = false;
+    }
 }
 
 void SimulationManager::startT2Stage()
@@ -1153,6 +1180,12 @@ void SimulationManager::startT2Stage()
         QStringLiteral("阶段: 后处理(t2)")
     );
     emit progressUpdated(70);
+
+    emit logReceived(
+        m_t2ResetRequested
+            ? QStringLiteral("[SYS] 启动 t2.py（重置后处理输出）")
+            : QStringLiteral("[SYS] 启动 t2.py（续传后处理）")
+    );
 
     QFile t2LogFile(t2LogPath);
     if (t2LogFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -1318,14 +1351,14 @@ void SimulationManager::handleT2Finished(
         );
     }
 
-    finishSimulationSuccess();
+    finishSimulationSuccess(promoted);
 }
 
-void SimulationManager::finishSimulationSuccess()
+void SimulationManager::finishSimulationSuccess(bool postPromoted)
 {
     setSimulationState(SimulationState::Finished);
     clearRunningSimulationContext(false);
-    clearRunningPostContext(true);
+    clearRunningPostContext(postPromoted);
 
     emit statusChanged(
         QStringLiteral("固化仿真完成")

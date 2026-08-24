@@ -6,6 +6,7 @@ from caeModules import *
 import displayGroupOdbToolset as dgo
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -64,6 +65,42 @@ def _post_sha256():
 
 def _t2_reset_requested():
     return os.environ.get('PBX_T2_RESET', '0').strip() == '1'
+
+
+def _reset_postprocess_outputs():
+    frame_dirs = [
+        cure_output_base + '_frames',
+        temp_output_base + '_frames',
+        stress_output_base + '_frames',
+    ]
+    files_to_remove = [
+        cure_output_base + '.mp4',
+        temp_output_base + '.mp4',
+        stress_output_base + '.mp4',
+        cure_output_base + '.tmp.mp4',
+        temp_output_base + '.tmp.mp4',
+        stress_output_base + '.tmp.mp4',
+        manifest_path,
+        t2_flag_path,
+    ]
+
+    for frame_dir in frame_dirs:
+        if os.path.isdir(frame_dir):
+            shutil.rmtree(frame_dir)
+            print('[POST] Removed frame directory: %s' % frame_dir)
+
+    for path in files_to_remove:
+        if os.path.isfile(path):
+            os.remove(path)
+            print('[POST] Removed file: %s' % path)
+
+    if os.path.isdir(results_dir):
+        for name in os.listdir(results_dir):
+            if name.lower().endswith('.tmp.mp4'):
+                extra_path = os.path.join(results_dir, name)
+                if os.path.isfile(extra_path):
+                    os.remove(extra_path)
+                    print('[POST] Removed file: %s' % extra_path)
 
 
 def _is_valid_png(path):
@@ -236,6 +273,8 @@ def _generate_mp4(frame_dir, frame_prefix, output_mp4, expected_frames):
             '-framerate', str(VIDEO_FPS),
             '-start_number', '0',
             '-i', input_pattern,
+            '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2',
+            '-frames:v', str(expected_frames),
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
             tmp_mp4,
@@ -297,9 +336,9 @@ def _setup_viewport(odb):
 os.chdir(work_dir)
 
 if _t2_reset_requested():
-    print('[POST] PBX_T2_RESET=1, existing outputs will be regenerated as needed.')
-
-if os.path.isfile(t2_flag_path):
+    print('[POST] PBX_T2_RESET=1, clearing previous post-process outputs.')
+    _reset_postprocess_outputs()
+elif os.path.isfile(t2_flag_path):
     os.remove(t2_flag_path)
 
 if not os.path.isfile(odb_path):

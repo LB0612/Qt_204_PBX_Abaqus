@@ -93,8 +93,9 @@ private:
 
     void startT2Stage();
     void handleT2Finished(int exitCode, QProcess::ExitStatus exitStatus);
+    void updateT2ResetRequestForPostProcessOnly();
 
-    void finishSimulationSuccess();
+    void finishSimulationSuccess(bool postPromoted);
     void failSolverStage(const QString &statusText, const QString &logText, const QString &errorText);
     void failPostProcessStage(const QString &statusText, const QString &logText, const QString &errorText);
 
@@ -165,6 +166,7 @@ private:
 
     bool simulationUserStopped = false;
     bool m_forceFullRerun = false;
+    bool m_t2ResetRequested = false;
     SimulationState simulationState = SimulationState::Idle;
 
     QString currentJobName;

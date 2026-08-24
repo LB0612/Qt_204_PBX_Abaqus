@@ -5,6 +5,7 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
@@ -100,6 +101,64 @@ bool runVersionCheck(
     }
 
     return true;
+}
+
+bool ffmpegHasLibx264Encoder(
+    const QString &ffmpegPath,
+    QString &errorMessage)
+{
+    QProcess process;
+    process.start(
+        ffmpegPath,
+        {
+            QStringLiteral("-hide_banner"),
+            QStringLiteral("-h"),
+            QStringLiteral("encoder=libx264"),
+        }
+    );
+
+    if (!process.waitForStarted(5000)) {
+        errorMessage =
+            QStringLiteral("无法启动 FFmpeg 编码器检查：%1").arg(ffmpegPath);
+        return false;
+    }
+
+    if (!process.waitForFinished(10000)) {
+        process.kill();
+        process.waitForFinished(3000);
+        errorMessage =
+            QStringLiteral("FFmpeg 编码器检查无响应：%1").arg(ffmpegPath);
+        return false;
+    }
+
+    const QString output =
+        QString::fromUtf8(
+            process.readAllStandardOutput()
+            + process.readAllStandardError()
+        );
+
+    if (!output.contains(QStringLiteral("libx264"), Qt::CaseInsensitive)) {
+        errorMessage =
+            QStringLiteral(
+                "当前 FFmpeg 未包含 libx264 编码器：\n%1\n\n"
+                "请安装带 libx264 的完整 FFmpeg 后再运行后处理。"
+            ).arg(ffmpegPath);
+        return false;
+    }
+
+    return true;
+}
+
+QString framePngPath(
+    const QString &frameDir,
+    const QString &prefix,
+    int index)
+{
+    return QDir(frameDir).filePath(
+        QStringLiteral("%1_%2.png")
+            .arg(prefix)
+            .arg(index, 8, 10, QLatin1Char('0'))
+    );
 }
 
 } // namespace
@@ -305,6 +364,174 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
     return manifest;
 }
 
+QString resultsDirectory(const QString &projectPath)
+{
+    return QDir(projectPath).filePath(QStringLiteral("results"));
+}
+
+bool isValidPngFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    if (file.size() < 64) {
+        return false;
+    }
+
+    const QByteArray header = file.read(8);
+    if (header
+        != QByteArray::fromRawData(
+            "\x89PNG\r\n\x1a\n",
+            8)) {
+        return false;
+    }
+
+    if (!file.seek(file.size() - 12)) {
+        return false;
+    }
+
+    const QByteArray tail = file.read(12);
+    return tail.contains("IEND");
+}
+
+int countVideoFrames(const QString &videoPath, QString &errorMessage)
+{
+    const QString ffprobePath = bundledFfprobePath();
+    if (!QFile::exists(ffprobePath)) {
+        errorMessage =
+            QStringLiteral("FFprobe 不存在：%1").arg(ffprobePath);
+        return -1;
+    }
+
+    QProcess process;
+    process.start(
+        ffprobePath,
+        {
+            QStringLiteral("-v"),
+            QStringLiteral("error"),
+            QStringLiteral("-select_streams"),
+            QStringLiteral("v:0"),
+            QStringLiteral("-count_frames"),
+            QStringLiteral("-show_entries"),
+            QStringLiteral("stream=nb_read_frames"),
+            QStringLiteral("-of"),
+            QStringLiteral("default=nokey=1:noprint_wrappers=1"),
+            videoPath,
+        }
+    );
+
+    if (!process.waitForStarted(5000)) {
+        errorMessage =
+            QStringLiteral("无法启动 FFprobe：%1").arg(videoPath);
+        return -1;
+    }
+
+    if (!process.waitForFinished(30000)) {
+        process.kill();
+        process.waitForFinished(3000);
+        errorMessage =
+            QStringLiteral("FFprobe 超时：%1").arg(videoPath);
+        return -1;
+    }
+
+    if (process.exitStatus() != QProcess::NormalExit
+        || process.exitCode() != 0) {
+        errorMessage =
+            QStringLiteral("FFprobe 失败：%1").arg(videoPath);
+        return -1;
+    }
+
+    const QString text =
+        QString::fromUtf8(process.readAllStandardOutput()).trimmed();
+    bool ok = false;
+    const int frames = text.toInt(&ok);
+    if (!ok || frames < 0) {
+        errorMessage =
+            QStringLiteral("FFprobe 返回无效帧数：%1").arg(videoPath);
+        return -1;
+    }
+
+    return frames;
+}
+
+bool validatePostProcessOutputs(
+    const QString &projectPath,
+    QString &errorMessage)
+{
+    const PostProcessManifest manifest =
+        readPostProcessManifest(projectPath);
+    if (!manifest.valid) {
+        errorMessage = QStringLiteral("后处理清单无效。");
+        return false;
+    }
+
+    const int expectedFrames = manifest.odbFrames;
+    if (expectedFrames <= 0) {
+        errorMessage = QStringLiteral("后处理清单帧数无效。");
+        return false;
+    }
+
+    const QString resultsDir = resultsDirectory(projectPath);
+    const QString cureBase =
+        QDir(resultsDir).filePath(QStringLiteral("guhuadu"));
+    const QString tempBase =
+        QDir(resultsDir).filePath(QStringLiteral("wendu"));
+    const QString stressBase =
+        QDir(resultsDir).filePath(QStringLiteral("yingli"));
+
+    const struct {
+        QString frameDir;
+        QString prefix;
+    } pngSets[] = {
+        {cureBase + QStringLiteral("_frames"), QStringLiteral("Cure_SDV1_frame")},
+        {tempBase + QStringLiteral("_frames"), QStringLiteral("NT11_frame")},
+        {stressBase + QStringLiteral("_frames"), QStringLiteral("Stress_Mises_frame")},
+    };
+
+    for (const auto &pngSet : pngSets) {
+        for (int index = 0; index < expectedFrames; ++index) {
+            const QString pngPath =
+                framePngPath(pngSet.frameDir, pngSet.prefix, index);
+            if (!isValidPngFile(pngPath)) {
+                errorMessage =
+                    QStringLiteral("PNG 缺失或无效：%1").arg(pngPath);
+                return false;
+            }
+        }
+    }
+
+    const QStringList mp4Paths = {
+        cureBase + QStringLiteral(".mp4"),
+        tempBase + QStringLiteral(".mp4"),
+        stressBase + QStringLiteral(".mp4"),
+    };
+
+    for (const QString &mp4Path : mp4Paths) {
+        const QFileInfo info(mp4Path);
+        if (!info.exists() || info.size() <= 0) {
+            errorMessage =
+                QStringLiteral("MP4 缺失或为空：%1").arg(mp4Path);
+            return false;
+        }
+
+        QString probeError;
+        const int frames = countVideoFrames(mp4Path, probeError);
+        if (frames != expectedFrames) {
+            errorMessage =
+                probeError.isEmpty()
+                    ? QStringLiteral(
+                        "MP4 帧数不匹配：%1（期望 %2）"
+                    ).arg(mp4Path).arg(expectedFrames)
+                    : probeError;
+            return false;
+        }
+    }
+
+    return true;
+}
+
 QString runningInputFingerprintPath(const QString &projectPath)
 {
     return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
@@ -399,6 +626,10 @@ bool bundledFfmpegAvailable(QString &errorMessage)
     }
 
     if (!runVersionCheck(ffprobePath, errorMessage)) {
+        return false;
+    }
+
+    if (!ffmpegHasLibx264Encoder(ffmpegPath, errorMessage)) {
         return false;
     }
 
