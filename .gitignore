@@ -41,3 +41,17 @@ Desktop.ini
 *.bak
 abaqus.rpy*
 *.lck
+
+# Abaqus solver outputs
+*.odb
+*.sta
+*.msg
+*.dat
+*.com
+*.prt
+*.sim
+*.res
+*.mdl
+*.stt
+*.pac
+*.sel

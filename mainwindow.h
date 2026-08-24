@@ -122,8 +122,6 @@ private slots:
     void onForceKillRequested();
     void onSimulationErrorOccurred(const QString &title, const QString &text);
     void onSimulationFinished();
-    void onSimulationFailed(const QString &error);
-    void onSimulationStopped();
 
     void onTreeItemDoubleClicked(QTreeWidgetItem *item, int column);
     void onTreeItemClicked(QTreeWidgetItem *item, int column);

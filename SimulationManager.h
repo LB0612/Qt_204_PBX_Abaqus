@@ -27,8 +27,6 @@ public:
     explicit SimulationManager(QObject *parent = nullptr);
     ~SimulationManager() override;
 
-    static SimulationManager &instance();
-
     SimulationState state() const;
     QString projectPath() const;
     QString jobName() const;
@@ -59,7 +57,6 @@ signals:
 
     void simulationFinished();
     void simulationStopped();
-    void simulationFailed(const QString &error);
     void errorOccurred(const QString &title, const QString &text);
     void forceKillRequested();
 
@@ -110,7 +107,7 @@ private:
     QString runningAbaqusPath;
 
     QTimer *m_lockWaitTimer = nullptr;
-    int *m_lockWaitTries = nullptr;
+    int m_lockWaitTries = 0;
     QString m_lockWaitPath;
 };
 

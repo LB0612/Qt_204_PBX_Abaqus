@@ -1,6 +1,5 @@
 #include "SimulationManager.h"
 
-#include "SettingsDialog.h"
 #include "StructureConfigManager.h"
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
@@ -29,12 +28,6 @@ SimulationManager::~SimulationManager()
         abaqusProcess->kill();
         abaqusProcess->waitForFinished(3000);
     }
-}
-
-SimulationManager &SimulationManager::instance()
-{
-    static SimulationManager manager;
-    return manager;
 }
 
 SimulationState SimulationManager::state() const
@@ -68,9 +61,7 @@ void SimulationManager::startTask(const QString &projectPath, const QString &aba
 void SimulationManager::continueLockWait()
 {
     if (m_lockWaitTimer) {
-        if (m_lockWaitTries) {
-            *m_lockWaitTries = 0;
-        }
+        m_lockWaitTries = 0;
         m_lockWaitTimer->start();
     }
 }
@@ -82,10 +73,7 @@ void SimulationManager::respondToForceKillPrompt(bool continueWaiting)
             m_lockWaitTimer->deleteLater();
             m_lockWaitTimer = nullptr;
         }
-        if (m_lockWaitTries) {
-            delete m_lockWaitTries;
-            m_lockWaitTries = nullptr;
-        }
+        m_lockWaitTries = 0;
         m_lockWaitPath.clear();
         onAbaqusJobTerminateFinished();
         return;
@@ -100,10 +88,7 @@ void SimulationManager::respondToForceKillPrompt(bool continueWaiting)
         m_lockWaitTimer->deleteLater();
         m_lockWaitTimer = nullptr;
     }
-    if (m_lockWaitTries) {
-        delete m_lockWaitTries;
-        m_lockWaitTries = nullptr;
-    }
+    m_lockWaitTries = 0;
     m_lockWaitPath.clear();
 
     forceCloseTrackedProcesses();
@@ -432,7 +417,7 @@ bool SimulationManager::checkReady(QString &errorMessage) const
         }
     }
 
-    const QString abaqusPath = (m_abaqusPath.isEmpty() ? SettingsDialog::getAbaqusPath() : m_abaqusPath);
+    const QString abaqusPath = m_abaqusPath;
     if (abaqusPath.isEmpty() || !QFile::exists(abaqusPath)) {
         errorMessage = QStringLiteral("Abaqus路径无效");
         return false;
@@ -476,7 +461,7 @@ void SimulationManager::startTaskInternal()
     const QString t1Path =
         QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
 
-    const QString abaqusPath = (m_abaqusPath.isEmpty() ? SettingsDialog::getAbaqusPath() : m_abaqusPath);
+    const QString abaqusPath = m_abaqusPath;
 
     const QString logsDir =
         QDir(projectDir).filePath(QStringLiteral("logs"));
@@ -744,7 +729,10 @@ void SimulationManager::startTaskInternal()
                 abaqusProcess,
                 QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                 this,
-                [this, odbPath, t1FlagPath](int t1ExitCode, QProcess::ExitStatus) {
+                [this, odbPath, t1FlagPath](
+                    int t1ExitCode,
+                    QProcess::ExitStatus exitStatus
+                ) {
                     if (abaqusProcess) {
                         abaqusProcess->deleteLater();
                         abaqusProcess = nullptr;
@@ -760,7 +748,7 @@ void SimulationManager::startTaskInternal()
                         return;
                     }
 
-                    if (t1ExitCode != 0) {
+                    if (exitStatus != QProcess::NormalExit || t1ExitCode != 0) {
                         setSimulationState(SimulationState::Failed);
                         clearRunningSimulationContext();
                         emit statusChanged(
@@ -802,6 +790,43 @@ void SimulationManager::startTaskInternal()
                             QStringLiteral("[SYS] t1未生成完成标志")
                         );
                         emit errorOccurred(QStringLiteral("错误"), QStringLiteral("t1 未正常完成（缺少完成标志）。"));
+                        return;
+                    }
+
+                    QFile t1FlagFile(t1FlagPath);
+                    if (!t1FlagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                        setSimulationState(SimulationState::Failed);
+                        clearRunningSimulationContext();
+                        emit statusChanged(
+                            QStringLiteral("t1未正常完成")
+                        );
+                        emit logReceived(
+                            QStringLiteral("[SYS] t1完成标志无法读取")
+                        );
+                        emit errorOccurred(
+                            QStringLiteral("错误"),
+                            QStringLiteral("t1 未正常完成（无法读取完成标志）。")
+                        );
+                        return;
+                    }
+
+                    const QString t1FlagContent =
+                        QString::fromUtf8(t1FlagFile.readAll()).trimmed();
+                    t1FlagFile.close();
+
+                    if (t1FlagContent != QStringLiteral("success")) {
+                        setSimulationState(SimulationState::Failed);
+                        clearRunningSimulationContext();
+                        emit statusChanged(
+                            QStringLiteral("t1未正常完成")
+                        );
+                        emit logReceived(
+                            QStringLiteral("[SYS] t1完成标志内容无效")
+                        );
+                        emit errorOccurred(
+                            QStringLiteral("错误"),
+                            QStringLiteral("t1 未正常完成（完成标志无效）。")
+                        );
                         return;
                     }
 
@@ -945,7 +970,7 @@ void SimulationManager::sendAbaqusTerminateCommand()
 
     const QString abaqusPath =
         runningAbaqusPath.isEmpty()
-            ? (m_abaqusPath.isEmpty() ? SettingsDialog::getAbaqusPath() : m_abaqusPath)
+            ? m_abaqusPath
             : runningAbaqusPath;
 
     if (abaqusPath.isEmpty() || !QFile::exists(abaqusPath)) {
@@ -1057,23 +1082,25 @@ void SimulationManager::waitForJobLockRelease(const QString &lockPath)
 
     QTimer *waitTimer = new QTimer(this);
     waitTimer->setInterval(1000);
-    auto *tries = new int(0);
+    m_lockWaitTries = 0;
     connect(
         waitTimer,
         &QTimer::timeout,
         this,
-        [this, waitTimer, lockPath, tries]() {
-            ++(*tries);
+        [this, waitTimer, lockPath]() {
+            ++m_lockWaitTries;
 
             if (!QFile::exists(lockPath)) {
                 waitTimer->stop();
                 waitTimer->deleteLater();
-                delete tries;
+                m_lockWaitTimer = nullptr;
+                m_lockWaitTries = 0;
+                m_lockWaitPath.clear();
                 onAbaqusJobTerminateFinished();
                 return;
             }
 
-            if (*tries == 30) {
+            if (m_lockWaitTries == 30) {
                 emit logReceived(
                     QStringLiteral(
                         "[SYS] 终止等待已超过30秒，"
@@ -1082,10 +1109,9 @@ void SimulationManager::waitForJobLockRelease(const QString &lockPath)
                 );
             }
 
-            if (*tries == 120) {
+            if (m_lockWaitTries == 120) {
                 waitTimer->stop();
                 m_lockWaitTimer = waitTimer;
-                m_lockWaitTries = tries;
                 m_lockWaitPath = lockPath;
                 emit forceKillRequested();
                 return;
