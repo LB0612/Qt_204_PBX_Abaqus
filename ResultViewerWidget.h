@@ -9,6 +9,8 @@ class QLabel;
 class QPushButton;
 class QSlider;
 class QTimer;
+class QButtonGroup;
+class QFrame;
 
 class ResultViewerWidget : public QWidget
 {
@@ -24,17 +26,19 @@ public:
 signals:
     void generateReportRequested();
     void openResultsDirectoryRequested();
+    void continueSimulationRequested();
 
 private:
     void buildUi();
-    void setControlsEnabled(bool enabled);
-    void showMessage(const QString &text);
-    void hideMessage();
+    void setResultUiVisible(bool visible);
+    void showEmptyState(const ResultValidationResult &result);
     void switchResultType(ResultType type);
     void loadFrame(int frameIndex);
     void updateFrameInfo();
     void togglePlayback();
     void stepFrame(int delta);
+    QString emptyStateTitle(ResultValidationState state) const;
+    QString continueButtonText(ResultValidationState state) const;
 
     QString projectPath;
     ResultValidationResult validation;
@@ -45,14 +49,21 @@ private:
     int fps = 5;
 
     QTimer *playTimer = nullptr;
+    QButtonGroup *typeButtonGroup = nullptr;
 
     QLabel *titleLabel = nullptr;
-    QLabel *messageLabel = nullptr;
+
+    QWidget *contentContainer = nullptr;
+    QWidget *playerPanel = nullptr;
+    QWidget *emptyStatePanel = nullptr;
+
+    QLabel *emptyStateTitleLabel = nullptr;
+    QLabel *emptyStateMessageLabel = nullptr;
+    QPushButton *continueButton = nullptr;
+
     QLabel *imageLabel = nullptr;
-    QLabel *resultNameLabel = nullptr;
-    QLabel *frameInfoLabel = nullptr;
-    QLabel *simulationTimeLabel = nullptr;
-    QLabel *metaLabel = nullptr;
+    QLabel *infoPrimaryLabel = nullptr;
+    QLabel *infoSecondaryLabel = nullptr;
 
     QPushButton *cureButton = nullptr;
     QPushButton *temperatureButton = nullptr;

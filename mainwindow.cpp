@@ -239,6 +239,12 @@ void MainWindow::setupUi()
         this,
         &MainWindow::openResultsDirectory
     );
+    connect(
+        resultViewerWidget,
+        &ResultViewerWidget::continueSimulationRequested,
+        this,
+        &MainWindow::showSimulationPreparePage
+    );
 
     connect(
         simulationPrepareWidget,
