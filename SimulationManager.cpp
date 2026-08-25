@@ -1434,6 +1434,26 @@ void SimulationManager::clearRunningPostContext(
 
 void SimulationManager::stopTask()
 {
+    if (simulationState == SimulationState::T0Running) {
+        simulationUserStopped = true;
+        setSimulationState(SimulationState::Stopping);
+
+        emit statusChanged(
+            QStringLiteral("正在停止模型建立")
+        );
+        emit logReceived(
+            QStringLiteral("[SYS] 用户请求停止模型建立")
+        );
+        emit logReceived(
+            QStringLiteral(
+                "[SYS] 当前 Job 尚未启动，"
+                "正在请求模型建立进程退出"
+            )
+        );
+        closeAbaqusProcesses();
+        return;
+    }
+
     if (simulationState == SimulationState::T2Running) {
         simulationUserStopped = true;
         setSimulationState(SimulationState::Stopping);
@@ -1454,8 +1474,7 @@ void SimulationManager::stopTask()
         return;
     }
 
-    if (simulationState != SimulationState::T0Running
-        && simulationState != SimulationState::T1Running) {
+    if (simulationState != SimulationState::T1Running) {
         return;
     }
 
@@ -1469,17 +1488,7 @@ void SimulationManager::stopTask()
         QStringLiteral("[SYS] 用户请求终止仿真")
     );
 
-    if (!currentJobName.isEmpty()) {
-        sendAbaqusTerminateCommand();
-        return;
-    }
-
-    emit logReceived(
-        QStringLiteral(
-            "[SYS] 当前无 Job，正在请求模型建立进程退出"
-        )
-    );
-    closeAbaqusProcesses();
+    sendAbaqusTerminateCommand();
 }
 
 bool SimulationManager::hasLockFiles() const
