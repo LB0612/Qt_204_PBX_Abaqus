@@ -2117,20 +2117,16 @@ void SimulationManager::forceCloseTrackedProcesses()
     if (isCurrentJobLockPresent()) {
 
         if (!killedTrackedProcessTree) {
-            emit statusChanged(
-                QStringLiteral("等待Abaqus求解器退出")
-            );
-
             emit logReceived(
                 QStringLiteral(
-                    "[SYS] Job锁文件仍存在，"
-                    "当前没有可安全确认结束的"
-                    "Abaqus进程树，继续等待锁文件释放"
+                    "[SYS] 当前跟踪的Abaqus进程已经退出，"
+                    "但无法确认taskkill成功且Job锁仍存在。"
+                    "将保留残留锁并完成终止，"
+                    "下次启动时重新检查。"
                 )
             );
 
-            waitForJobLockRelease(activeJobLockPath());
-
+            finishStopState(true);
             return;
         }
 
