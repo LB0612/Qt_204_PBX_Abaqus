@@ -1493,18 +1493,6 @@ void MainWindow::connectSimulationManager()
     );
     connect(
         simulationManager,
-        &SimulationManager::phaseChanged,
-        simulationMonitorWidget,
-        &SimulationMonitorWidget::setPhase
-    );
-    connect(
-        simulationManager,
-        &SimulationManager::jobChanged,
-        simulationMonitorWidget,
-        &SimulationMonitorWidget::setJob
-    );
-    connect(
-        simulationManager,
         &SimulationManager::progressUpdated,
         simulationMonitorWidget,
         &SimulationMonitorWidget::setProgress
@@ -1522,7 +1510,6 @@ void MainWindow::connectSimulationManager()
         [this]() {
             simulationMonitorWidget->clearLog();
             simulationMonitorWidget->setProgress(0);
-            simulationMonitorWidget->setJob(QString());
         }
     );
     connect(
@@ -1982,10 +1969,6 @@ void MainWindow::showPreviousSimulationLogs()
     simulationMonitorWidget->setStatus(
         QStringLiteral("上次仿真已正常完成")
     );
-    simulationMonitorWidget->setPhase(
-        QStringLiteral("历史仿真结果")
-    );
-    simulationMonitorWidget->setJob(jobName);
     simulationMonitorWidget->setProgress(100);
 
     selectTreeItem(QStringLiteral("开始仿真"));

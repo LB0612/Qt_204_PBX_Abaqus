@@ -63,8 +63,6 @@ public:
 signals:
     void stateChanged(SimulationState state);
     void statusChanged(const QString &text);
-    void phaseChanged(const QString &text);
-    void jobChanged(const QString &jobName);
     void progressUpdated(int value);
     void logReceived(const QString &text);
     void monitorResetRequested();

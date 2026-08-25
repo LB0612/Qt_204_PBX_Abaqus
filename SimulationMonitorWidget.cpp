@@ -24,13 +24,6 @@ const char *kSectionTitleStyle =
     "border: none;"
     "background: transparent;";
 
-const char *kBodyLabelStyle =
-    "font-family: 'Microsoft YaHei';"
-    "font-size: 16px;"
-    "color: #555555;"
-    "border: none;"
-    "background: transparent;";
-
 } // namespace
 
 QFrame *SimulationMonitorWidget::createCard()
@@ -97,34 +90,6 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     statusLayout->addWidget(statusTitle);
     statusLayout->addWidget(statusValueLabel);
     layout->addWidget(statusCard);
-
-    // ---------- 阶段卡片 ----------
-    QFrame *phaseCard = createCard();
-    QVBoxLayout *phaseLayout = new QVBoxLayout(phaseCard);
-    phaseLayout->setContentsMargins(16, 14, 16, 14);
-    phaseLayout->setSpacing(8);
-
-    QLabel *phaseTitle = new QLabel(QStringLiteral("当前阶段"), phaseCard);
-    phaseTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
-
-    phaseValueLabel = new QLabel(QStringLiteral("空闲"), phaseCard);
-    phaseValueLabel->setStyleSheet(
-        QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
-            "font-size: 16px;"
-            "color: #333333;"
-            "border: none;"
-            "background: transparent;"
-        )
-    );
-
-    jobValueLabel = new QLabel(QStringLiteral("Job: -"), phaseCard);
-    jobValueLabel->setStyleSheet(QString::fromUtf8(kBodyLabelStyle));
-
-    phaseLayout->addWidget(phaseTitle);
-    phaseLayout->addWidget(phaseValueLabel);
-    phaseLayout->addWidget(jobValueLabel);
-    layout->addWidget(phaseCard);
 
     // ---------- 进度 ----------
     QFrame *progressCard = createCard();
@@ -217,26 +182,6 @@ void SimulationMonitorWidget::setStatus(const QString &text)
         value = QStringLiteral("● ") + value;
     }
     statusValueLabel->setText(value);
-}
-
-void SimulationMonitorWidget::setPhase(const QString &text)
-{
-    QString value = text.trimmed();
-    if (value.startsWith(QStringLiteral("阶段:"))) {
-        value = value.mid(QStringLiteral("阶段:").size()).trimmed();
-    } else if (value.startsWith(QStringLiteral("阶段："))) {
-        value = value.mid(QStringLiteral("阶段：").size()).trimmed();
-    }
-    phaseValueLabel->setText(value.isEmpty() ? QStringLiteral("空闲") : value);
-}
-
-void SimulationMonitorWidget::setJob(const QString &jobName)
-{
-    if (jobName.trimmed().isEmpty()) {
-        jobValueLabel->setText(QStringLiteral("Job: -"));
-        return;
-    }
-    jobValueLabel->setText(QStringLiteral("Job: %1").arg(jobName));
 }
 
 void SimulationMonitorWidget::setProgress(int value)
