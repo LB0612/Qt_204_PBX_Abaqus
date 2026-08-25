@@ -76,7 +76,16 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
         QStringLiteral("当前状态"),
         content
     );
-    statusTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
+    statusTitle->setStyleSheet(
+        QStringLiteral(
+            "font-family: %1;"
+            "font-size: 18px;"
+            "font-weight: bold;"
+            "color: #222222;"
+            "border: none;"
+            "background: transparent;"
+        ).arg(QString::fromUtf8(kUiFontFamily))
+    );
 
     statusValueLabel = new QLabel(
         QStringLiteral("● 等待仿真"),
@@ -85,8 +94,8 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     statusValueLabel->setStyleSheet(
         QStringLiteral(
             "font-family: %1;"
-            "font-size: 16px;"
-            "font-weight: 400;"
+            "font-size: 18px;"
+            "font-weight: bold;"
             "color: #000000;"
             "border: none;"
             "background: transparent;"
