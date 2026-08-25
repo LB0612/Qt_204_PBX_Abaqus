@@ -57,8 +57,11 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath);
 bool isValidPngFile(const QString &path);
 bool validatePostProcessOutputs(const QString &projectPath, QString &errorMessage);
 
+bool clearPostProcessOutputs(const QString &projectPath, QString &errorMessage);
+
 QString resultsDirectory(const QString &projectPath);
 QString runningInputFingerprintPath(const QString &projectPath);
+QString runningInputPrepareFingerprintPath(const QString &projectPath);
 QString lastSuccessInputFingerprintPath(const QString &projectPath);
 QString runningPostFingerprintPath(const QString &projectPath);
 QString lastSuccessPostFingerprintPath(const QString &projectPath);

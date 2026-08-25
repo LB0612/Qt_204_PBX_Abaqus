@@ -95,6 +95,7 @@ private:
     void startT2Stage();
     void handleT2Finished(int exitCode, QProcess::ExitStatus exitStatus);
     void updateT2ResetRequestForPostProcessOnly();
+    bool preparePostProcessRun(QString &errorMessage);
 
     void finishSimulationSuccess(bool postPromoted);
     void failSolverStage(const QString &statusText, const QString &logText, const QString &errorText);
@@ -137,6 +138,7 @@ private:
     bool recoverSuccessPostFingerprintIfPossible();
     bool promoteRunningInputFingerprint(const QString &projectPath) const;
     bool promoteRunningPostFingerprint(const QString &projectPath) const;
+    bool commitRunningInputFingerprintFromPrepare(QString &errorMessage) const;
 
     bool hasValidSolverResult() const;
     bool hasCompletePostProcess() const;

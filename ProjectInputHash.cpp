@@ -471,10 +471,93 @@ bool validatePostProcessOutputs(
     return true;
 }
 
+bool clearPostProcessOutputs(
+    const QString &projectPath,
+    QString &errorMessage)
+{
+    const QString resultsDir = resultsDirectory(projectPath);
+    const QStringList baseNames = {
+        QStringLiteral("guhuadu"),
+        QStringLiteral("wendu"),
+        QStringLiteral("yingli"),
+    };
+
+    for (const QString &baseName : baseNames) {
+        const QString frameDir =
+            QDir(resultsDir).filePath(baseName + QStringLiteral("_frames"));
+
+        if (QFileInfo::exists(frameDir)) {
+            if (!QDir(frameDir).removeRecursively()) {
+                errorMessage =
+                    QStringLiteral("无法删除后处理帧目录：\n%1")
+                        .arg(frameDir);
+                return false;
+            }
+        }
+
+        const QStringList suffixes = {
+            QStringLiteral(".avi"),
+            QStringLiteral(".tmp.avi"),
+        };
+
+        for (const QString &suffix : suffixes) {
+            const QString path =
+                QDir(resultsDir).filePath(baseName + suffix);
+
+            if (QFileInfo::exists(path) && !QFile::remove(path)) {
+                errorMessage =
+                    QStringLiteral("无法删除后处理文件：\n%1").arg(path);
+                return false;
+            }
+        }
+    }
+
+    QDir resultsDirListing(resultsDir);
+    if (resultsDirListing.exists()) {
+        const QStringList tmpAviFiles =
+            resultsDirListing.entryList(
+                QStringList() << QStringLiteral("*.tmp.avi"),
+                QDir::Files);
+
+        for (const QString &name : tmpAviFiles) {
+            const QString path = resultsDirListing.filePath(name);
+
+            if (!QFile::remove(path)) {
+                errorMessage =
+                    QStringLiteral("无法删除后处理临时文件：\n%1").arg(path);
+                return false;
+            }
+        }
+    }
+
+    const QString manifestPath = postProcessManifestPath(projectPath);
+    if (QFileInfo::exists(manifestPath) && !QFile::remove(manifestPath)) {
+        errorMessage =
+            QStringLiteral("无法删除后处理清单：\n%1").arg(manifestPath);
+        return false;
+    }
+
+    const QString t2FlagPath = t2FinishedFlagPath(projectPath);
+    if (QFileInfo::exists(t2FlagPath) && !QFile::remove(t2FlagPath)) {
+        errorMessage =
+            QStringLiteral("无法删除后处理完成标志：\n%1").arg(t2FlagPath);
+        return false;
+    }
+
+    errorMessage.clear();
+    return true;
+}
+
 QString runningInputFingerprintPath(const QString &projectPath)
 {
     return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
         .filePath(QStringLiteral("running_input.sha256"));
+}
+
+QString runningInputPrepareFingerprintPath(const QString &projectPath)
+{
+    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
+        .filePath(QStringLiteral("running_input.prepare.sha256"));
 }
 
 QString lastSuccessInputFingerprintPath(const QString &projectPath)

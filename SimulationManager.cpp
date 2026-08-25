@@ -404,6 +404,45 @@ bool SimulationManager::promoteRunningPostFingerprint(
     return true;
 }
 
+bool SimulationManager::commitRunningInputFingerprintFromPrepare(
+    QString &errorMessage) const
+{
+    if (m_projectPath.isEmpty()) {
+        errorMessage = QStringLiteral("当前未打开工程。");
+        return false;
+    }
+
+    const QString preparePath =
+        ProjectInputHash::runningInputPrepareFingerprintPath(m_projectPath);
+    const QString runningPath =
+        ProjectInputHash::runningInputFingerprintPath(m_projectPath);
+
+    QFile prepareFile(preparePath);
+    if (!prepareFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        errorMessage = QStringLiteral("无法读取仿真输入准备指纹。");
+        return false;
+    }
+
+    const QByteArray content = prepareFile.readAll().trimmed();
+    prepareFile.close();
+
+    if (content.isEmpty()) {
+        errorMessage = QStringLiteral("仿真输入准备指纹为空。");
+        return false;
+    }
+
+    if (!saveRunFingerprint(
+            runningPath,
+            QString::fromLatin1(content))) {
+        errorMessage = QStringLiteral("无法提交仿真输入指纹。");
+        return false;
+    }
+
+    QFile::remove(preparePath);
+    errorMessage.clear();
+    return true;
+}
+
 bool SimulationManager::recoverSuccessFingerprintIfPossible()
 {
     if (m_projectPath.isEmpty()) {
@@ -634,13 +673,19 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
         QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg")),
         QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta")),
         QDir(abaqusDir).filePath(jobName + QStringLiteral(".dat")),
+        ProjectInputHash::runningInputFingerprintPath(projectDir),
         ProjectInputHash::runningPostFingerprintPath(projectDir),
+        ProjectInputHash::lastSuccessPostFingerprintPath(projectDir),
     };
 
     for (const QString &path : removePaths) {
         if (!removeIfExists(path)) {
             return false;
         }
+    }
+
+    if (!ProjectInputHash::clearPostProcessOutputs(projectDir, errorMessage)) {
+        return false;
     }
 
     if (!clearLog(t0LogPath)
@@ -799,13 +844,11 @@ void SimulationManager::startTaskInternal()
 
         updateT2ResetRequestForPostProcessOnly();
 
-        const QString postFingerprint = calculatePostFingerprint();
-        if (!saveRunFingerprint(
-                ProjectInputHash::runningPostFingerprintPath(m_projectPath),
-                postFingerprint)) {
+        QString postProcessError;
+        if (!preparePostProcessRun(postProcessError)) {
             emit errorOccurred(
                 QStringLiteral("仿真无法启动"),
-                QStringLiteral("无法记录本次后处理输入指纹。")
+                postProcessError
             );
             clearRunningSimulationContext(false);
             return;
@@ -818,23 +861,40 @@ void SimulationManager::startTaskInternal()
     // Full run
     const QString inputFingerprint = calculateInputFingerprint();
     if (inputFingerprint.isEmpty()) {
-        emit errorOccurred(QStringLiteral("仿真无法启动"), QStringLiteral("无法计算本次仿真输入指纹。"));
+        emit errorOccurred(
+            QStringLiteral("仿真无法启动"),
+            QStringLiteral("无法计算本次仿真输入指纹。")
+        );
         clearRunningSimulationContext(false);
         return;
     }
-    const QString runningFingerprintPath = ProjectInputHash::runningInputFingerprintPath(m_projectPath);
-    if (!saveRunFingerprint(runningFingerprintPath, inputFingerprint)) {
-        emit errorOccurred(QStringLiteral("仿真无法启动"), QStringLiteral("无法记录本次仿真输入指纹。"));
+
+    const QString prepareFingerprintPath =
+        ProjectInputHash::runningInputPrepareFingerprintPath(m_projectPath);
+    if (!saveRunFingerprint(prepareFingerprintPath, inputFingerprint)) {
+        emit errorOccurred(
+            QStringLiteral("仿真无法启动"),
+            QStringLiteral("无法记录本次仿真输入指纹。")
+        );
         clearRunningSimulationContext(false);
         return;
     }
+
     QString cleanupError;
     if (!clearRunArtifactsForFullRun(cleanupError)) {
-        QFile::remove(runningFingerprintPath);
+        QFile::remove(prepareFingerprintPath);
         emit errorOccurred(QStringLiteral("仿真无法启动"), cleanupError);
         clearRunningSimulationContext(false);
         return;
     }
+
+    if (!commitRunningInputFingerprintFromPrepare(cleanupError)) {
+        QFile::remove(prepareFingerprintPath);
+        emit errorOccurred(QStringLiteral("仿真无法启动"), cleanupError);
+        clearRunningSimulationContext(false);
+        return;
+    }
+
     startT0Stage();
 }
 
@@ -958,11 +1018,11 @@ void SimulationManager::handleT0Finished(
 
     const QString caePath =
         QDir(abaqusDir).filePath(QStringLiteral("guhua.cae"));
-    if (!QFile::exists(caePath)) {
+    if (!isNonEmptyRegularFile(caePath)) {
         failSolverStage(
             QStringLiteral("未生成 guhua.cae"),
-            QStringLiteral("[SYS] t0 执行完成，但未生成 guhua.cae"),
-            QStringLiteral("t0 执行完成，但未生成 guhua.cae。")
+            QStringLiteral("[SYS] t0 执行完成，但未生成有效 guhua.cae"),
+            QStringLiteral("t0 执行完成，但未生成有效 guhua.cae。")
         );
         return;
     }
@@ -1183,16 +1243,12 @@ void SimulationManager::handleT1Finished(
 
     m_t2ResetRequested = true;
 
-    const QString postFingerprint = calculatePostFingerprint();
-    if (!saveRunFingerprint(
-            ProjectInputHash::runningPostFingerprintPath(projectDir),
-            postFingerprint)) {
+    QString postProcessError;
+    if (!preparePostProcessRun(postProcessError)) {
         failPostProcessStage(
-            QStringLiteral("无法记录后处理指纹"),
-            QStringLiteral("[SYS] 无法记录后处理输入指纹"),
-            QStringLiteral(
-                "Abaqus 求解已经成功，但无法记录后处理输入指纹。"
-            )
+            QStringLiteral("无法准备后处理"),
+            QStringLiteral("[SYS] 无法准备后处理输出"),
+            postProcessError
         );
         return;
     }
@@ -1222,15 +1278,49 @@ void SimulationManager::updateT2ResetRequestForPostProcessOnly()
     const QString currentPost = calculatePostFingerprint();
     const QString runningPath =
         ProjectInputHash::runningPostFingerprintPath(m_projectPath);
-    const QString lastPath =
-        ProjectInputHash::lastSuccessPostFingerprintPath(m_projectPath);
 
     m_t2ResetRequested = true;
 
-    if (fingerprintMatchesStored(runningPath, currentPost)
-        || fingerprintMatchesStored(lastPath, currentPost)) {
+    if (fingerprintMatchesStored(runningPath, currentPost)) {
         m_t2ResetRequested = false;
     }
+}
+
+bool SimulationManager::preparePostProcessRun(QString &errorMessage)
+{
+    const QString projectDir = activeProjectPath();
+    if (projectDir.isEmpty()) {
+        errorMessage = QStringLiteral("当前未打开工程。");
+        return false;
+    }
+
+    if (m_t2ResetRequested) {
+        QFile::remove(
+            ProjectInputHash::lastSuccessPostFingerprintPath(projectDir)
+        );
+
+        if (!ProjectInputHash::clearPostProcessOutputs(
+                projectDir,
+                errorMessage)) {
+            return false;
+        }
+    }
+
+    const QString postFingerprint = calculatePostFingerprint();
+    if (postFingerprint.isEmpty()) {
+        errorMessage = QStringLiteral("无法计算本次后处理输入指纹。");
+        return false;
+    }
+
+    if (!saveRunFingerprint(
+            ProjectInputHash::runningPostFingerprintPath(projectDir),
+            postFingerprint)) {
+        errorMessage = QStringLiteral("无法记录本次后处理输入指纹。");
+        return false;
+    }
+
+    errorMessage.clear();
+    return true;
 }
 
 void SimulationManager::startT2Stage()
@@ -1510,6 +1600,9 @@ void SimulationManager::clearRunningSimulationContext(
     if (removeRunningFingerprint && !projectPath.isEmpty()) {
         QFile::remove(
             ProjectInputHash::runningInputFingerprintPath(projectPath)
+        );
+        QFile::remove(
+            ProjectInputHash::runningInputPrepareFingerprintPath(projectPath)
         );
     }
 

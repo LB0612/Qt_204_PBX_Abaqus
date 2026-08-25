@@ -1701,25 +1701,39 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
 
 void MainWindow::onForceKillRequested()
 {
-    const QMessageBox::StandardButton choice =
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("终止等待时间过长"),
-            QStringLiteral(
-                "Abaqus Job 已等待约120秒，"
-                "锁文件仍未释放。\n\n"
-                "选择“是”继续等待；\n"
-                "选择“否”强制结束"
-                "本软件启动的 Abaqus 进程。"
-            ),
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::Yes
+    QMessageBox msgBox(
+        QMessageBox::Warning,
+        QStringLiteral("终止等待时间过长"),
+        QStringLiteral(
+            "Abaqus Job 已等待约120秒，"
+            "锁文件仍未释放。\n\n"
+            "选择“继续等待”将延长等待；"
+            "只有明确选择“强制结束”才会"
+            "终止本软件启动的 Abaqus 进程。"
+        ),
+        QMessageBox::NoButton,
+        this
+    );
+
+    QPushButton *waitButton =
+        msgBox.addButton(
+            QStringLiteral("继续等待"),
+            QMessageBox::AcceptRole
+        );
+    QPushButton *forceButton =
+        msgBox.addButton(
+            QStringLiteral("强制结束"),
+            QMessageBox::DestructiveRole
         );
 
-    simulationManager->respondToForceKillPrompt(
-        choice == QMessageBox::Yes
-    );
+    msgBox.setDefaultButton(waitButton);
+    msgBox.setWindowModality(Qt::ApplicationModal);
+    msgBox.exec();
+
+    const bool userChoseForceKill =
+        msgBox.clickedButton() == forceButton;
+
+    simulationManager->respondToForceKillPrompt(!userChoseForceKill);
 }
 
 void MainWindow::onSimulationErrorOccurred(
