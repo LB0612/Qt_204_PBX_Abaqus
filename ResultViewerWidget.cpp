@@ -97,12 +97,15 @@ void ResultViewerWidget::buildUi()
 
     connect(cureButton, &QPushButton::clicked, this, [this]() {
         switchResultType(ResultType::Cure);
+        togglePlayback();
     });
     connect(temperatureButton, &QPushButton::clicked, this, [this]() {
         switchResultType(ResultType::Temperature);
+        togglePlayback();
     });
     connect(stressButton, &QPushButton::clicked, this, [this]() {
         switchResultType(ResultType::Stress);
+        togglePlayback();
     });
 
     QFrame *imageCard = new QFrame(this);

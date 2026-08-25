@@ -216,6 +216,18 @@ void MainWindow::setupUi()
     stackedWidget->addWidget(resultViewerWidget);
 
     connect(
+        stackedWidget,
+        &QStackedWidget::currentChanged,
+        this,
+        [this](int) {
+            if (resultViewerWidget
+                && stackedWidget->currentWidget() != resultViewerWidget) {
+                resultViewerWidget->stopPlayback();
+            }
+        }
+    );
+
+    connect(
         resultViewerWidget,
         &ResultViewerWidget::generateReportRequested,
         this,

@@ -228,7 +228,9 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
 
     const QString storedSha =
         json.value(QStringLiteral("postSha256")).toString();
+    const QFileInfo pdfInfo(reportPdfPath(projectPath));
     return !storedSha.isEmpty()
         && storedSha == validation.manifest.postSha256
-        && QFile::exists(reportPdfPath(projectPath));
+        && pdfInfo.exists()
+        && pdfInfo.size() > 0;
 }

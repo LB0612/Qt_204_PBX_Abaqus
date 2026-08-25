@@ -34,9 +34,14 @@ QString htmlEscape(const QString &text)
     return escaped;
 }
 
-QString formatDouble(double value, int precision = 4)
+QString formatNumber(double value)
 {
-    return QString::number(value, 'f', precision);
+    return QString::number(value, 'g', 15);
+}
+
+QString formatSimulationTime(double value)
+{
+    return QString::number(value, 'f', 2);
 }
 
 QString buildParameterSectionHtml(const QString &projectPath)
@@ -59,59 +64,59 @@ QString buildParameterSectionHtml(const QString &projectPath)
     html += QStringLiteral("<h3>结构参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
     html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
     html += QStringLiteral("<tr><td>药柱半径</td><td>%1</td><td>mm</td></tr>")
-        .arg(formatDouble(structure.chargeRadius));
+        .arg(formatNumber(structure.chargeRadius));
     html += QStringLiteral("<tr><td>药柱高度</td><td>%1</td><td>mm</td></tr>")
-        .arg(formatDouble(structure.chargeHeight));
+        .arg(formatNumber(structure.chargeHeight));
     html += QStringLiteral("<tr><td>外壳厚度</td><td>%1</td><td>mm</td></tr>")
-        .arg(formatDouble(structure.shellThickness));
+        .arg(formatNumber(structure.shellThickness));
     html += QStringLiteral("</table>");
 
     html += QStringLiteral("<h3>炸药参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th></tr>");
-    html += QStringLiteral("<tr><td>密度</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.density, 6));
-    html += QStringLiteral("<tr><td>初始杨氏模量</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.initialElasticModulus));
-    html += QStringLiteral("<tr><td>初始泊松比</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.initialPoissonRatio));
-    html += QStringLiteral("<tr><td>最终杨氏模量</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.finalElasticModulus));
-    html += QStringLiteral("<tr><td>最终泊松比</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.finalPoissonRatio));
-    html += QStringLiteral("<tr><td>热导率</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.thermalConductivity));
-    html += QStringLiteral("<tr><td>屈服应力</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.yieldStress));
-    html += QStringLiteral("<tr><td>比热</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.specificHeat, 2));
-    html += QStringLiteral("<tr><td>膨胀系数</td><td>%1</td></tr>")
-        .arg(formatDouble(explosive.expansionCoefficient, 8));
+    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
+    html += QStringLiteral("<tr><td>密度</td><td>%1</td><td>t/mm³</td></tr>")
+        .arg(formatNumber(explosive.density));
+    html += QStringLiteral("<tr><td>初始杨氏模量</td><td>%1</td><td>MPa</td></tr>")
+        .arg(formatNumber(explosive.initialElasticModulus));
+    html += QStringLiteral("<tr><td>初始泊松比</td><td>%1</td><td>-</td></tr>")
+        .arg(formatNumber(explosive.initialPoissonRatio));
+    html += QStringLiteral("<tr><td>最终杨氏模量</td><td>%1</td><td>MPa</td></tr>")
+        .arg(formatNumber(explosive.finalElasticModulus));
+    html += QStringLiteral("<tr><td>最终泊松比</td><td>%1</td><td>-</td></tr>")
+        .arg(formatNumber(explosive.finalPoissonRatio));
+    html += QStringLiteral("<tr><td>热导率</td><td>%1</td><td>W/(m·K)</td></tr>")
+        .arg(formatNumber(explosive.thermalConductivity));
+    html += QStringLiteral("<tr><td>屈服应力</td><td>%1</td><td>MPa</td></tr>")
+        .arg(formatNumber(explosive.yieldStress));
+    html += QStringLiteral("<tr><td>比热</td><td>%1</td><td>N·mm/(t·K)</td></tr>")
+        .arg(formatNumber(explosive.specificHeat));
+    html += QStringLiteral("<tr><td>膨胀系数</td><td>%1</td><td>1/K</td></tr>")
+        .arg(formatNumber(explosive.expansionCoefficient));
     html += QStringLiteral("</table>");
 
     html += QStringLiteral("<h3>模具参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th></tr>");
-    html += QStringLiteral("<tr><td>密度</td><td>%1</td></tr>")
-        .arg(formatDouble(mold.density, 6));
-    html += QStringLiteral("<tr><td>杨氏模量</td><td>%1</td></tr>")
-        .arg(formatDouble(mold.elasticModulus));
-    html += QStringLiteral("<tr><td>泊松比</td><td>%1</td></tr>")
-        .arg(formatDouble(mold.poissonRatio));
-    html += QStringLiteral("<tr><td>热导率</td><td>%1</td></tr>")
-        .arg(formatDouble(mold.thermalConductivity));
-    html += QStringLiteral("<tr><td>比热</td><td>%1</td></tr>")
-        .arg(formatDouble(mold.specificHeat, 2));
+    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
+    html += QStringLiteral("<tr><td>密度</td><td>%1</td><td>t/mm³</td></tr>")
+        .arg(formatNumber(mold.density));
+    html += QStringLiteral("<tr><td>杨氏模量</td><td>%1</td><td>MPa</td></tr>")
+        .arg(formatNumber(mold.elasticModulus));
+    html += QStringLiteral("<tr><td>泊松比</td><td>%1</td><td>-</td></tr>")
+        .arg(formatNumber(mold.poissonRatio));
+    html += QStringLiteral("<tr><td>热导率</td><td>%1</td><td>W/(m·K)</td></tr>")
+        .arg(formatNumber(mold.thermalConductivity));
+    html += QStringLiteral("<tr><td>比热</td><td>%1</td><td>N·mm/(t·K)</td></tr>")
+        .arg(formatNumber(mold.specificHeat));
     html += QStringLiteral("</table>");
 
     html += QStringLiteral("<h3>边界条件</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th></tr>");
-    html += QStringLiteral("<tr><td>环境温度</td><td>%1</td></tr>")
-        .arg(formatDouble(boundary.ambientTemperature));
+    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
+    html += QStringLiteral("<tr><td>环境温度</td><td>%1</td><td>K</td></tr>")
+        .arg(formatNumber(boundary.ambientTemperature));
     html += QStringLiteral("</table>");
 
     html += QStringLiteral("<h3>仿真参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th></tr>");
-    html += QStringLiteral("<tr><td>仿真时间长度</td><td>%1</td></tr>")
-        .arg(formatDouble(simulation.timeLength, 2));
+    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
+    html += QStringLiteral("<tr><td>仿真时间长度</td><td>%1</td><td>s</td></tr>")
+        .arg(formatNumber(simulation.timeLength));
     html += QStringLiteral("</table>");
 
     return html;
@@ -158,7 +163,7 @@ QString buildResultImageSectionHtml(
                 "<p>Frame %1 / %2<br/>仿真时间：%3 s</p>"
             ).arg(frameIndex + 1)
                 .arg(frameCount)
-                .arg(formatDouble(manifest.frameTimes.at(frameIndex), 2));
+                .arg(formatSimulationTime(manifest.frameTimes.at(frameIndex)));
         } else {
             html += QStringLiteral(
                 "<p>Frame %1 / %2</p>"
@@ -232,8 +237,14 @@ bool SimulationReportGenerator::generate(
         SimulationResultService::reportDirectoryPath(projectPath);
     const QString pdfPath =
         SimulationResultService::reportPdfPath(projectPath);
+    const QString tempPdfPath =
+        pdfPath + QStringLiteral(".tmp.pdf");
 
     QDir().mkpath(reportDir);
+
+    if (QFile::exists(tempPdfPath)) {
+        QFile::remove(tempPdfPath);
+    }
 
     const QString generatedAt =
         QDateTime::currentDateTime().toString(
@@ -288,17 +299,41 @@ bool SimulationReportGenerator::generate(
     );
     html += QStringLiteral("</body></html>");
 
-    QTextDocument document;
-    document.setHtml(html);
+    {
+        QTextDocument document;
+        document.setHtml(html);
 
-    QPdfWriter pdfWriter(pdfPath);
-    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
-    pdfWriter.setPageMargins(QMarginsF(20, 20, 20, 20), QPageLayout::Millimeter);
+        QPdfWriter pdfWriter(tempPdfPath);
+        pdfWriter.setPageSize(QPageSize(QPageSize::A4));
+        pdfWriter.setPageMargins(
+            QMarginsF(20, 20, 20, 20),
+            QPageLayout::Millimeter
+        );
 
-    document.print(&pdfWriter);
+        document.print(&pdfWriter);
+    }
 
-    if (!QFile::exists(pdfPath) || QFileInfo(pdfPath).size() <= 0) {
+    const QFileInfo tempInfo(tempPdfPath);
+    if (!tempInfo.exists() || tempInfo.size() <= 0) {
+        if (QFile::exists(tempPdfPath)) {
+            QFile::remove(tempPdfPath);
+        }
         errorMessage = QStringLiteral("PDF 报告生成失败。");
+        return false;
+    }
+
+    if (QFile::exists(pdfPath) && !QFile::remove(pdfPath)) {
+        QFile::remove(tempPdfPath);
+        errorMessage =
+            QStringLiteral(
+                "无法替换旧 PDF 报告，文件可能正在被占用：\n%1"
+            ).arg(pdfPath);
+        return false;
+    }
+
+    if (!QFile::rename(tempPdfPath, pdfPath)) {
+        QFile::remove(tempPdfPath);
+        errorMessage = QStringLiteral("无法提交正式 PDF 报告文件。");
         return false;
     }
 
