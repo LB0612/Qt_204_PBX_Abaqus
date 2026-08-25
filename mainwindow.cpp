@@ -429,6 +429,14 @@ void MainWindow::createPureStyleToolBar()
     stopSimulationAction->setEnabled(false);
     toolBar->addAction(stopSimulationAction);
 
+    QAction *resultAction =
+        addBtn(
+            QStringLiteral("仿真结果"),
+            QStringLiteral(":/toolbar/result.png"),
+            &MainWindow::showSimulationResults
+        );
+    simulationLockedActions << resultAction;
+
     toolBar->addSeparator();
 
     addBtn(QStringLiteral("系统设置"), QStringLiteral(":/toolbar/setup.png"), &MainWindow::settings, false);

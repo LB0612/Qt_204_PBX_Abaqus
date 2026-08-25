@@ -1,9 +1,78 @@
 #include "SimulationPrepareWidget.h"
 
-#include <QVBoxLayout>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QSizePolicy>
+#include <QVBoxLayout>
+
+namespace {
+
+const char *kUiFontFamily =
+    "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
+
+QString sectionTitleStyle()
+{
+    return QStringLiteral(
+        "font-family: %1;"
+        "font-size: 18px;"
+        "font-weight: bold;"
+        "color: #262626;"
+        "background: transparent;"
+        "border: none;"
+    ).arg(QString::fromUtf8(kUiFontFamily));
+}
+
+QString checkItemStyle()
+{
+    return QStringLiteral(
+        "font-family: %1;"
+        "font-size: 16px;"
+        "font-weight: 400;"
+        "color: #52c41a;"
+        "background: transparent;"
+        "border: none;"
+    ).arg(QString::fromUtf8(kUiFontFamily));
+}
+
+QString hintStyle()
+{
+    return QStringLiteral(
+        "font-family: %1;"
+        "font-size: 15px;"
+        "font-weight: 400;"
+        "color: #666666;"
+        "background: transparent;"
+        "border: none;"
+    ).arg(QString::fromUtf8(kUiFontFamily));
+}
+
+QString errorStatusStyle()
+{
+    return QStringLiteral(
+        "font-family: %1;"
+        "font-size: 16px;"
+        "font-weight: 500;"
+        "color: #cf1322;"
+        "background: transparent;"
+        "border: none;"
+    ).arg(QString::fromUtf8(kUiFontFamily));
+}
+
+QString reasonBodyStyle()
+{
+    return QStringLiteral(
+        "font-family: %1;"
+        "font-size: 16px;"
+        "font-weight: 400;"
+        "color: #454545;"
+        "background: transparent;"
+        "border: none;"
+    ).arg(QString::fromUtf8(kUiFontFamily));
+}
+
+} // namespace
 
 SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     : QWidget(parent)
@@ -18,55 +87,99 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
 
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(40, 32, 40, 32);
-    layout->setSpacing(20);
+    layout->setSpacing(24);
 
-    titleLabel = new QLabel(
-        QStringLiteral("Abaqus仿真准备"),
-        this
-    );
+    titleLabel = new QLabel(QStringLiteral("Abaqus仿真准备"), this);
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setStyleSheet(
         QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
+            "font-family: %1;"
             "font-size: 26px;"
             "font-weight: bold;"
             "color: #333333;"
+        ).arg(QString::fromUtf8(kUiFontFamily))
+    );
+
+    statusCard = new QFrame(this);
+    statusCard->setMaximumWidth(900);
+    statusCard->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    statusCard->setStyleSheet(
+        QStringLiteral(
+            "QFrame {"
+            "  background-color: #fafafa;"
+            "  border: 1px solid #e8e8e8;"
+            "  border-radius: 8px;"
+            "}"
         )
     );
 
-    infoLabel = new QLabel(
-        QStringLiteral(
-            "工程状态:\n"
-            "✓ 参数检查\n"
-            "✓ Abaqus文件\n"
-            "✓ 用户子程序\n\n"
-            "确认后开始计算"
-        ),
-        this
-    );
-    infoLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    infoLabel->setStyleSheet(
-        QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
-            "font-size: 16px;"
-            "color: #555555;"
-            "line-height: 1.6;"
-            "padding: 16px;"
-            "background-color: #fafafa;"
-            "border: 1px solid #e8e8e8;"
-            "border-radius: 8px;"
-        )
-    );
+    QVBoxLayout *cardLayout = new QVBoxLayout(statusCard);
+    cardLayout->setContentsMargins(24, 20, 24, 20);
+    cardLayout->setSpacing(8);
 
-    startButton = new QPushButton(
-        QStringLiteral("开始计算"),
-        this
+    statusTitleLabel = new QLabel(
+        QStringLiteral("工程状态"),
+        statusCard
     );
+    statusTitleLabel->setStyleSheet(sectionTitleStyle());
+
+    checkParamLabel = new QLabel(
+        QStringLiteral("✓ 参数配置完整"),
+        statusCard
+    );
+    checkParamLabel->setStyleSheet(checkItemStyle());
+
+    checkFilesLabel = new QLabel(
+        QStringLiteral("✓ Abaqus文件完整"),
+        statusCard
+    );
+    checkFilesLabel->setStyleSheet(checkItemStyle());
+
+    checkPathLabel = new QLabel(
+        QStringLiteral("✓ Abaqus路径有效"),
+        statusCard
+    );
+    checkPathLabel->setStyleSheet(checkItemStyle());
+
+    hintLabel = new QLabel(
+        QStringLiteral("确认后即可开始计算"),
+        statusCard
+    );
+    hintLabel->setStyleSheet(hintStyle());
+
+    errorStatusLabel = new QLabel(
+        QStringLiteral("✕ 当前不能开始仿真"),
+        statusCard
+    );
+    errorStatusLabel->setStyleSheet(errorStatusStyle());
+
+    reasonTitleLabel = new QLabel(
+        QStringLiteral("原因"),
+        statusCard
+    );
+    reasonTitleLabel->setStyleSheet(sectionTitleStyle());
+
+    reasonContentLabel = new QLabel(statusCard);
+    reasonContentLabel->setWordWrap(true);
+    reasonContentLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    reasonContentLabel->setStyleSheet(reasonBodyStyle());
+
+    cardLayout->addWidget(statusTitleLabel);
+    cardLayout->addWidget(checkParamLabel);
+    cardLayout->addWidget(checkFilesLabel);
+    cardLayout->addWidget(checkPathLabel);
+    cardLayout->addWidget(hintLabel);
+    cardLayout->addWidget(errorStatusLabel);
+    cardLayout->addWidget(reasonTitleLabel);
+    cardLayout->addWidget(reasonContentLabel);
+    cardLayout->addSpacing(4);
+
+    startButton = new QPushButton(QStringLiteral("开始计算"), this);
     startButton->setMinimumHeight(42);
     startButton->setStyleSheet(
         QStringLiteral(
             "QPushButton {"
-            "  font-family: 'Microsoft YaHei';"
+            "  font-family: %1;"
             "  font-size: 16px;"
             "  font-weight: bold;"
             "  color: white;"
@@ -78,18 +191,15 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
             "QPushButton:hover {"
             "  background-color: #40a9ff;"
             "}"
-        )
+        ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
-    cancelButton = new QPushButton(
-        QStringLiteral("取消"),
-        this
-    );
+    cancelButton = new QPushButton(QStringLiteral("取消"), this);
     cancelButton->setMinimumHeight(42);
     cancelButton->setStyleSheet(
         QStringLiteral(
             "QPushButton {"
-            "  font-family: 'Microsoft YaHei';"
+            "  font-family: %1;"
             "  font-size: 16px;"
             "  color: #333333;"
             "  background-color: #ffffff;"
@@ -101,8 +211,13 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
             "  border-color: #1890ff;"
             "  color: #1890ff;"
             "}"
-        )
+        ).arg(QString::fromUtf8(kUiFontFamily))
     );
+
+    QHBoxLayout *cardCenterLayout = new QHBoxLayout();
+    cardCenterLayout->addStretch();
+    cardCenterLayout->addWidget(statusCard);
+    cardCenterLayout->addStretch();
 
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
@@ -111,7 +226,8 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     buttonLayout->addStretch();
 
     layout->addWidget(titleLabel);
-    layout->addWidget(infoLabel, 1);
+    layout->addLayout(cardCenterLayout);
+    layout->addStretch();
     layout->addLayout(buttonLayout);
 
     connect(
@@ -126,6 +242,8 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
         this,
         &SimulationPrepareWidget::cancelRequested
     );
+
+    setReadyState(false, QStringLiteral("请先完成参数配置。"));
 }
 
 void SimulationPrepareWidget::setReadyState(
@@ -133,23 +251,22 @@ void SimulationPrepareWidget::setReadyState(
     const QString &message)
 {
     if (ready) {
-        infoLabel->setText(
-            QStringLiteral(
-                "工程状态:\n"
-                "✓ 参数配置完整\n"
-                "✓ Abaqus文件完整\n"
-                "✓ Abaqus路径有效\n\n"
-                "确认后开始计算"
-            )
-        );
+        checkParamLabel->show();
+        checkFilesLabel->show();
+        checkPathLabel->show();
+        hintLabel->show();
+        errorStatusLabel->hide();
+        reasonTitleLabel->hide();
+        reasonContentLabel->hide();
     } else {
-        infoLabel->setText(
-            QStringLiteral(
-                "工程状态:\n"
-                "✗ 当前不能开始仿真\n\n"
-                "原因:\n%1"
-            ).arg(message)
-        );
+        checkParamLabel->hide();
+        checkFilesLabel->hide();
+        checkPathLabel->hide();
+        hintLabel->hide();
+        errorStatusLabel->show();
+        reasonTitleLabel->show();
+        reasonContentLabel->setText(message);
+        reasonContentLabel->show();
     }
 
     startButton->setEnabled(ready);

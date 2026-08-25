@@ -12,6 +12,9 @@
 
 namespace {
 
+const char *kUiFontFamily =
+    "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
+
 const char *kCardStyle =
     "QFrame {"
     "  background-color: #ffffff;"
@@ -21,7 +24,7 @@ const char *kCardStyle =
 
 const char *kTypeButtonStyle =
     "QPushButton {"
-    "  font-family: 'Microsoft YaHei';"
+    "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
     "  font-size: 15px;"
     "  padding: 6px 16px;"
     "  border: 1px solid #d9d9d9;"
@@ -38,7 +41,7 @@ const char *kTypeButtonStyle =
 
 const char *kPlaybackButtonStyle =
     "QPushButton {"
-    "  font-family: 'Microsoft YaHei';"
+    "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
     "  font-size: 14px;"
     "  padding: 6px 12px;"
     "  border: 1px solid #d9d9d9;"
@@ -50,7 +53,7 @@ const char *kPlaybackButtonStyle =
 
 const char *kSecondaryButtonStyle =
     "QPushButton {"
-    "  font-family: 'Microsoft YaHei';"
+    "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
     "  font-size: 14px;"
     "  padding: 6px 16px;"
     "  border: 1px solid #d9d9d9;"
@@ -62,8 +65,9 @@ const char *kSecondaryButtonStyle =
 
 const char *kPrimaryButtonStyle =
     "QPushButton {"
-    "  font-family: 'Microsoft YaHei';"
+    "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
     "  font-size: 14px;"
+    "  font-weight: 600;"
     "  padding: 6px 16px;"
     "  border: 1px solid #1890ff;"
     "  border-radius: 6px;"
@@ -111,11 +115,11 @@ void ResultViewerWidget::buildUi()
     titleLabel = new QLabel(QStringLiteral("仿真结果"), this);
     titleLabel->setStyleSheet(
         QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
+            "font-family: %1;"
             "font-size: 24px;"
             "font-weight: bold;"
             "color: #333333;"
-        )
+        ).arg(QString::fromUtf8(kUiFontFamily))
     );
     rootLayout->addWidget(titleLabel);
 
@@ -143,13 +147,13 @@ void ResultViewerWidget::buildUi()
     emptyStateTitleLabel->setAlignment(Qt::AlignCenter);
     emptyStateTitleLabel->setStyleSheet(
         QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
+            "font-family: %1;"
             "font-size: 20px;"
-            "font-weight: bold;"
-            "color: #333333;"
+            "font-weight: 600;"
+            "color: #262626;"
             "border: none;"
             "background: transparent;"
-        )
+        ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
     emptyStateMessageLabel = new QLabel(emptyStateCard);
@@ -157,12 +161,13 @@ void ResultViewerWidget::buildUi()
     emptyStateMessageLabel->setWordWrap(true);
     emptyStateMessageLabel->setStyleSheet(
         QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
-            "font-size: 15px;"
-            "color: #666666;"
+            "font-family: %1;"
+            "font-size: 16px;"
+            "font-weight: 400;"
+            "color: #454545;"
             "border: none;"
             "background: transparent;"
-        )
+        ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
     continueButton = new QPushButton(emptyStateCard);
@@ -171,8 +176,9 @@ void ResultViewerWidget::buildUi()
     continueButton->setStyleSheet(
         QStringLiteral(
             "QPushButton {"
-            "  font-family: 'Microsoft YaHei';"
+            "  font-family: %1;"
             "  font-size: 15px;"
+            "  font-weight: 600;"
             "  padding: 6px 20px;"
             "  border: 1px solid #1890ff;"
             "  border-radius: 6px;"
@@ -180,7 +186,7 @@ void ResultViewerWidget::buildUi()
             "  color: #ffffff;"
             "}"
             "QPushButton:hover { background: #40a9ff; border-color: #40a9ff; }"
-        )
+        ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
     emptyCardLayout->addWidget(emptyStateTitleLabel);
@@ -303,10 +309,10 @@ void ResultViewerWidget::buildUi()
     for (QLabel *label : {infoPrimaryLabel, infoSecondaryLabel}) {
         label->setStyleSheet(
             QStringLiteral(
-                "font-family: 'Microsoft YaHei';"
+                "font-family: %1;"
                 "font-size: 14px;"
                 "color: #555555;"
-            )
+            ).arg(QString::fromUtf8(kUiFontFamily))
         );
     }
     playerLayout->addWidget(infoPrimaryLabel);

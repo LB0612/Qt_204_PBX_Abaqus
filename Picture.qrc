@@ -12,6 +12,7 @@
         <file alias="information.png">toolbar_picture/information.png</file>
         <file alias="jiegoucanshu.png">toolbar_picture/jiegoucanshu.png</file>
         <file alias="open.png">toolbar_picture/open.png</file>
+        <file alias="result.png">toolbar_picture/result.png</file>
         <file alias="save.png">toolbar_picture/save.png</file>
         <file alias="setup.png">toolbar_picture/setup.png</file>
         <file alias="start.png">toolbar_picture/start.png</file>

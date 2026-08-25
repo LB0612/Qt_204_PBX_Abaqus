@@ -5,6 +5,7 @@
 
 class QPushButton;
 class QLabel;
+class QFrame;
 
 class SimulationPrepareWidget : public QWidget
 {
@@ -23,10 +24,18 @@ signals:
     void cancelRequested();
 
 private:
-    QLabel *titleLabel;
-    QLabel *infoLabel;
-    QPushButton *startButton;
-    QPushButton *cancelButton;
+    QLabel *titleLabel = nullptr;
+    QFrame *statusCard = nullptr;
+    QLabel *statusTitleLabel = nullptr;
+    QLabel *checkParamLabel = nullptr;
+    QLabel *checkFilesLabel = nullptr;
+    QLabel *checkPathLabel = nullptr;
+    QLabel *hintLabel = nullptr;
+    QLabel *errorStatusLabel = nullptr;
+    QLabel *reasonTitleLabel = nullptr;
+    QLabel *reasonContentLabel = nullptr;
+    QPushButton *startButton = nullptr;
+    QPushButton *cancelButton = nullptr;
 };
 
 #endif
