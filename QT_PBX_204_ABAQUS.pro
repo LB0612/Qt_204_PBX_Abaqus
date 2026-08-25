@@ -1,4 +1,4 @@
-QT += core gui widgets
+QT += core gui widgets printsupport
 
 CONFIG += c++17
 
@@ -30,6 +30,9 @@ SOURCES += \
     ParameterCheckWidget.cpp \
     SimulationMonitorWidget.cpp \
     SimulationPrepareWidget.cpp \
+    ResultViewerWidget.cpp \
+    SimulationResultService.cpp \
+    SimulationReportGenerator.cpp \
     AbaqusFileGenerator.cpp
 
 HEADERS += \
@@ -60,6 +63,9 @@ HEADERS += \
     ParameterCheckWidget.h \
     SimulationMonitorWidget.h \
     SimulationPrepareWidget.h \
+    ResultViewerWidget.h \
+    SimulationResultService.h \
+    SimulationReportGenerator.h \
     AbaqusFileGenerator.h
 
 RESOURCES += \

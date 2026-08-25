@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QSaveFile>
 
 namespace ProjectInputHash {
@@ -306,6 +307,13 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
     manifest.videoFps =
         json.value(QStringLiteral("videoFps")).toInt();
 
+    const QJsonArray frameTimesJson =
+        json.value(QStringLiteral("frameTimes")).toArray();
+    manifest.frameTimes.clear();
+    for (const QJsonValue &value : frameTimesJson) {
+        manifest.frameTimes.append(value.toDouble());
+    }
+
     const bool countsMatch =
         manifest.odbFrames > 0
         && manifest.odbFrames == manifest.curePngFrames
@@ -320,11 +328,15 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         && manifest.temperatureVideoBytes > 0
         && manifest.stressVideoBytes > 0;
 
+    const bool frameTimesMatch =
+        manifest.frameTimes.size() == manifest.odbFrames;
+
     manifest.valid =
-        manifest.version == 2
+        manifest.version == 3
         && !manifest.postSha256.isEmpty()
         && countsMatch
-        && bytesRecorded;
+        && bytesRecorded
+        && frameTimesMatch;
 
     return manifest;
 }

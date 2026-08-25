@@ -1112,6 +1112,12 @@ vp = _setup_viewport(odb, expected_frames)
 
 print('[POST] ODB frames = %d' % expected_frames)
 
+odb_frames = odb.steps[STEP_NAME].frames
+frame_times = [
+    float(odb_frames[i].frameValue)
+    for i in range(len(odb_frames))
+]
+
 # Phase A: export all PNG sequences before any video work.
 cure_count = _export_png_frames(
     vp=vp,
@@ -1182,7 +1188,7 @@ stress_video_frames, stress_video_bytes = _generate_avi(
 
 post_sha = _post_sha256()
 manifest = {
-    'version': 2,
+    'version': 3,
     'postSha256': post_sha,
     'step': STEP_NAME,
     'odbFrames': expected_frames,
@@ -1196,6 +1202,7 @@ manifest = {
     'temperatureVideoBytes': temp_video_bytes,
     'stressVideoBytes': stress_video_bytes,
     'videoFps': VIDEO_FPS,
+    'frameTimes': frame_times,
 }
 
 _atomic_write_json(manifest_path, manifest)

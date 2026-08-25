@@ -23,6 +23,8 @@
 #include "ParameterCheckWidget.h"
 #include "SimulationMonitorWidget.h"
 #include "SimulationPrepareWidget.h"
+#include "ResultViewerWidget.h"
+#include "SimulationReportGenerator.h"
 
 class NewProjectDialog;
 class OpenProjectDialog;
@@ -104,6 +106,7 @@ private:
     ParameterCheckWidget *parameterCheckWidget;
     SimulationMonitorWidget *simulationMonitorWidget;
     SimulationPrepareWidget *simulationPrepareWidget;
+    ResultViewerWidget *resultViewerWidget;
 
     SimulationManager *simulationManager = nullptr;
 
@@ -134,7 +137,10 @@ private slots:
     void checkParams();
     void generateFiles();
     void showSimulationPreparePage();
+    void showSimulationResults();
     void showPreviousSimulationLogs();
+    void generateSimulationReport();
+    void openResultsDirectory();
     void startSimulation();
     void stopSimulation();
     void settings();

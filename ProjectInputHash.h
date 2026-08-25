@@ -2,10 +2,11 @@
 #define PROJECTINPUTHASH_H
 
 #include <QString>
+#include <QVector>
 
 namespace ProjectInputHash {
 
-constexpr int GENERATION_MANIFEST_VERSION = 6;
+constexpr int GENERATION_MANIFEST_VERSION = 7;
 constexpr int CALCULATION_PIPELINE_VERSION = 2;
 constexpr int POSTPROCESS_PIPELINE_VERSION = 3;
 
@@ -39,6 +40,7 @@ struct PostProcessManifest
     qint64 temperatureVideoBytes = 0;
     qint64 stressVideoBytes = 0;
     int videoFps = 0;
+    QVector<double> frameTimes;
     bool valid = false;
 };
 

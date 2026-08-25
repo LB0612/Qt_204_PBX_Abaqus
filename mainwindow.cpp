@@ -10,10 +10,13 @@
 #include "SimulationConfigManager.h"
 #include "AbaqusFileGenerator.h"
 #include "ProjectInputHash.h"
+#include "SimulationReportGenerator.h"
+#include "SimulationResultService.h"
 
 #include <QBrush>
 #include <QCloseEvent>
 #include <QColor>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -58,6 +61,9 @@ const QString NODE_PARAMETER_CHECK =
 
 const QString NODE_START_SIMULATION =
     QStringLiteral("START_SIMULATION");
+
+const QString NODE_SIMULATION_RESULT =
+    QStringLiteral("SIMULATION_RESULT");
 
 enum PreviousResultAction {
     PreviousResultCancel = 0,
@@ -205,6 +211,22 @@ void MainWindow::setupUi()
 
     simulationPrepareWidget = new SimulationPrepareWidget(stackedWidget);
     stackedWidget->addWidget(simulationPrepareWidget);
+
+    resultViewerWidget = new ResultViewerWidget(stackedWidget);
+    stackedWidget->addWidget(resultViewerWidget);
+
+    connect(
+        resultViewerWidget,
+        &ResultViewerWidget::generateReportRequested,
+        this,
+        &MainWindow::generateSimulationReport
+    );
+    connect(
+        resultViewerWidget,
+        &ResultViewerWidget::openResultsDirectoryRequested,
+        this,
+        &MainWindow::openResultsDirectory
+    );
 
     connect(
         simulationPrepareWidget,
@@ -525,6 +547,13 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     startItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/start.png")));
     startItem->setFont(0, childFont);
 
+    QTreeWidgetItem *resultItem = new QTreeWidgetItem(projectItem);
+    resultItem->setText(0, QStringLiteral("仿真结果"));
+    resultItem->setData(0, Qt::UserRole, path);
+    resultItem->setData(0, ROLE_NODE_TYPE, NODE_SIMULATION_RESULT);
+    resultItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/check.png")));
+    resultItem->setFont(0, childFont);
+
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
 }
@@ -767,6 +796,10 @@ void MainWindow::loadProjectToUi()
 {
     clearAllParamPageDirty();
     projectDirectoryMissing = false;
+    if (resultViewerWidget) {
+        resultViewerWidget->stopPlayback();
+        resultViewerWidget->setProjectPath(QString());
+    }
     infoWidget->setProjectData(currentProject);
     reloadParameterPagesFromSavedConfig();
     setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程 - %1").arg(currentProject.projectName));
@@ -1920,6 +1953,135 @@ void MainWindow::reloadParameterPagesFromSavedConfig()
     }
 }
 
+void MainWindow::showSimulationResults()
+{
+    if (!isProjectLoaded || !resultViewerWidget) {
+        return;
+    }
+
+    if (simulationManager->isActive()) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Information,
+            QStringLiteral("仿真正在进行"),
+            QStringLiteral(
+                "当前工程正在进行 Abaqus 仿真或后处理，"
+                "请等待本次计算完成后查看结果。"
+            )
+        );
+        selectTreeItem(QStringLiteral("开始仿真"));
+        stackedWidget->setCurrentWidget(simulationMonitorWidget);
+        return;
+    }
+
+    resultViewerWidget->stopPlayback();
+    resultViewerWidget->setProjectPath(currentProject.projectPath);
+    resultViewerWidget->refreshResults();
+    stackedWidget->setCurrentWidget(resultViewerWidget);
+}
+
+void MainWindow::openResultsDirectory()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    const QString resultsDir =
+        SimulationResultService::resultsDirectoryPath(
+            currentProject.projectPath
+        );
+
+    if (!QFileInfo(resultsDir).exists()) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("结果目录不存在"),
+            QStringLiteral("当前工程尚未生成 results 目录。")
+        );
+        return;
+    }
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(resultsDir));
+}
+
+void MainWindow::generateSimulationReport()
+{
+    if (!isProjectLoaded) {
+        return;
+    }
+
+    if (!dirtyParamPages.isEmpty()) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("参数未保存"),
+            QStringLiteral(
+                "当前存在未保存的参数修改，"
+                "请先保存参数后再生成报告。"
+            )
+        );
+        return;
+    }
+
+    if (simulationManager->isActive()) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Information,
+            QStringLiteral("仿真正在进行"),
+            QStringLiteral(
+                "当前工程正在进行 Abaqus 仿真或后处理，"
+                "请等待本次计算完成后再生成报告。"
+            )
+        );
+        return;
+    }
+
+    const ResultValidationResult validation =
+        SimulationResultService::validate(currentProject.projectPath);
+
+    if (!validation.isValid()) {
+        QString title = QStringLiteral("无法生成报告");
+        if (validation.state == ResultValidationState::PostIncomplete) {
+            title = QStringLiteral("后处理未完成");
+        } else if (validation.state == ResultValidationState::PostShaMismatch) {
+            title = QStringLiteral("结果与参数不一致");
+        }
+
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            title,
+            validation.message
+        );
+        return;
+    }
+
+    QString error;
+    if (!SimulationReportGenerator::generate(
+            currentProject.projectPath,
+            error)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("报告生成失败"),
+            error
+        );
+        return;
+    }
+
+    const QString pdfPath =
+        SimulationResultService::reportPdfPath(
+            currentProject.projectPath
+        );
+
+    showCenteredMessageBox(
+        this,
+        QMessageBox::Information,
+        QStringLiteral("报告已生成"),
+        QStringLiteral("PDF 报告已保存至：\n%1").arg(pdfPath)
+    );
+}
+
 void MainWindow::showPreviousSimulationLogs()
 {
     if (!isProjectLoaded || !simulationMonitorWidget) {
@@ -2109,7 +2271,8 @@ void MainWindow::onTreeItemClicked(
              || nodeType == NODE_BOUNDARY
              || nodeType == NODE_SIMULATION
              || nodeType == NODE_PARAMETER_CHECK
-             || nodeType == NODE_START_SIMULATION) {
+             || nodeType == NODE_START_SIMULATION
+             || nodeType == NODE_SIMULATION_RESULT) {
         projectItem = item->parent();
     }
     else {
@@ -2183,6 +2346,11 @@ void MainWindow::onTreeItemClicked(
         currentProject = config;
         isProjectLoaded = true;
 
+        if (resultViewerWidget) {
+            resultViewerWidget->stopPlayback();
+            resultViewerWidget->setProjectPath(QString());
+        }
+
         updateUIStates();
     }
 
@@ -2225,6 +2393,11 @@ void MainWindow::onTreeItemClicked(
 
     if (nodeType == NODE_START_SIMULATION) {
         showSimulationPreparePage();
+        return;
+    }
+
+    if (nodeType == NODE_SIMULATION_RESULT) {
+        showSimulationResults();
         return;
     }
 
