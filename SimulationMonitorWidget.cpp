@@ -202,11 +202,16 @@ void SimulationMonitorWidget::appendLog(const QString &text)
 
 void SimulationMonitorWidget::clearLog()
 {
+    // 新一轮实时仿真时恢复日志上限，
+    // 防止长时间运行造成界面日志无限增长。
+    logEdit->document()->setMaximumBlockCount(10000);
     logEdit->clear();
 }
 
 void SimulationMonitorWidget::setLogText(const QString &text)
 {
+    // 查看历史日志时不限制行数，完整显示 readAll() 的内容。
+    logEdit->document()->setMaximumBlockCount(0);
     logEdit->setPlainText(text);
 }
 
