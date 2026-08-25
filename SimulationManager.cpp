@@ -648,19 +648,46 @@ void SimulationManager::appendProcessLog(
         );
         const QRegularExpressionMatch match =
             framePattern.match(text);
+
         if (match.hasMatch()) {
             const int current = match.captured(1).toInt();
             const int total = match.captured(2).toInt();
+
             if (total > 0) {
+                int basePercent = 70;
+                int maxPercent = 78;
+
+                if (text.contains(QStringLiteral("[POST] NT11:"))) {
+                    basePercent = 79;
+                    maxPercent = 87;
+                } else if (text.contains(QStringLiteral("[POST] S:"))) {
+                    basePercent = 88;
+                    maxPercent = 96;
+                } else if (!text.contains(QStringLiteral("[POST] SDV1:"))) {
+                    basePercent = 70;
+                    maxPercent = 78;
+                }
+
                 const int percent =
-                    70 + static_cast<int>(
+                    basePercent
+                    + static_cast<int>(
                         (static_cast<double>(current + 1)
-                         / static_cast<double>(total + 1)) * 29.0
+                         / static_cast<double>(total + 1))
+                            * static_cast<double>(maxPercent - basePercent)
                     );
-                emit progressUpdated(qBound(70, percent, 99));
+                emit progressUpdated(
+                    qBound(basePercent, percent, maxPercent)
+                );
             }
-        } else if (text.contains(QStringLiteral("AVI generated"))) {
-            emit progressUpdated(95);
+        } else if (text.contains(QStringLiteral("AVI generated"))
+            || text.contains(QStringLiteral("Skip existing valid AVI"))) {
+            if (text.contains(QStringLiteral("guhuadu"), Qt::CaseInsensitive)) {
+                emit progressUpdated(97);
+            } else if (text.contains(QStringLiteral("wendu"), Qt::CaseInsensitive)) {
+                emit progressUpdated(98);
+            } else if (text.contains(QStringLiteral("yingli"), Qt::CaseInsensitive)) {
+                emit progressUpdated(99);
+            }
         }
     }
 }

@@ -1554,6 +1554,12 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
         || state == SimulationState::Finished
         || state == SimulationState::Failed
         || state == SimulationState::PostProcessFailed) {
+        if (projectDirectoryMissing
+            && isProjectLoaded
+            && QFileInfo(currentProject.projectPath).exists()) {
+            projectDirectoryMissing = false;
+        }
+
         if (projectDirectoryMissing) {
             stopWatchingProject();
             isProjectLoaded = false;
@@ -1964,12 +1970,16 @@ void MainWindow::showPreviousSimulationLogs()
         QDir(logsDir).filePath(QStringLiteral("t1.log"))
     );
     loadLog(
-        QStringLiteral("T2 LOG"),
-        QDir(logsDir).filePath(QStringLiteral("t2.log"))
+        QStringLiteral("ABAQUS MSG"),
+        QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg"))
     );
     loadLog(
         QStringLiteral("ABAQUS STA"),
         QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"))
+    );
+    loadLog(
+        QStringLiteral("T2 LOG"),
+        QDir(logsDir).filePath(QStringLiteral("t2.log"))
     );
 
     simulationMonitorWidget->clearLog();
