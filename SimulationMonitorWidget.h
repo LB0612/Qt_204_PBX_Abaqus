@@ -20,6 +20,8 @@ public slots:
     void clearLog();
     void setLogText(const QString &text);
     void setStatus(const QString &text);
+    void setPhase(const QString &text);
+    void setJob(const QString &jobName);
     void setProgress(int value);
 
 private:
@@ -27,6 +29,8 @@ private:
 
     QLabel *titleLabel;
     QLabel *statusValueLabel;
+    QLabel *phaseValueLabel;
+    QLabel *jobValueLabel;
     QProgressBar *progressBar;
     QTextEdit *logEdit;
 };
