@@ -64,6 +64,22 @@ QString generationFlagPath(const QString &projectPath)
         .filePath(QStringLiteral("generation_complete.flag"));
 }
 
+QString normalizedProjectPath(const QString &projectPath)
+{
+    return QDir::fromNativeSeparators(
+        QDir::cleanPath(QFileInfo(projectPath).absoluteFilePath())
+    );
+}
+
+bool projectPathsMatch(const QString &left, const QString &right)
+{
+#ifdef Q_OS_WIN
+    return QString::compare(left, right, Qt::CaseInsensitive) == 0;
+#else
+    return left == right;
+#endif
+}
+
 QString postProcessManifestPath(const QString &projectPath)
 {
     return QDir(QDir(projectPath).filePath(QStringLiteral("results")))
@@ -188,14 +204,23 @@ GenerationManifest readGenerationManifest(const QString &projectPath)
             manifest.configSha256 = value;
         } else if (key == QStringLiteral("generated_sha256")) {
             manifest.generatedSha256 = value;
+        } else if (key == QStringLiteral("project_path")) {
+            manifest.projectPath = value;
         }
     }
+
+    const QString currentProjectPath = normalizedProjectPath(projectPath);
 
     manifest.valid =
         manifest.version == GENERATION_MANIFEST_VERSION
         && manifest.status == QStringLiteral("success")
         && !manifest.configSha256.isEmpty()
-        && !manifest.generatedSha256.isEmpty();
+        && !manifest.generatedSha256.isEmpty()
+        && !manifest.projectPath.isEmpty()
+        && projectPathsMatch(
+            normalizedProjectPath(manifest.projectPath),
+            currentProjectPath
+        );
 
     return manifest;
 }
@@ -206,14 +231,17 @@ bool writeGenerationManifest(
     const QString &generatedSha256,
     QString &errorMessage)
 {
+    const QString normalizedPath = normalizedProjectPath(projectPath);
     const QString manifestText =
         QStringLiteral("version=%1\n"
                        "status=success\n"
                        "config_sha256=%2\n"
-                       "generated_sha256=%3\n")
+                       "generated_sha256=%3\n"
+                       "project_path=%4\n")
             .arg(GENERATION_MANIFEST_VERSION)
             .arg(configSha256)
-            .arg(generatedSha256);
+            .arg(generatedSha256)
+            .arg(normalizedPath);
 
     QSaveFile flagFile(generationFlagPath(projectPath));
     if (!flagFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
