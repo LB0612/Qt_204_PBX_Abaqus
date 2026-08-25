@@ -121,7 +121,6 @@ private:
 private slots:
     void newProject();
     void openProject();
-    void saveProject(bool silent = false);
     void exitProject();
     void projectInfo();
     void structureParams();

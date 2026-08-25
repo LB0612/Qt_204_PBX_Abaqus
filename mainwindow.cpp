@@ -372,12 +372,6 @@ void MainWindow::createPureStyleToolBar()
 
     addBtn(QStringLiteral("新建工程"), QStringLiteral(":/toolbar/create.png"), &MainWindow::newProject, false);
     addBtn(QStringLiteral("打开工程"), QStringLiteral(":/toolbar/open.png"), &MainWindow::openProject, false);
-
-    QAction *saveAct = new QAction(QIcon(QStringLiteral(":/toolbar/save.png")), QStringLiteral("保存工程信息"), this);
-    connect(saveAct, &QAction::triggered, this, [this]() { saveProject(false); });
-    toolBar->addAction(saveAct);
-    projectDependentActions.append(saveAct);
-
     addBtn(QStringLiteral("关闭工程"), QStringLiteral(":/toolbar/close.png"), &MainWindow::exitProject);
 
     toolBar->addSeparator();
@@ -892,24 +886,6 @@ void MainWindow::openProject()
 
     startWatchingProject();
     loadProjectToUi();
-}
-
-void MainWindow::saveProject(bool silent)
-{
-    if (!isProjectLoaded) {
-        return;
-    }
-
-    infoWidget->getProjectData(currentProject);
-    const bool success = ProjectManager::saveProject(currentProject.projectPath, currentProject);
-
-    if (!silent) {
-        if (success) {
-            showCenteredMessageBox(this, QMessageBox::Information, QStringLiteral("成功"), QStringLiteral("工程信息已保存。"));
-        } else {
-            showCenteredMessageBox(this, QMessageBox::Critical, QStringLiteral("错误"), QStringLiteral("工程保存失败，请检查目录权限。"));
-        }
-    }
 }
 
 void MainWindow::exitProject()

@@ -22,7 +22,7 @@ const char *kCardStyle =
 const char *kTypeButtonStyle =
     "QPushButton {"
     "  font-family: 'Microsoft YaHei';"
-    "  font-size: 14px;"
+    "  font-size: 15px;"
     "  padding: 6px 16px;"
     "  border: 1px solid #d9d9d9;"
     "  border-radius: 6px;"
@@ -35,6 +35,42 @@ const char *kTypeButtonStyle =
     "  color: #ffffff;"
     "  border-color: #1890ff;"
     "}";
+
+const char *kPlaybackButtonStyle =
+    "QPushButton {"
+    "  font-family: 'Microsoft YaHei';"
+    "  font-size: 14px;"
+    "  padding: 6px 12px;"
+    "  border: 1px solid #d9d9d9;"
+    "  border-radius: 6px;"
+    "  background: #ffffff;"
+    "  color: #333333;"
+    "}"
+    "QPushButton:hover { background: #f5f5f5; }";
+
+const char *kSecondaryButtonStyle =
+    "QPushButton {"
+    "  font-family: 'Microsoft YaHei';"
+    "  font-size: 14px;"
+    "  padding: 6px 16px;"
+    "  border: 1px solid #d9d9d9;"
+    "  border-radius: 6px;"
+    "  background: #ffffff;"
+    "  color: #333333;"
+    "}"
+    "QPushButton:hover { background: #f5f5f5; }";
+
+const char *kPrimaryButtonStyle =
+    "QPushButton {"
+    "  font-family: 'Microsoft YaHei';"
+    "  font-size: 14px;"
+    "  padding: 6px 16px;"
+    "  border: 1px solid #1890ff;"
+    "  border-radius: 6px;"
+    "  background: #1890ff;"
+    "  color: #ffffff;"
+    "}"
+    "QPushButton:hover { background: #40a9ff; border-color: #40a9ff; }";
 
 } // namespace
 
@@ -76,7 +112,7 @@ void ResultViewerWidget::buildUi()
     titleLabel->setStyleSheet(
         QStringLiteral(
             "font-family: 'Microsoft YaHei';"
-            "font-size: 20px;"
+            "font-size: 24px;"
             "font-weight: bold;"
             "color: #333333;"
         )
@@ -108,7 +144,7 @@ void ResultViewerWidget::buildUi()
     emptyStateTitleLabel->setStyleSheet(
         QStringLiteral(
             "font-family: 'Microsoft YaHei';"
-            "font-size: 18px;"
+            "font-size: 20px;"
             "font-weight: bold;"
             "color: #333333;"
             "border: none;"
@@ -122,7 +158,7 @@ void ResultViewerWidget::buildUi()
     emptyStateMessageLabel->setStyleSheet(
         QStringLiteral(
             "font-family: 'Microsoft YaHei';"
-            "font-size: 14px;"
+            "font-size: 15px;"
             "color: #666666;"
             "border: none;"
             "background: transparent;"
@@ -136,7 +172,7 @@ void ResultViewerWidget::buildUi()
         QStringLiteral(
             "QPushButton {"
             "  font-family: 'Microsoft YaHei';"
-            "  font-size: 14px;"
+            "  font-size: 15px;"
             "  padding: 6px 20px;"
             "  border: 1px solid #1890ff;"
             "  border-radius: 6px;"
@@ -231,6 +267,7 @@ void ResultViewerWidget::buildUi()
              playButton,
              nextButton}) {
         button->setMinimumHeight(34);
+        button->setStyleSheet(QString::fromUtf8(kPlaybackButtonStyle));
     }
 
     controlLayout->addStretch();
@@ -278,6 +315,8 @@ void ResultViewerWidget::buildUi()
     QHBoxLayout *bottomLayout = new QHBoxLayout();
     openDirButton = new QPushButton(QStringLiteral("打开结果目录"), playerPanel);
     reportButton = new QPushButton(QStringLiteral("生成PDF报告"), playerPanel);
+    openDirButton->setStyleSheet(QString::fromUtf8(kSecondaryButtonStyle));
+    reportButton->setStyleSheet(QString::fromUtf8(kPrimaryButtonStyle));
     bottomLayout->addWidget(openDirButton);
     bottomLayout->addStretch();
     bottomLayout->addWidget(reportButton);
