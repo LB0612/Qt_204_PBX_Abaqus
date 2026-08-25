@@ -3,6 +3,7 @@
 #include "BoundaryConfigManager.h"
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
+#include "ProjectManager.h"
 #include "SimulationConfigManager.h"
 #include "StructureConfigManager.h"
 
@@ -158,12 +159,27 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
             && ProjectManager::loadProject(project.projectPath, loaded)
             && !loaded.projectName.trimmed().isEmpty();
 
+        QString projectNameError;
+        const bool validProjectName =
+            valid
+            && ProjectManager::isValidProjectName(
+                loaded.projectName,
+                projectNameError
+            );
+
         if (!exists) {
             allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("工程信息文件不存在"));
         } else if (!valid) {
             allPassed = false;
             addWarningLabel(boxLayout, QStringLiteral("工程信息文件无效"));
+        } else if (!validProjectName) {
+            allPassed = false;
+            addWarningLabel(
+                boxLayout,
+                QStringLiteral("工程目录名称无效：%1")
+                    .arg(projectNameError)
+            );
         } else {
             boxLayout->addLayout(
                 createInfoRow(QStringLiteral("工程名称："), loaded.projectName)

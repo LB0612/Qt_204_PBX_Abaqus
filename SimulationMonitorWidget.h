@@ -4,7 +4,7 @@
 #include "BaseParamWidget.h"
 
 class QLabel;
-class QTextEdit;
+class QPlainTextEdit;
 class QProgressBar;
 
 class SimulationMonitorWidget : public BaseParamWidget
@@ -25,7 +25,7 @@ private:
     QLabel *statusValueLabel = nullptr;
     QLabel *progressValueLabel = nullptr;
     QProgressBar *progressBar = nullptr;
-    QTextEdit *logEdit = nullptr;
+    QPlainTextEdit *logEdit = nullptr;
 };
 
 #endif

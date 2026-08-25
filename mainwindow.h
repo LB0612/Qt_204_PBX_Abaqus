@@ -76,7 +76,8 @@ private:
     void clearAllParamPageDirty();
 
     void setParameterPagesReadOnly(bool readOnly);
-    void reloadParameterPagesFromSavedConfig();
+    bool reloadParameterPagesFromSavedConfig(QString &errorMessage);
+    void removeProjectTreeItemByPath(const QString &path);
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,

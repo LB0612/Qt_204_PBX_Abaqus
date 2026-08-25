@@ -78,12 +78,13 @@ private:
     void setSimulationState(SimulationState state);
 
     void prepareRunContext();
-    void clearRunArtifactsForFullRun();
+    bool clearRunArtifactsForFullRun(QString &errorMessage);
     void appendProcessLog(
         const QString &logPath,
         const QByteArray &data,
         bool isError
     );
+    void drainProcessOutput(const QString &logPath);
 
     void startT0Stage();
     void handleT0Finished(int exitCode, QProcess::ExitStatus exitStatus);
@@ -110,7 +111,8 @@ private:
 
     void closeAbaqusProcesses();
     bool isCurrentJobLockPresent() const;
-    void finishStopState();
+    void finishStopState(bool allowStaleLock = false);
+    void restoreRunningStateAfterStopFailure(const QString &reason);
 
     void updateAbaqusLog();
     void readAbaqusLogFile(
@@ -168,6 +170,7 @@ private:
     bool m_forceFullRerun = false;
     bool m_t2ResetRequested = false;
     SimulationState simulationState = SimulationState::Idle;
+    SimulationState m_stopSourceState = SimulationState::Idle;
 
     QString currentJobName;
     QString runningProjectPath;

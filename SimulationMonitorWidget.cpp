@@ -5,7 +5,7 @@
 #include <QPalette>
 #include <QProgressBar>
 #include <QScrollArea>
-#include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QVBoxLayout>
 
 namespace {
@@ -153,13 +153,13 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     );
     logTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
 
-    logEdit = new QTextEdit(content);
+    logEdit = new QPlainTextEdit(content);
     logEdit->setReadOnly(true);
     logEdit->document()->setMaximumBlockCount(10000);
     logEdit->setMinimumHeight(280);
     logEdit->setStyleSheet(
         QStringLiteral(
-            "QTextEdit {"
+            "QPlainTextEdit {"
             "  background-color: #ffffff;"
             "  border: 1px solid #dddddd;"
             "  border-radius: 4px;"
@@ -186,7 +186,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
 
 void SimulationMonitorWidget::appendLog(const QString &text)
 {
-    logEdit->append(text);
+    logEdit->appendPlainText(text);
 }
 
 void SimulationMonitorWidget::clearLog()

@@ -1,5 +1,6 @@
 #include "SimulationResultService.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -20,6 +21,44 @@ bool readFlagSuccess(const QString &flagPath)
     return content == QStringLiteral("success");
 }
 
+bool isNonEmptyRegularFile(const QString &path)
+{
+    const QFileInfo info(path);
+    return info.exists() && info.isFile() && info.size() > 0;
+}
+
+bool fingerprintMatches(
+    const QString &path,
+    const QString &expected)
+{
+    if (expected.isEmpty()) {
+        return false;
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    const QString stored =
+        QString::fromLatin1(file.readAll()).trimmed();
+
+    return !stored.isEmpty() && stored == expected;
+}
+
+QString t2CompletionStamp(const QString &projectPath)
+{
+    const QFileInfo info(
+        ProjectInputHash::t2FinishedFlagPath(projectPath)
+    );
+
+    if (!info.exists() || !info.isFile()) {
+        return QString();
+    }
+
+    return info.lastModified().toUTC().toString(Qt::ISODateWithMs);
+}
+
 } // namespace
 
 ResultValidationResult SimulationResultService::validate(
@@ -36,28 +75,77 @@ ResultValidationResult SimulationResultService::validate(
     }
 
     const bool t1Finished =
-        readFlagSuccess(ProjectInputHash::t1FinishedFlagPath(projectPath));
-    const bool odbExists =
-        QFile::exists(ProjectInputHash::solverOdbPath(projectPath));
+        readFlagSuccess(
+            ProjectInputHash::t1FinishedFlagPath(projectPath)
+        );
+
+    const bool odbValid =
+        isNonEmptyRegularFile(
+            ProjectInputHash::solverOdbPath(projectPath)
+        );
+
+    const bool jobUnlocked =
+        !QFile::exists(
+            ProjectInputHash::currentJobLockPath(projectPath)
+        );
+
+    const QString currentSolverSha =
+        ProjectInputHash::hashSolverInput(projectPath);
+
+    const bool solverFingerprintMatches =
+        fingerprintMatches(
+            ProjectInputHash::lastSuccessInputFingerprintPath(
+                projectPath
+            ),
+            currentSolverSha
+        )
+        || fingerprintMatches(
+            ProjectInputHash::runningInputFingerprintPath(
+                projectPath
+            ),
+            currentSolverSha
+        );
+
+    const bool solverResultValid =
+        t1Finished
+        && odbValid
+        && jobUnlocked
+        && solverFingerprintMatches;
+
     const bool t2Finished =
-        readFlagSuccess(ProjectInputHash::t2FinishedFlagPath(projectPath));
+        readFlagSuccess(
+            ProjectInputHash::t2FinishedFlagPath(projectPath)
+        );
 
     if (!t2Finished) {
-        if (t1Finished && odbExists) {
+        if (solverResultValid) {
             result.state = ResultValidationState::PostIncomplete;
             result.message =
                 QStringLiteral(
-                    "Abaqus 求解已经完成，但后处理尚未完整完成。"
-                    "请继续后处理后再查看结果。"
+                    "Abaqus 求解已经完成，"
+                    "但后处理尚未完整完成。"
+                    "可以继续后处理，"
+                    "也可以选择重新完整仿真。"
                 );
         } else {
             result.state = ResultValidationState::NoResults;
             result.message =
                 QStringLiteral(
-                    "当前工程尚无完整仿真结果。"
-                    "请先完成 Abaqus 仿真及后处理。"
+                    "当前工程没有可确认有效的完整求解结果。"
+                    "请重新进行仿真。"
                 );
         }
+        return result;
+    }
+
+    if (!solverResultValid) {
+        result.state = ResultValidationState::PostShaMismatch;
+        result.message =
+            QStringLiteral(
+                "当前 Abaqus 求解结果状态无效"
+                "或与当前输入不一致。"
+                "请重新进行完整仿真。"
+            );
         return result;
     }
 
@@ -202,13 +290,27 @@ bool SimulationResultService::readSuccessFlag(const QString &flagPath)
 
 bool SimulationResultService::isReportCurrent(const QString &projectPath)
 {
-    const ResultValidationResult validation = validate(projectPath);
-    if (!validation.isValid()) {
+    const ProjectInputHash::PostProcessManifest postManifest =
+        ProjectInputHash::readPostProcessManifest(projectPath);
+
+    if (!postManifest.valid) {
         return false;
     }
 
-    const QString manifestPath = reportManifestPath(projectPath);
-    QFile file(manifestPath);
+    const QString currentPostSha =
+        ProjectInputHash::hashPostProcessInput(projectPath);
+
+    if (currentPostSha.isEmpty()
+        || currentPostSha != postManifest.postSha256) {
+        return false;
+    }
+
+    const QString currentT2Stamp = t2CompletionStamp(projectPath);
+    if (currentT2Stamp.isEmpty()) {
+        return false;
+    }
+
+    QFile file(reportManifestPath(projectPath));
     if (!file.open(QIODevice::ReadOnly)) {
         return false;
     }
@@ -216,21 +318,28 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
     QJsonParseError parseError;
     const QJsonDocument document =
         QJsonDocument::fromJson(file.readAll(), &parseError);
+
     if (parseError.error != QJsonParseError::NoError
         || !document.isObject()) {
         return false;
     }
 
     const QJsonObject json = document.object();
-    if (json.value(QStringLiteral("version")).toInt() != 1) {
+    if (json.value(QStringLiteral("version")).toInt() != 2) {
         return false;
     }
 
     const QString storedSha =
         json.value(QStringLiteral("postSha256")).toString();
+    const QString storedT2Stamp =
+        json.value(QStringLiteral("t2CompletedAt")).toString();
+
     const QFileInfo pdfInfo(reportPdfPath(projectPath));
+
     return !storedSha.isEmpty()
-        && storedSha == validation.manifest.postSha256
+        && storedSha == postManifest.postSha256
+        && storedT2Stamp == currentT2Stamp
         && pdfInfo.exists()
+        && pdfInfo.isFile()
         && pdfInfo.size() > 0;
 }

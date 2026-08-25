@@ -161,11 +161,17 @@ void SettingsDialog::onBrowseExe()
 void SettingsDialog::onSave()
 {
     const QString path = m_exePathEdit->text().trimmed();
-    if (path.isEmpty() || !QFile::exists(path)) {
+    const QFileInfo pathInfo(path);
+    if (path.isEmpty()
+        || !pathInfo.exists()
+        || !pathInfo.isFile()) {
         QMessageBox msgBox(
             QMessageBox::Critical,
             QStringLiteral("错误"),
-            QStringLiteral("填写的路径无效或文件不存在！"),
+            QStringLiteral(
+                "填写的 Abaqus 路径无效，"
+                "必须指向实际启动文件！"
+            ),
             QMessageBox::Ok,
             this
         );

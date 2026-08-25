@@ -380,6 +380,12 @@ void ResultViewerWidget::refreshResults()
 
     setResultUiVisible(true);
 
+    reportButton->setText(
+        SimulationResultService::isReportCurrent(projectPath)
+            ? QStringLiteral("重新生成PDF报告")
+            : QStringLiteral("生成PDF报告")
+    );
+
     totalFrames = validation.manifest.odbFrames;
     fps = validation.manifest.videoFps > 0
         ? validation.manifest.videoFps

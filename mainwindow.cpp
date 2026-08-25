@@ -71,6 +71,12 @@ enum PreviousResultAction {
     PreviousResultRerun
 };
 
+enum PostProcessResumeAction {
+    PostProcessResumeCancel = 0,
+    PostProcessResumeContinue,
+    PostProcessResumeFullRun
+};
+
 PreviousResultAction promptPreviousSimulationResult(
     QWidget *parent,
     const QString &message)
@@ -112,6 +118,55 @@ PreviousResultAction promptPreviousSimulationResult(
     }
 
     return PreviousResultCancel;
+}
+
+PostProcessResumeAction promptPostProcessResume(
+    QWidget *parent,
+    const QString &message)
+{
+    QMessageBox msgBox(
+        QMessageBox::Question,
+        QStringLiteral("检测到已完成的 Abaqus 求解"),
+        message
+            + QStringLiteral(
+                "\n\n请选择后续操作。"
+            ),
+        QMessageBox::NoButton,
+        parent
+    );
+
+    QPushButton *continueButton =
+        msgBox.addButton(
+            QStringLiteral("继续后处理"),
+            QMessageBox::AcceptRole
+        );
+
+    QPushButton *fullRunButton =
+        msgBox.addButton(
+            QStringLiteral("重新完整仿真"),
+            QMessageBox::DestructiveRole
+        );
+
+    QPushButton *cancelButton =
+        msgBox.addButton(
+            QStringLiteral("取消"),
+            QMessageBox::RejectRole
+        );
+
+    msgBox.setDefaultButton(continueButton);
+    msgBox.setWindowModality(Qt::ApplicationModal);
+    msgBox.exec();
+
+    if (msgBox.clickedButton() == continueButton) {
+        return PostProcessResumeContinue;
+    }
+
+    if (msgBox.clickedButton() == fullRunButton) {
+        return PostProcessResumeFullRun;
+    }
+
+    Q_UNUSED(cancelButton);
+    return PostProcessResumeCancel;
 }
 
 }
@@ -720,7 +775,17 @@ bool MainWindow::ensureNoUnsavedParameters()
         return false;
     }
 
-    reloadParameterPagesFromSavedConfig();
+    QString reloadError;
+    if (!reloadParameterPagesFromSavedConfig(reloadError)) {
+        showCenteredMessageBox(
+            this,
+            QMessageBox::Warning,
+            QStringLiteral("无法放弃修改"),
+            reloadError
+        );
+        return false;
+    }
+
     clearAllParamPageDirty();
     return true;
 }
@@ -811,7 +876,10 @@ void MainWindow::loadProjectToUi()
         resultViewerWidget->setProjectPath(QString());
     }
     infoWidget->setProjectData(currentProject);
-    reloadParameterPagesFromSavedConfig();
+    {
+        QString reloadError;
+        reloadParameterPagesFromSavedConfig(reloadError);
+    }
     setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程 - %1").arg(currentProject.projectName));
     selectTreeItem(QStringLiteral("工程信息"));
     stackedWidget->setCurrentWidget(infoWidget);
@@ -1397,6 +1465,10 @@ void MainWindow::checkParams()
         return;
     }
 
+    if (!ensureNoUnsavedParameters()) {
+        return;
+    }
+
     parameterCheckWidget->refresh(currentProject);
     selectTreeItem(QStringLiteral("参数检查"));
     stackedWidget->setCurrentWidget(parameterCheckWidget);
@@ -1573,12 +1645,29 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
         }
 
         if (projectDirectoryMissing) {
+            const QString missingProjectPath =
+                currentProject.projectPath;
+
             stopWatchingProject();
+
+            removeProjectTreeItemByPath(
+                missingProjectPath
+            );
+
             isProjectLoaded = false;
             currentProject = ProjectConfig();
             projectDirectoryMissing = false;
+
             stackedWidget->setCurrentIndex(0);
-            setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程"));
+
+            setWindowTitle(
+                QStringLiteral(
+                    "浇注XX固化仿真分析工程"
+                )
+            );
+
+            treeWidget->clearSelection();
+
             updateUIStates();
             startWatchingProject();
         }
@@ -1772,7 +1861,18 @@ void MainWindow::startSimulation()
         return;
     }
 
-    reloadParameterPagesFromSavedConfig();
+    {
+        QString reloadError;
+        if (!reloadParameterPagesFromSavedConfig(reloadError)) {
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("仿真无法启动"),
+                reloadError
+            );
+            return;
+        }
+    }
 
     const QString abaqusPath = SettingsDialog::getAbaqusPath();
     simulationManager->setProjectContext(
@@ -1783,12 +1883,21 @@ void MainWindow::startSimulation()
     const SimulationResumeMode resumeMode =
         simulationManager->detectResumeMode();
     if (resumeMode == SimulationResumeMode::PostProcessOnly) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Information,
-            QStringLiteral("继续后处理"),
-            simulationManager->resumeModeMessage(resumeMode)
-        );
+        const PostProcessResumeAction action =
+            promptPostProcessResume(
+                this,
+                simulationManager->resumeModeMessage(
+                    resumeMode
+                )
+            );
+
+        if (action == PostProcessResumeCancel) {
+            return;
+        }
+
+        if (action == PostProcessResumeFullRun) {
+            simulationManager->setForceFullRerun(true);
+        }
     }
 
     selectTreeItem(QStringLiteral("开始仿真"));
@@ -1890,51 +1999,114 @@ void MainWindow::setParameterPagesReadOnly(bool readOnly)
     }
 }
 
-void MainWindow::reloadParameterPagesFromSavedConfig()
+bool MainWindow::reloadParameterPagesFromSavedConfig(QString &errorMessage)
 {
     if (!isProjectLoaded) {
+        errorMessage = QStringLiteral("当前未打开工程。");
+        return false;
+    }
+
+    const QDir projectDir(currentProject.projectPath);
+
+    StructureConfig structure;
+    ExplosiveConfig explosive;
+    MoldConfig mold;
+    BoundaryConfig boundary;
+    SimulationConfig simulation;
+
+    const QString structurePath =
+        projectDir.filePath(QStringLiteral("config/structure.json"));
+    const QString explosivePath =
+        projectDir.filePath(QStringLiteral("config/explosive.json"));
+    const QString moldPath =
+        projectDir.filePath(QStringLiteral("config/mold.json"));
+    const QString boundaryPath =
+        projectDir.filePath(QStringLiteral("config/boundary.json"));
+    const QString simulationPath =
+        projectDir.filePath(QStringLiteral("config/simulation.json"));
+
+    if (QFileInfo::exists(structurePath)
+        && !StructureConfigManager::load(
+            currentProject.projectPath,
+            structure)) {
+        errorMessage =
+            QStringLiteral("结构参数配置文件无效或无法读取。");
+        return false;
+    }
+
+    if (QFileInfo::exists(explosivePath)
+        && !ExplosiveConfigManager::load(
+            currentProject.projectPath,
+            explosive)) {
+        errorMessage =
+            QStringLiteral("炸药参数配置文件无效或无法读取。");
+        return false;
+    }
+
+    if (QFileInfo::exists(moldPath)
+        && !MoldConfigManager::load(
+            currentProject.projectPath,
+            mold)) {
+        errorMessage =
+            QStringLiteral("模具参数配置文件无效或无法读取。");
+        return false;
+    }
+
+    if (QFileInfo::exists(boundaryPath)
+        && !BoundaryConfigManager::load(
+            currentProject.projectPath,
+            boundary)) {
+        errorMessage =
+            QStringLiteral("边界条件配置文件无效或无法读取。");
+        return false;
+    }
+
+    if (QFileInfo::exists(simulationPath)
+        && !SimulationConfigManager::load(
+            currentProject.projectPath,
+            simulation)) {
+        errorMessage =
+            QStringLiteral("仿真设置配置文件无效或无法读取。");
+        return false;
+    }
+
+    structureWidget->setConfig(structure);
+    explosiveWidget->setConfig(explosive);
+    moldWidget->setConfig(mold);
+    boundaryWidget->setConfig(boundary);
+    simulationWidget->setConfig(simulation);
+
+    errorMessage.clear();
+    return true;
+}
+
+void MainWindow::removeProjectTreeItemByPath(const QString &path)
+{
+    if (!treeWidget || path.isEmpty()) {
         return;
     }
 
-    StructureConfig structure;
-    if (StructureConfigManager::load(
-            currentProject.projectPath,
-            structure)) {
-        structureWidget->setConfig(structure);
+    QTreeWidgetItem *root = treeWidget->topLevelItem(0);
+    if (!root) {
+        return;
     }
 
-    ExplosiveConfig explosive;
-    if (ExplosiveConfigManager::load(
-            currentProject.projectPath,
-            explosive)) {
-        explosiveWidget->setConfig(explosive);
-    }
-
-    MoldConfig mold;
-    if (MoldConfigManager::load(
-            currentProject.projectPath,
-            mold)) {
-        moldWidget->setConfig(mold);
-    }
-
-    BoundaryConfig boundary;
-    if (BoundaryConfigManager::load(
-            currentProject.projectPath,
-            boundary)) {
-        boundaryWidget->setConfig(boundary);
-    }
-
-    SimulationConfig simulation;
-    if (SimulationConfigManager::load(
-            currentProject.projectPath,
-            simulation)) {
-        simulationWidget->setConfig(simulation);
+    for (int i = 0; i < root->childCount(); ++i) {
+        QTreeWidgetItem *projectItem = root->child(i);
+        if (projectItem->data(0, Qt::UserRole).toString() == path) {
+            delete projectItem;
+            return;
+        }
     }
 }
 
 void MainWindow::showSimulationResults()
 {
     if (!isProjectLoaded || !resultViewerWidget) {
+        return;
+    }
+
+    if (!ensureNoUnsavedParameters()) {
         return;
     }
 

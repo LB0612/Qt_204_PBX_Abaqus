@@ -178,6 +178,19 @@ QString buildResultImageSectionHtml(
     return html;
 }
 
+QString t2CompletionStamp(const QString &projectPath)
+{
+    const QFileInfo info(
+        ProjectInputHash::t2FinishedFlagPath(projectPath)
+    );
+
+    if (!info.exists() || !info.isFile()) {
+        return QString();
+    }
+
+    return info.lastModified().toUTC().toString(Qt::ISODateWithMs);
+}
+
 bool writeReportManifest(
     const QString &projectPath,
     const QString &postSha256,
@@ -185,9 +198,17 @@ bool writeReportManifest(
 {
     QDir().mkpath(SimulationResultService::reportDirectoryPath(projectPath));
 
+    const QString t2CompletedAt = t2CompletionStamp(projectPath);
+    if (t2CompletedAt.isEmpty()) {
+        errorMessage =
+            QStringLiteral("无法取得本次后处理完成时间。");
+        return false;
+    }
+
     const QJsonObject json = {
-        {QStringLiteral("version"), 1},
+        {QStringLiteral("version"), 2},
         {QStringLiteral("postSha256"), postSha256},
+        {QStringLiteral("t2CompletedAt"), t2CompletedAt},
         {
             QStringLiteral("generatedAt"),
             QDateTime::currentDateTime().toString(
@@ -322,17 +343,36 @@ bool SimulationReportGenerator::generate(
         return false;
     }
 
-    if (QFile::exists(pdfPath) && !QFile::remove(pdfPath)) {
-        QFile::remove(tempPdfPath);
-        errorMessage =
-            QStringLiteral(
-                "无法替换旧 PDF 报告，文件可能正在被占用：\n%1"
-            ).arg(pdfPath);
-        return false;
+    const QString backupPdfPath =
+        pdfPath + QStringLiteral(".bak");
+
+    if (QFile::exists(backupPdfPath)) {
+        if (!QFile::exists(pdfPath)) {
+            QFile::rename(backupPdfPath, pdfPath);
+        } else {
+            QFile::remove(backupPdfPath);
+        }
+    }
+
+    bool oldPdfBackedUp = false;
+
+    if (QFile::exists(pdfPath)) {
+        if (!QFile::rename(pdfPath, backupPdfPath)) {
+            QFile::remove(tempPdfPath);
+            errorMessage =
+                QStringLiteral(
+                    "无法暂存旧 PDF 报告，"
+                    "文件可能正在被占用：\n%1"
+                ).arg(pdfPath);
+            return false;
+        }
+        oldPdfBackedUp = true;
     }
 
     if (!QFile::rename(tempPdfPath, pdfPath)) {
-        QFile::remove(tempPdfPath);
+        if (oldPdfBackedUp) {
+            QFile::rename(backupPdfPath, pdfPath);
+        }
         errorMessage = QStringLiteral("无法提交正式 PDF 报告文件。");
         return false;
     }
@@ -341,7 +381,15 @@ bool SimulationReportGenerator::generate(
             projectPath,
             validation.manifest.postSha256,
             errorMessage)) {
+        QFile::remove(pdfPath);
+        if (oldPdfBackedUp) {
+            QFile::rename(backupPdfPath, pdfPath);
+        }
         return false;
+    }
+
+    if (oldPdfBackedUp) {
+        QFile::remove(backupPdfPath);
     }
 
     return true;
