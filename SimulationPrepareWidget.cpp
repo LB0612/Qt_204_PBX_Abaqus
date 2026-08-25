@@ -72,9 +72,9 @@ QString hintStyle()
 {
     return QStringLiteral(
         "font-family: %1;"
-        "font-size: 15px;"
+        "font-size: 16px;"
         "font-weight: 400;"
-        "color: #555555;"
+        "color: #000000;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
