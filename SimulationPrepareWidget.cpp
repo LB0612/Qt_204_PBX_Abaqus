@@ -226,12 +226,6 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
         this,
         &SimulationPrepareWidget::startRequested
     );
-    connect(
-        this,
-        &BaseParamWidget::backClicked,
-        this,
-        &SimulationPrepareWidget::cancelRequested
-    );
 
     setReadyState(false, QStringLiteral("请先完成参数配置。"));
 }

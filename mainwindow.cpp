@@ -254,12 +254,11 @@ void MainWindow::setupUi()
     );
     connect(
         simulationPrepareWidget,
-        &SimulationPrepareWidget::cancelRequested,
+        &BaseParamWidget::backClicked,
         this,
         [this]() {
-            selectTreeItem(QStringLiteral("工程信息"));
-            infoWidget->setProjectData(currentProject);
-            stackedWidget->setCurrentWidget(infoWidget);
+            stackedWidget->setCurrentIndex(0);
+            treeWidget->clearSelection();
         }
     );
 

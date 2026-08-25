@@ -21,7 +21,6 @@ public:
 
 signals:
     void startRequested();
-    void cancelRequested();
 
 private:
     QFrame *statusCard = nullptr;
