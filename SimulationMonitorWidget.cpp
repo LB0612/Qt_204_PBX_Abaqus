@@ -168,38 +168,6 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
             "  padding: 8px;"
             "  color: #000000;"
             "}"
-
-            "QScrollBar:vertical {"
-            "  background: #f2f2f2;"
-            "  width: 14px;"
-            "  margin: 0px;"
-            "  border: none;"
-            "}"
-
-            "QScrollBar::handle:vertical {"
-            "  background: #8c8c8c;"
-            "  min-height: 45px;"
-            "  margin: 2px;"
-            "  border-radius: 5px;"
-            "}"
-
-            "QScrollBar::handle:vertical:hover {"
-            "  background: #595959;"
-            "}"
-
-            "QScrollBar::handle:vertical:pressed {"
-            "  background: #333333;"
-            "}"
-
-            "QScrollBar::add-line:vertical,"
-            "QScrollBar::sub-line:vertical {"
-            "  height: 0px;"
-            "}"
-
-            "QScrollBar::add-page:vertical,"
-            "QScrollBar::sub-page:vertical {"
-            "  background: transparent;"
-            "}"
         )
     );
 
