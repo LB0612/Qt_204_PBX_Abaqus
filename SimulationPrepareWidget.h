@@ -1,13 +1,13 @@
 #ifndef SIMULATIONPREPAREWIDGET_H
 #define SIMULATIONPREPAREWIDGET_H
 
-#include <QWidget>
+#include "BaseParamWidget.h"
 
 class QPushButton;
 class QLabel;
 class QFrame;
 
-class SimulationPrepareWidget : public QWidget
+class SimulationPrepareWidget : public BaseParamWidget
 {
     Q_OBJECT
 
@@ -24,7 +24,6 @@ signals:
     void cancelRequested();
 
 private:
-    QLabel *titleLabel = nullptr;
     QFrame *statusCard = nullptr;
     QLabel *statusTitleLabel = nullptr;
     QLabel *checkParamLabel = nullptr;
@@ -35,7 +34,6 @@ private:
     QLabel *reasonTitleLabel = nullptr;
     QLabel *reasonContentLabel = nullptr;
     QPushButton *startButton = nullptr;
-    QPushButton *cancelButton = nullptr;
 };
 
 #endif

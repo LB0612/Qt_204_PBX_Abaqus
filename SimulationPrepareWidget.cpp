@@ -1,9 +1,10 @@
 #include "SimulationPrepareWidget.h"
 
 #include <QFrame>
-#include <QHBoxLayout>
 #include <QLabel>
+#include <QPalette>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSizePolicy>
 #include <QVBoxLayout>
 
@@ -75,47 +76,52 @@ QString reasonBodyStyle()
 } // namespace
 
 SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
-    : QWidget(parent)
+    : BaseParamWidget(parent)
 {
-    setStyleSheet(
+    setAttribute(Qt::WA_StyledBackground, true);
+    setAutoFillBackground(true);
+
+    QPalette palette = this->palette();
+    palette.setColor(QPalette::Window, Qt::white);
+    setPalette(palette);
+
+    applyCommonStyles();
+
+    QVBoxLayout *mainLayout = createMainLayout(this);
+    setupHeader(QStringLiteral("Abaqus仿真准备"));
+
+    QScrollArea *scrollArea = createScrollArea(this);
+    scrollArea->setStyleSheet(
         QStringLiteral(
-            "SimulationPrepareWidget {"
+            "QScrollArea {"
             "  background-color: #ffffff;"
+            "  border: none;"
             "}"
         )
     );
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(40, 32, 40, 32);
-    layout->setSpacing(24);
+    QWidget *content = new QWidget();
+    content->setStyleSheet(QStringLiteral("background-color: #ffffff;"));
 
-    titleLabel = new QLabel(QStringLiteral("Abaqus仿真准备"), this);
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet(
-        QStringLiteral(
-            "font-family: %1;"
-            "font-size: 26px;"
-            "font-weight: bold;"
-            "color: #000000;"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+    QVBoxLayout *contentLayout = createScrollContentLayout(content);
+
+    statusCard = new QFrame(content);
+    statusCard->setSizePolicy(
+        QSizePolicy::Expanding,
+        QSizePolicy::Maximum
     );
-
-    statusCard = new QFrame(this);
-    statusCard->setMinimumWidth(600);
-    statusCard->setMaximumWidth(800);
-    statusCard->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     statusCard->setStyleSheet(
         QStringLiteral(
             "QFrame {"
             "  background-color: #ffffff;"
-            "  border: 1px solid #dddddd;"
-            "  border-radius: 6px;"
+            "  border: 1px solid #e0e0e0;"
+            "  border-radius: 4px;"
             "}"
         )
     );
 
     QVBoxLayout *cardLayout = new QVBoxLayout(statusCard);
-    cardLayout->setContentsMargins(24, 20, 24, 20);
+    cardLayout->setContentsMargins(20, 16, 20, 16);
     cardLayout->setSpacing(8);
 
     statusTitleLabel = new QLabel(
@@ -173,10 +179,10 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     cardLayout->addWidget(errorStatusLabel);
     cardLayout->addWidget(reasonTitleLabel);
     cardLayout->addWidget(reasonContentLabel);
-    cardLayout->addSpacing(4);
 
     startButton = new QPushButton(QStringLiteral("开始计算"), statusCard);
-    startButton->setMinimumHeight(42);
+    startButton->setFixedHeight(42);
+    startButton->setCursor(Qt::PointingHandCursor);
     startButton->setStyleSheet(
         QStringLiteral(
             "QPushButton {"
@@ -186,7 +192,7 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
             "  color: #000000;"
             "  background-color: #ffffff;"
             "  border: 1px solid #bfbfbf;"
-            "  border-radius: 6px;"
+            "  border-radius: 4px;"
             "  padding: 8px 28px;"
             "}"
             "QPushButton:hover {"
@@ -201,44 +207,18 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
         ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
-    cancelButton = new QPushButton(QStringLiteral("取消"), statusCard);
-    cancelButton->setMinimumHeight(42);
-    cancelButton->setStyleSheet(
-        QStringLiteral(
-            "QPushButton {"
-            "  font-family: %1;"
-            "  font-size: 16px;"
-            "  color: #000000;"
-            "  background-color: #ffffff;"
-            "  border: 1px solid #bfbfbf;"
-            "  border-radius: 6px;"
-            "  padding: 8px 28px;"
-            "}"
-            "QPushButton:hover {"
-            "  background-color: #f2f2f2;"
-            "  border-color: #888888;"
-            "}"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+    cardLayout->addSpacing(12);
+    cardLayout->addWidget(
+        startButton,
+        0,
+        Qt::AlignLeft
     );
 
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    buttonLayout->setContentsMargins(0, 12, 0, 0);
-    buttonLayout->setSpacing(12);
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(startButton);
-    buttonLayout->addWidget(cancelButton);
-    buttonLayout->addStretch();
-    cardLayout->addLayout(buttonLayout);
+    contentLayout->addWidget(statusCard);
+    contentLayout->addStretch();
 
-    QHBoxLayout *cardCenterLayout = new QHBoxLayout();
-    cardCenterLayout->addStretch();
-    cardCenterLayout->addWidget(statusCard);
-    cardCenterLayout->addStretch();
-
-    layout->addWidget(titleLabel);
-    layout->addSpacing(16);
-    layout->addLayout(cardCenterLayout);
-    layout->addStretch();
+    scrollArea->setWidget(content);
+    mainLayout->addWidget(scrollArea);
 
     connect(
         startButton,
@@ -247,8 +227,8 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
         &SimulationPrepareWidget::startRequested
     );
     connect(
-        cancelButton,
-        &QPushButton::clicked,
+        this,
+        &BaseParamWidget::backClicked,
         this,
         &SimulationPrepareWidget::cancelRequested
     );
