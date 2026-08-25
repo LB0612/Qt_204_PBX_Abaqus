@@ -358,6 +358,20 @@ void ResultViewerWidget::setProjectPath(const QString &path)
     }
 }
 
+void ResultViewerWidget::updateReportButtonText()
+{
+    if (!reportButton) {
+        return;
+    }
+
+    reportButton->setText(
+        (!projectPath.isEmpty()
+         && SimulationResultService::isReportCurrent(projectPath))
+            ? QStringLiteral("重新生成PDF报告")
+            : QStringLiteral("生成PDF报告")
+    );
+}
+
 void ResultViewerWidget::refreshResults()
 {
     stopPlayback();
@@ -380,11 +394,7 @@ void ResultViewerWidget::refreshResults()
 
     setResultUiVisible(true);
 
-    reportButton->setText(
-        SimulationResultService::isReportCurrent(projectPath)
-            ? QStringLiteral("重新生成PDF报告")
-            : QStringLiteral("生成PDF报告")
-    );
+    updateReportButtonText();
 
     totalFrames = validation.manifest.odbFrames;
     fps = validation.manifest.videoFps > 0

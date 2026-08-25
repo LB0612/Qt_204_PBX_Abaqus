@@ -2067,16 +2067,12 @@ void SimulationManager::forceCloseTrackedProcesses()
         const qint64 pid = abaqusProcess->processId();
 
         if (pid <= 0) {
-            emit statusChanged(
-                QStringLiteral("强制终止失败")
-            );
-
-            emit logReceived(
+            restoreRunningStateAfterStopFailure(
                 QStringLiteral(
-                    "[ERROR] 无法取得当前Abaqus进程PID"
+                    "无法取得当前 Abaqus 进程 PID，"
+                    "未能执行强制结束。"
                 )
             );
-
             return;
         }
 
@@ -2097,17 +2093,22 @@ void SimulationManager::forceCloseTrackedProcesses()
 
         if (abaqusProcess
             && abaqusProcess->state() != QProcess::NotRunning) {
-            emit statusChanged(
-                QStringLiteral("强制终止失败")
-            );
 
-            emit logReceived(
-                QStringLiteral(
-                    "[ERROR] 强制结束后进程仍然存在"
-                )
-            );
+            abaqusProcess->kill();
+            abaqusProcess->waitForFinished(5000);
 
-            return;
+            if (abaqusProcess
+                && abaqusProcess->state()
+                    != QProcess::NotRunning) {
+
+                restoreRunningStateAfterStopFailure(
+                    QStringLiteral(
+                        "强制结束后 Abaqus 进程仍然存在。"
+                    )
+                );
+
+                return;
+            }
         }
 
         killedTrackedProcessTree = (result == 0);
@@ -2137,16 +2138,16 @@ void SimulationManager::forceCloseTrackedProcesses()
 
         if (!QFile::remove(lockPath)
             && QFile::exists(lockPath)) {
-            emit statusChanged(
-                QStringLiteral("锁文件清理失败")
-            );
 
             emit logReceived(
                 QStringLiteral(
-                    "[ERROR] 无法删除终止后残留的锁文件"
+                    "[SYS] Abaqus进程树已经结束，"
+                    "但残留Job锁无法删除，"
+                    "将在下次启动时重新检查。"
                 )
             );
 
+            finishStopState(true);
             return;
         }
     }

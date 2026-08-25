@@ -878,7 +878,24 @@ void MainWindow::loadProjectToUi()
     infoWidget->setProjectData(currentProject);
     {
         QString reloadError;
-        reloadParameterPagesFromSavedConfig(reloadError);
+        if (!reloadParameterPagesFromSavedConfig(reloadError)) {
+            structureWidget->setConfig(StructureConfig());
+            explosiveWidget->setConfig(ExplosiveConfig());
+            moldWidget->setConfig(MoldConfig());
+            boundaryWidget->setConfig(BoundaryConfig());
+            simulationWidget->setConfig(SimulationConfig());
+
+            showCenteredMessageBox(
+                this,
+                QMessageBox::Warning,
+                QStringLiteral("工程参数读取异常"),
+                reloadError
+                    + QStringLiteral(
+                        "\n\n部分参数文件可能损坏，"
+                        "请进入参数检查确认。"
+                    )
+            );
+        }
     }
     setWindowTitle(QStringLiteral("浇注XX固化仿真分析工程 - %1").arg(currentProject.projectName));
     selectTreeItem(QStringLiteral("工程信息"));
@@ -2224,6 +2241,10 @@ void MainWindow::generateSimulationReport()
         SimulationResultService::reportPdfPath(
             currentProject.projectPath
         );
+
+    if (resultViewerWidget) {
+        resultViewerWidget->updateReportButtonText();
+    }
 
     showCenteredMessageBox(
         this,

@@ -21,6 +21,7 @@ public:
 
     void setProjectPath(const QString &projectPath);
     void refreshResults();
+    void updateReportButtonText();
     void stopPlayback();
 
 signals:
