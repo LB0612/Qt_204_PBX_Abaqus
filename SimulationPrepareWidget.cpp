@@ -18,7 +18,7 @@ QString sectionTitleStyle()
         "font-family: %1;"
         "font-size: 18px;"
         "font-weight: bold;"
-        "color: #262626;"
+        "color: #000000;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
@@ -30,7 +30,7 @@ QString checkItemStyle()
         "font-family: %1;"
         "font-size: 16px;"
         "font-weight: 400;"
-        "color: #52c41a;"
+        "color: #000000;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
@@ -42,7 +42,7 @@ QString hintStyle()
         "font-family: %1;"
         "font-size: 15px;"
         "font-weight: 400;"
-        "color: #666666;"
+        "color: #000000;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
@@ -54,7 +54,7 @@ QString errorStatusStyle()
         "font-family: %1;"
         "font-size: 16px;"
         "font-weight: 500;"
-        "color: #cf1322;"
+        "color: #000000;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
@@ -66,7 +66,7 @@ QString reasonBodyStyle()
         "font-family: %1;"
         "font-size: 16px;"
         "font-weight: 400;"
-        "color: #454545;"
+        "color: #000000;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
@@ -96,19 +96,20 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
             "font-family: %1;"
             "font-size: 26px;"
             "font-weight: bold;"
-            "color: #333333;"
+            "color: #000000;"
         ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
     statusCard = new QFrame(this);
-    statusCard->setMaximumWidth(900);
+    statusCard->setMinimumWidth(600);
+    statusCard->setMaximumWidth(800);
     statusCard->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     statusCard->setStyleSheet(
         QStringLiteral(
             "QFrame {"
-            "  background-color: #fafafa;"
-            "  border: 1px solid #e8e8e8;"
-            "  border-radius: 8px;"
+            "  background-color: #ffffff;"
+            "  border: 1px solid #dddddd;"
+            "  border-radius: 6px;"
             "}"
         )
     );
@@ -174,7 +175,7 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     cardLayout->addWidget(reasonContentLabel);
     cardLayout->addSpacing(4);
 
-    startButton = new QPushButton(QStringLiteral("开始计算"), this);
+    startButton = new QPushButton(QStringLiteral("开始计算"), statusCard);
     startButton->setMinimumHeight(42);
     startButton->setStyleSheet(
         QStringLiteral(
@@ -182,53 +183,62 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
             "  font-family: %1;"
             "  font-size: 16px;"
             "  font-weight: bold;"
-            "  color: white;"
-            "  background-color: #1890ff;"
-            "  border: none;"
+            "  color: #000000;"
+            "  background-color: #ffffff;"
+            "  border: 1px solid #bfbfbf;"
             "  border-radius: 6px;"
-            "  padding: 8px 24px;"
+            "  padding: 8px 28px;"
             "}"
             "QPushButton:hover {"
-            "  background-color: #40a9ff;"
+            "  background-color: #f2f2f2;"
+            "  border-color: #888888;"
+            "}"
+            "QPushButton:disabled {"
+            "  color: #999999;"
+            "  background-color: #f5f5f5;"
+            "  border-color: #dddddd;"
             "}"
         ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
-    cancelButton = new QPushButton(QStringLiteral("取消"), this);
+    cancelButton = new QPushButton(QStringLiteral("取消"), statusCard);
     cancelButton->setMinimumHeight(42);
     cancelButton->setStyleSheet(
         QStringLiteral(
             "QPushButton {"
             "  font-family: %1;"
             "  font-size: 16px;"
-            "  color: #333333;"
+            "  color: #000000;"
             "  background-color: #ffffff;"
-            "  border: 1px solid #d9d9d9;"
+            "  border: 1px solid #bfbfbf;"
             "  border-radius: 6px;"
-            "  padding: 8px 24px;"
+            "  padding: 8px 28px;"
             "}"
             "QPushButton:hover {"
-            "  border-color: #1890ff;"
-            "  color: #1890ff;"
+            "  background-color: #f2f2f2;"
+            "  border-color: #888888;"
             "}"
         ).arg(QString::fromUtf8(kUiFontFamily))
     );
+
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    buttonLayout->setContentsMargins(0, 12, 0, 0);
+    buttonLayout->setSpacing(12);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(startButton);
+    buttonLayout->addWidget(cancelButton);
+    buttonLayout->addStretch();
+    cardLayout->addLayout(buttonLayout);
 
     QHBoxLayout *cardCenterLayout = new QHBoxLayout();
     cardCenterLayout->addStretch();
     cardCenterLayout->addWidget(statusCard);
     cardCenterLayout->addStretch();
 
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(startButton);
-    buttonLayout->addWidget(cancelButton);
-    buttonLayout->addStretch();
-
     layout->addWidget(titleLabel);
+    layout->addSpacing(16);
     layout->addLayout(cardCenterLayout);
     layout->addStretch();
-    layout->addLayout(buttonLayout);
 
     connect(
         startButton,
