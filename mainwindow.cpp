@@ -252,15 +252,6 @@ void MainWindow::setupUi()
         this,
         &MainWindow::startSimulation
     );
-    connect(
-        simulationPrepareWidget,
-        &BaseParamWidget::backClicked,
-        this,
-        [this]() {
-            stackedWidget->setCurrentIndex(0);
-            treeWidget->clearSelection();
-        }
-    );
 
     connect(infoWidget, &BaseParamWidget::backClicked, this, [this]() {
         stackedWidget->setCurrentIndex(0);

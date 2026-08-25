@@ -1,14 +1,13 @@
 #ifndef SIMULATIONMONITORWIDGET_H
 #define SIMULATIONMONITORWIDGET_H
 
-#include <QWidget>
+#include "BaseParamWidget.h"
 
 class QLabel;
 class QTextEdit;
 class QProgressBar;
-class QFrame;
 
-class SimulationMonitorWidget : public QWidget
+class SimulationMonitorWidget : public BaseParamWidget
 {
     Q_OBJECT
 
@@ -23,12 +22,9 @@ public slots:
     void setProgress(int value);
 
 private:
-    QFrame *createCard();
-
-    QLabel *titleLabel;
-    QLabel *statusValueLabel;
-    QProgressBar *progressBar;
-    QTextEdit *logEdit;
+    QLabel *statusValueLabel = nullptr;
+    QProgressBar *progressBar = nullptr;
+    QTextEdit *logEdit = nullptr;
 };
 
 #endif

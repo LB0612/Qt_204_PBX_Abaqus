@@ -27,7 +27,10 @@ protected:
     QVBoxLayout* createMainLayout(QWidget* parent);
     QScrollArea* createScrollArea(QWidget* parent);
     QVBoxLayout* createScrollContentLayout(QWidget* contentWidget);
-    void setupHeader(const QString& title);
+    void setupHeader(
+        const QString &title,
+        bool showBackButton = true
+    );
 
     QLineEdit* createSciEdit(const QString &text = "");
     QLineEdit* createReadOnlyEdit();

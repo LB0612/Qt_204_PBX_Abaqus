@@ -5,7 +5,6 @@
 
 class QPushButton;
 class QLabel;
-class QFrame;
 
 class SimulationPrepareWidget : public BaseParamWidget
 {
@@ -23,7 +22,6 @@ signals:
     void startRequested();
 
 private:
-    QFrame *statusCard = nullptr;
     QLabel *statusTitleLabel = nullptr;
     QLabel *checkParamLabel = nullptr;
     QLabel *checkFilesLabel = nullptr;

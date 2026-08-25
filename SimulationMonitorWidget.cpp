@@ -1,106 +1,104 @@
 #include "SimulationMonitorWidget.h"
 
-#include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QLabel>
-#include <QTextEdit>
+#include <QPalette>
 #include <QProgressBar>
-#include <QFrame>
+#include <QScrollArea>
+#include <QTextEdit>
+#include <QVBoxLayout>
 
 namespace {
 
-const char *kCardStyle =
-    "QFrame {"
-    "  background-color: #ffffff;"
-    "  border: 1px solid #e8e8e8;"
-    "  border-radius: 8px;"
-    "}";
+const char *kUiFontFamily =
+    "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
 
 const char *kSectionTitleStyle =
-    "font-family: 'Microsoft YaHei';"
+    "font-family: 'Microsoft YaHei UI', 'Microsoft YaHei';"
     "font-size: 16px;"
     "font-weight: bold;"
     "color: #333333;"
     "border: none;"
     "background: transparent;";
 
-} // namespace
-
-QFrame *SimulationMonitorWidget::createCard()
+void applyOpaqueWhitePage(QWidget *widget)
 {
-    QFrame *card = new QFrame(this);
-    card->setObjectName(QStringLiteral("monitorCard"));
-    card->setStyleSheet(QString::fromUtf8(kCardStyle));
-    return card;
+    widget->setAttribute(Qt::WA_StyledBackground, true);
+    widget->setAutoFillBackground(true);
+
+    QPalette palette = widget->palette();
+    palette.setColor(QPalette::Window, Qt::white);
+    widget->setPalette(palette);
+
+    widget->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
 }
 
-SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
-    : QWidget(parent)
+void applyOpaqueWhiteScrollArea(QScrollArea *scrollArea)
 {
-    setStyleSheet(
+    scrollArea->setStyleSheet(
         QStringLiteral(
-            "SimulationMonitorWidget {"
-            "  background-color: #ffffff;"
+            "QScrollArea {"
+            " background-color: #ffffff;"
+            " border: none;"
+            "}"
+            "QScrollArea > QWidget > QWidget {"
+            " background-color: #ffffff;"
             "}"
         )
     );
-
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(24, 20, 24, 20);
-    layout->setSpacing(16);
-
-    // ---------- 标题 ----------
-    titleLabel = new QLabel(
-        QStringLiteral("Abaqus固化仿真监控"),
-        this
+    scrollArea->viewport()->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
     );
-    titleLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    titleLabel->setStyleSheet(
-        QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
-            "font-size: 20px;"
-            "font-weight: bold;"
-            "color: #333333;"
-            "padding: 10px 0 10px 4px;"
-        )
+}
+
+} // namespace
+
+SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
+    : BaseParamWidget(parent)
+{
+    applyOpaqueWhitePage(this);
+    applyCommonStyles();
+
+    QVBoxLayout *mainLayout = createMainLayout(this);
+    setupHeader(QStringLiteral("Abaqus固化仿真监控"), false);
+
+    QScrollArea *scrollArea = createScrollArea(this);
+    applyOpaqueWhiteScrollArea(scrollArea);
+
+    QWidget *content = new QWidget();
+    content->setStyleSheet(QStringLiteral("background-color: #ffffff;"));
+
+    QVBoxLayout *layout = createScrollContentLayout(content);
+
+    QLabel *statusTitle = new QLabel(
+        QStringLiteral("当前状态"),
+        content
     );
-    layout->addWidget(titleLabel);
-
-    // ---------- 当前状态卡片 ----------
-    QFrame *statusCard = createCard();
-    QVBoxLayout *statusLayout = new QVBoxLayout(statusCard);
-    statusLayout->setContentsMargins(16, 14, 16, 14);
-    statusLayout->setSpacing(10);
-
-    QLabel *statusTitle = new QLabel(QStringLiteral("当前状态"), statusCard);
     statusTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
 
-    statusValueLabel = new QLabel(QStringLiteral("● 等待仿真"), statusCard);
+    statusValueLabel = new QLabel(
+        QStringLiteral("● 等待仿真"),
+        content
+    );
     statusValueLabel->setStyleSheet(
         QStringLiteral(
-            "font-family: 'Microsoft YaHei';"
-            "font-size: 18px;"
-            "font-weight: bold;"
-            "color: #1890ff;"
+            "font-family: %1;"
+            "font-size: 16px;"
+            "font-weight: 400;"
+            "color: #000000;"
             "border: none;"
             "background: transparent;"
-        )
+        ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
-    statusLayout->addWidget(statusTitle);
-    statusLayout->addWidget(statusValueLabel);
-    layout->addWidget(statusCard);
-
-    // ---------- 进度 ----------
-    QFrame *progressCard = createCard();
-    QVBoxLayout *progressLayout = new QVBoxLayout(progressCard);
-    progressLayout->setContentsMargins(16, 14, 16, 14);
-    progressLayout->setSpacing(10);
-
-    QLabel *progressTitle = new QLabel(QStringLiteral("进度"), progressCard);
+    QLabel *progressTitle = new QLabel(
+        QStringLiteral("仿真进度"),
+        content
+    );
     progressTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
 
-    progressBar = new QProgressBar(progressCard);
+    progressBar = new QProgressBar(content);
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
     progressBar->setFixedHeight(26);
@@ -109,55 +107,57 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     progressBar->setStyleSheet(
         QStringLiteral(
             "QProgressBar {"
-            "  border: 1px solid #d9d9d9;"
-            "  border-radius: 6px;"
+            "  border: 1px solid #dddddd;"
+            "  border-radius: 4px;"
             "  text-align: center;"
-            "  font-family: 'Microsoft YaHei';"
+            "  font-family: 'Microsoft YaHei UI', 'Microsoft YaHei';"
             "  font-size: 16px;"
-            "  background-color: #f5f5f5;"
-            "  color: #333333;"
+            "  background-color: #ffffff;"
+            "  color: #000000;"
             "}"
             "QProgressBar::chunk {"
-            "  background-color: #1890ff;"
-            "  border-radius: 6px;"
+            "  background-color: #333333;"
+            "  border-radius: 4px;"
             "}"
         )
     );
 
-    progressLayout->addWidget(progressTitle);
-    progressLayout->addWidget(progressBar);
-    layout->addWidget(progressCard);
-
-    // ---------- 日志 ----------
-    QFrame *logCard = createCard();
-    QVBoxLayout *logLayout = new QVBoxLayout(logCard);
-    logLayout->setContentsMargins(16, 14, 16, 14);
-    logLayout->setSpacing(10);
-
-    QLabel *logTitle = new QLabel(QStringLiteral("Abaqus日志"), logCard);
+    QLabel *logTitle = new QLabel(
+        QStringLiteral("Abaqus日志"),
+        content
+    );
     logTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
 
-    logEdit = new QTextEdit(logCard);
+    logEdit = new QTextEdit(content);
     logEdit->setReadOnly(true);
     logEdit->document()->setMaximumBlockCount(10000);
-    logEdit->setMinimumHeight(220);
+    logEdit->setMinimumHeight(280);
     logEdit->setStyleSheet(
         QStringLiteral(
             "QTextEdit {"
-            "  background-color: #fafafa;"
+            "  background-color: #ffffff;"
             "  border: 1px solid #dddddd;"
-            "  border-radius: 6px;"
+            "  border-radius: 4px;"
             "  font-family: Consolas, 'Courier New', monospace;"
             "  font-size: 14px;"
             "  padding: 8px;"
-            "  color: #333333;"
+            "  color: #000000;"
             "}"
         )
     );
 
-    logLayout->addWidget(logTitle);
-    logLayout->addWidget(logEdit, 1);
-    layout->addWidget(logCard, 1);
+    layout->addWidget(statusTitle);
+    layout->addWidget(statusValueLabel);
+    layout->addSpacing(8);
+    layout->addWidget(progressTitle);
+    layout->addWidget(progressBar);
+    layout->addSpacing(8);
+    layout->addWidget(logTitle);
+    layout->addWidget(logEdit, 1);
+    layout->addStretch();
+
+    scrollArea->setWidget(content);
+    mainLayout->addWidget(scrollArea);
 }
 
 void SimulationMonitorWidget::appendLog(const QString &text)
@@ -167,15 +167,12 @@ void SimulationMonitorWidget::appendLog(const QString &text)
 
 void SimulationMonitorWidget::clearLog()
 {
-    // 新一轮实时仿真时恢复日志上限，
-    // 防止长时间运行造成界面日志无限增长。
     logEdit->document()->setMaximumBlockCount(10000);
     logEdit->clear();
 }
 
 void SimulationMonitorWidget::setLogText(const QString &text)
 {
-    // 查看历史日志时不限制行数，完整显示 readAll() 的内容。
     logEdit->document()->setMaximumBlockCount(0);
     logEdit->setPlainText(text);
 }

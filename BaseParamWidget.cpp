@@ -74,32 +74,68 @@ QVBoxLayout* BaseParamWidget::createScrollContentLayout(QWidget* contentWidget) 
     return layout; 
 } 
 
-void BaseParamWidget::setupHeader(const QString& title) { 
-    QWidget* header = new QWidget(); 
-    header->setFixedHeight(60); 
-    header->setStyleSheet("background-color: #f8f9fa; border-bottom: 1px solid #ddd;"); 
-    
-    QHBoxLayout* hLayout = new QHBoxLayout(header); 
-    hLayout->setContentsMargins(20, 0, 20, 0); 
-    
-    QLabel* lbl = new QLabel(title); 
-    lbl->setStyleSheet("font-family: 'Microsoft YaHei'; font-size: 20px; font-weight: bold; color: #333;"); 
-    hLayout->addWidget(lbl); 
-    
-    hLayout->addStretch(); 
-    
-    QPushButton* btnBack = new QPushButton("返回首页"); 
-    btnBack->setFixedSize(100, 36); 
-    btnBack->setCursor(Qt::PointingHandCursor); 
-    btnBack->setStyleSheet(
-        "QPushButton { background-color: #e6e6e6; color: #333; border: 1px solid #ccc; border-radius: 4px; font-family: 'Microsoft YaHei'; font-weight: bold; font-size: 16px; } "
-        "QPushButton:hover { background-color: #d4d4d4; } "
-        "QPushButton:pressed { background-color: #c0c0c0; }"
-    ); 
-    connect(btnBack, &QPushButton::clicked, this, &BaseParamWidget::backClicked); 
-    hLayout->addWidget(btnBack); 
-    
-    this->layout()->addWidget(header); 
+void BaseParamWidget::setupHeader(
+    const QString &title,
+    bool showBackButton)
+{
+    QWidget *header = new QWidget(this);
+    header->setFixedHeight(60);
+    header->setStyleSheet(
+        QStringLiteral(
+            "background-color: #f8f9fa;"
+            "border-bottom: 1px solid #ddd;"
+        )
+    );
+
+    QHBoxLayout *hLayout = new QHBoxLayout(header);
+    hLayout->setContentsMargins(20, 0, 20, 0);
+
+    QLabel *lbl = new QLabel(title, header);
+    lbl->setStyleSheet(
+        QStringLiteral(
+            "font-family: 'Microsoft YaHei';"
+            "font-size: 20px;"
+            "font-weight: bold;"
+            "color: #333333;"
+        )
+    );
+
+    hLayout->addWidget(lbl);
+    hLayout->addStretch();
+
+    if (showBackButton) {
+        QPushButton *btnBack =
+            new QPushButton(QStringLiteral("返回首页"), header);
+
+        btnBack->setFixedSize(100, 36);
+        btnBack->setCursor(Qt::PointingHandCursor);
+        btnBack->setStyleSheet(
+            QStringLiteral(
+                "QPushButton {"
+                " background-color: #e6e6e6;"
+                " color: #333;"
+                " border: 1px solid #ccc;"
+                " border-radius: 4px;"
+                " font-family: 'Microsoft YaHei';"
+                " font-weight: bold;"
+                " font-size: 16px;"
+                "}"
+                "QPushButton:hover { background-color: #d4d4d4; }"
+                "QPushButton:pressed { background-color: #c0c0c0; }"
+            )
+        );
+
+        connect(
+            btnBack,
+            &QPushButton::clicked,
+            this,
+            &BaseParamWidget::backClicked
+        );
+
+        hLayout->addWidget(btnBack);
+    }
+
+    this->layout()->addWidget(header);
 } 
 
 void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, std::function<void()> onClick) {

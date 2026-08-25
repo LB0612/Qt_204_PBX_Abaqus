@@ -1,11 +1,9 @@
 #include "SimulationPrepareWidget.h"
 
-#include <QFrame>
 #include <QLabel>
 #include <QPalette>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QSizePolicy>
 #include <QVBoxLayout>
 
 namespace {
@@ -13,13 +11,45 @@ namespace {
 const char *kUiFontFamily =
     "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
 
+void applyOpaqueWhitePage(QWidget *widget)
+{
+    widget->setAttribute(Qt::WA_StyledBackground, true);
+    widget->setAutoFillBackground(true);
+
+    QPalette palette = widget->palette();
+    palette.setColor(QPalette::Window, Qt::white);
+    widget->setPalette(palette);
+
+    widget->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
+}
+
+void applyOpaqueWhiteScrollArea(QScrollArea *scrollArea)
+{
+    scrollArea->setStyleSheet(
+        QStringLiteral(
+            "QScrollArea {"
+            " background-color: #ffffff;"
+            " border: none;"
+            "}"
+            "QScrollArea > QWidget > QWidget {"
+            " background-color: #ffffff;"
+            "}"
+        )
+    );
+    scrollArea->viewport()->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
+}
+
 QString sectionTitleStyle()
 {
     return QStringLiteral(
         "font-family: %1;"
         "font-size: 18px;"
         "font-weight: bold;"
-        "color: #000000;"
+        "color: #333333;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
@@ -78,109 +108,68 @@ QString reasonBodyStyle()
 SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
-    setAttribute(Qt::WA_StyledBackground, true);
-    setAutoFillBackground(true);
-
-    QPalette palette = this->palette();
-    palette.setColor(QPalette::Window, Qt::white);
-    setPalette(palette);
-
+    applyOpaqueWhitePage(this);
     applyCommonStyles();
 
     QVBoxLayout *mainLayout = createMainLayout(this);
-    setupHeader(QStringLiteral("Abaqus仿真准备"));
+    setupHeader(QStringLiteral("Abaqus仿真准备"), false);
 
     QScrollArea *scrollArea = createScrollArea(this);
-    scrollArea->setStyleSheet(
-        QStringLiteral(
-            "QScrollArea {"
-            "  background-color: #ffffff;"
-            "  border: none;"
-            "}"
-        )
-    );
+    applyOpaqueWhiteScrollArea(scrollArea);
 
     QWidget *content = new QWidget();
     content->setStyleSheet(QStringLiteral("background-color: #ffffff;"));
 
     QVBoxLayout *contentLayout = createScrollContentLayout(content);
 
-    statusCard = new QFrame(content);
-    statusCard->setSizePolicy(
-        QSizePolicy::Expanding,
-        QSizePolicy::Maximum
-    );
-    statusCard->setStyleSheet(
-        QStringLiteral(
-            "QFrame {"
-            "  background-color: #ffffff;"
-            "  border: 1px solid #e0e0e0;"
-            "  border-radius: 4px;"
-            "}"
-        )
-    );
-
-    QVBoxLayout *cardLayout = new QVBoxLayout(statusCard);
-    cardLayout->setContentsMargins(20, 16, 20, 16);
-    cardLayout->setSpacing(8);
-
     statusTitleLabel = new QLabel(
         QStringLiteral("工程状态"),
-        statusCard
+        content
     );
     statusTitleLabel->setStyleSheet(sectionTitleStyle());
 
     checkParamLabel = new QLabel(
         QStringLiteral("✓ 参数配置完整"),
-        statusCard
+        content
     );
     checkParamLabel->setStyleSheet(checkItemStyle());
 
     checkFilesLabel = new QLabel(
         QStringLiteral("✓ Abaqus文件完整"),
-        statusCard
+        content
     );
     checkFilesLabel->setStyleSheet(checkItemStyle());
 
     checkPathLabel = new QLabel(
         QStringLiteral("✓ Abaqus路径有效"),
-        statusCard
+        content
     );
     checkPathLabel->setStyleSheet(checkItemStyle());
 
     hintLabel = new QLabel(
         QStringLiteral("确认后即可开始计算"),
-        statusCard
+        content
     );
     hintLabel->setStyleSheet(hintStyle());
 
     errorStatusLabel = new QLabel(
         QStringLiteral("✕ 当前不能开始仿真"),
-        statusCard
+        content
     );
     errorStatusLabel->setStyleSheet(errorStatusStyle());
 
     reasonTitleLabel = new QLabel(
         QStringLiteral("原因"),
-        statusCard
+        content
     );
     reasonTitleLabel->setStyleSheet(sectionTitleStyle());
 
-    reasonContentLabel = new QLabel(statusCard);
+    reasonContentLabel = new QLabel(content);
     reasonContentLabel->setWordWrap(true);
     reasonContentLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     reasonContentLabel->setStyleSheet(reasonBodyStyle());
 
-    cardLayout->addWidget(statusTitleLabel);
-    cardLayout->addWidget(checkParamLabel);
-    cardLayout->addWidget(checkFilesLabel);
-    cardLayout->addWidget(checkPathLabel);
-    cardLayout->addWidget(hintLabel);
-    cardLayout->addWidget(errorStatusLabel);
-    cardLayout->addWidget(reasonTitleLabel);
-    cardLayout->addWidget(reasonContentLabel);
-
-    startButton = new QPushButton(QStringLiteral("开始计算"), statusCard);
+    startButton = new QPushButton(QStringLiteral("开始计算"), content);
     startButton->setFixedHeight(42);
     startButton->setCursor(Qt::PointingHandCursor);
     startButton->setStyleSheet(
@@ -207,14 +196,16 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
         ).arg(QString::fromUtf8(kUiFontFamily))
     );
 
-    cardLayout->addSpacing(12);
-    cardLayout->addWidget(
-        startButton,
-        0,
-        Qt::AlignLeft
-    );
-
-    contentLayout->addWidget(statusCard);
+    contentLayout->addWidget(statusTitleLabel);
+    contentLayout->addWidget(checkParamLabel);
+    contentLayout->addWidget(checkFilesLabel);
+    contentLayout->addWidget(checkPathLabel);
+    contentLayout->addWidget(hintLabel);
+    contentLayout->addWidget(errorStatusLabel);
+    contentLayout->addWidget(reasonTitleLabel);
+    contentLayout->addWidget(reasonContentLabel);
+    contentLayout->addSpacing(12);
+    contentLayout->addWidget(startButton, 0, Qt::AlignLeft);
     contentLayout->addStretch();
 
     scrollArea->setWidget(content);
