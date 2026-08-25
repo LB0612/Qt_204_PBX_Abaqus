@@ -1,5 +1,6 @@
 #include "SimulationMonitorWidget.h"
 
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QPalette>
 #include <QProgressBar>
@@ -98,22 +99,37 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     );
     progressTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
 
+    progressValueLabel = new QLabel(QStringLiteral("0%"), content);
+    progressValueLabel->setStyleSheet(
+        QStringLiteral(
+            "font-family: %1;"
+            "font-size: 16px;"
+            "font-weight: 400;"
+            "color: #000000;"
+            "border: none;"
+            "background: transparent;"
+        ).arg(QString::fromUtf8(kUiFontFamily))
+    );
+    progressValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    QHBoxLayout *progressHeaderLayout = new QHBoxLayout();
+    progressHeaderLayout->setContentsMargins(0, 0, 0, 0);
+    progressHeaderLayout->setSpacing(8);
+    progressHeaderLayout->addWidget(progressTitle);
+    progressHeaderLayout->addStretch();
+    progressHeaderLayout->addWidget(progressValueLabel);
+
     progressBar = new QProgressBar(content);
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
     progressBar->setFixedHeight(26);
-    progressBar->setFormat(QStringLiteral("Abaqus分析进度 %p%"));
-    progressBar->setTextVisible(true);
+    progressBar->setTextVisible(false);
     progressBar->setStyleSheet(
         QStringLiteral(
             "QProgressBar {"
             "  border: 1px solid #dddddd;"
             "  border-radius: 4px;"
-            "  text-align: center;"
-            "  font-family: 'Microsoft YaHei UI', 'Microsoft YaHei';"
-            "  font-size: 16px;"
             "  background-color: #ffffff;"
-            "  color: #000000;"
             "}"
             "QProgressBar::chunk {"
             "  background-color: #333333;"
@@ -148,13 +164,12 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
 
     layout->addWidget(statusTitle);
     layout->addWidget(statusValueLabel);
-    layout->addSpacing(8);
-    layout->addWidget(progressTitle);
+    layout->addSpacing(14);
+    layout->addLayout(progressHeaderLayout);
     layout->addWidget(progressBar);
-    layout->addSpacing(8);
+    layout->addSpacing(14);
     layout->addWidget(logTitle);
     layout->addWidget(logEdit, 1);
-    layout->addStretch();
 
     scrollArea->setWidget(content);
     mainLayout->addWidget(scrollArea);
@@ -188,5 +203,9 @@ void SimulationMonitorWidget::setStatus(const QString &text)
 
 void SimulationMonitorWidget::setProgress(int value)
 {
-    progressBar->setValue(qBound(0, value, 100));
+    const int percent = qBound(0, value, 100);
+    progressBar->setValue(percent);
+    progressValueLabel->setText(
+        QStringLiteral("%1%").arg(percent)
+    );
 }

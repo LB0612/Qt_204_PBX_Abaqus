@@ -23,6 +23,7 @@ public slots:
 
 private:
     QLabel *statusValueLabel = nullptr;
+    QLabel *progressValueLabel = nullptr;
     QProgressBar *progressBar = nullptr;
     QTextEdit *logEdit = nullptr;
 };
