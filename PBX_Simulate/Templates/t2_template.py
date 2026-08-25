@@ -525,6 +525,13 @@ class _OpenDmlAviWriter(object):
         self._write_super_index()
         self._file.close()
 
+    def abort(self):
+        try:
+            if self._file is not None and not self._file.closed:
+                self._file.close()
+        except Exception:
+            pass
+
     def _frame_chunk_size(self, frame_size):
         return 8 + frame_size + (frame_size % 2)
 
@@ -915,29 +922,103 @@ def _generate_avi(frame_dir, frame_prefix, output_avi, expected_frames):
 
     writer = _OpenDmlAviWriter(tmp_avi, VIDEO_FPS)
 
-    for index in range(expected_frames):
-        png_path = _frame_png_path(frame_dir, frame_prefix, index)
-        width, height, frame_data = _make_avi_frame(png_path)
-        writer.write_frame(frame_data, width, height)
+    try:
+        for index in range(expected_frames):
+            png_path = _frame_png_path(
+                frame_dir,
+                frame_prefix,
+                index
+            )
 
-    writer.close()
+            try:
+                width, height, frame_data = _make_avi_frame(
+                    png_path
+                )
+            except Exception as error:
+                remove_error = None
+
+                if os.path.isfile(png_path):
+                    try:
+                        os.remove(png_path)
+                        print(
+                            '[POST] Removed corrupt PNG for '
+                            'regeneration: %s'
+                            % png_path
+                        )
+                    except Exception as exc:
+                        remove_error = exc
+
+                if remove_error is not None:
+                    raise RuntimeError(
+                        'PNG decode failed and corrupt PNG '
+                        'could not be removed: %s; '
+                        'decode error: %s; remove error: %s'
+                        % (
+                            png_path,
+                            error,
+                            remove_error
+                        )
+                    )
+
+                raise RuntimeError(
+                    'PNG decode failed; corrupt frame was '
+                    'removed and will be regenerated on the '
+                    'next t2 run: %s (%s)'
+                    % (
+                        png_path,
+                        error
+                    )
+                )
+
+            writer.write_frame(
+                frame_data,
+                width,
+                height
+            )
+
+        writer.close()
+
+    except Exception:
+        writer.abort()
+
+        if os.path.isfile(tmp_avi):
+            try:
+                os.remove(tmp_avi)
+            except OSError:
+                pass
+
+        raise
 
     try:
-        actual_frames = _validate_avi_structure(tmp_avi, expected_frames)
+        actual_frames = _validate_avi_structure(
+            tmp_avi,
+            expected_frames
+        )
     except Exception as error:
         if os.path.isfile(tmp_avi):
             os.remove(tmp_avi)
+
         raise RuntimeError(
             'AVI validation failed for %s: %s'
-            % (output_avi, error)
+            % (
+                output_avi,
+                error
+            )
         )
 
     os.replace(tmp_avi, output_avi)
+
     video_bytes = os.path.getsize(output_avi)
+
     print(
         '[POST] AVI generated: %s (%d frames, %d bytes)'
-        % (output_avi, actual_frames, video_bytes)
+        % (
+            output_avi,
+            actual_frames,
+            video_bytes
+        )
     )
+
     return actual_frames, video_bytes
 
 
