@@ -19,6 +19,7 @@ PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 MIN_PNG_SIZE = 64
 ODML_PLACEHOLDER_SIZE = 32768
 RIFF_SEGMENT_LIMIT = 1024 * 1024 * 1024
+VIEW_MARGIN = 1.25
 
 work_dir = '{{ABAQUS_WORK_DIR}}'
 job_name = '{{JOB_NAME}}'
@@ -940,7 +941,7 @@ def _generate_avi(frame_dir, frame_prefix, output_avi, expected_frames):
     return actual_frames, video_bytes
 
 
-def _setup_viewport(odb):
+def _setup_viewport(odb, expected_frames):
     vp = session.viewports['Viewport: 1']
     vp.setValues(displayedObject=odb)
     vp.makeCurrent()
@@ -955,15 +956,48 @@ def _setup_viewport(odb):
         plotState=(CONTOURS_ON_DEF, )
     )
 
+    # Fit against the last deformed frame, then lock this camera
+    # for the entire PNG/AVI export sequence.
+    fit_frame = max(0, expected_frames - 1)
+    vp.odbDisplay.setFrame(step=0, frame=fit_frame)
+
+    # Keep the verified viewing direction only; scale/center/clipping
+    # come from Abaqus fitView against the real ODB geometry.
     vp.view.setValues(
-        nearPlane=397.358,
-        farPlane=608.793,
-        width=379.342,
-        height=190.64,
         cameraPosition=(-335.563, 163.981, -322.396),
         cameraUpVector=(0.298021, 0.907506, 0.296002),
         cameraTarget=(23.2562, 117.183, 23.6633)
     )
+
+    vp.view.fitView()
+
+    fitted_width = float(vp.view.width)
+    fitted_height = float(vp.view.height)
+
+    if fitted_width <= 0.0 or fitted_height <= 0.0:
+        raise RuntimeError(
+            'Automatic viewport fitting produced invalid dimensions.'
+        )
+
+    vp.view.setValues(
+        width=fitted_width * VIEW_MARGIN,
+        height=fitted_height * VIEW_MARGIN
+    )
+
+    print(
+        '[POST] Fixed export view prepared: '
+        'frame=%d width=%.6g height=%.6g margin=%.3f'
+        % (
+            fit_frame,
+            fitted_width * VIEW_MARGIN,
+            fitted_height * VIEW_MARGIN,
+            VIEW_MARGIN
+        )
+    )
+
+    # Return to frame 0 without re-fitting, so all later frames share
+    # the same fixed camera.
+    vp.odbDisplay.setFrame(step=0, frame=0)
 
     return vp
 
@@ -985,7 +1019,6 @@ print('ODB: %s' % odb_path)
 print('=========================================')
 
 odb = session.openOdb(name=odb_path)
-vp = _setup_viewport(odb)
 
 if STEP_NAME not in odb.steps.keys():
     raise RuntimeError('ODB step not found: %s' % STEP_NAME)
@@ -993,6 +1026,8 @@ if STEP_NAME not in odb.steps.keys():
 expected_frames = len(odb.steps[STEP_NAME].frames)
 if expected_frames == 0:
     raise RuntimeError('%s contains no frames.' % STEP_NAME)
+
+vp = _setup_viewport(odb, expected_frames)
 
 print('[POST] ODB frames = %d' % expected_frames)
 
