@@ -1,5 +1,6 @@
 #include "SimulationPrepareWidget.h"
 
+#include <QFrame>
 #include <QLabel>
 #include <QPalette>
 #include <QPushButton>
@@ -73,7 +74,7 @@ QString hintStyle()
         "font-family: %1;"
         "font-size: 15px;"
         "font-weight: 400;"
-        "color: #000000;"
+        "color: #555555;"
         "background: transparent;"
         "border: none;"
     ).arg(QString::fromUtf8(kUiFontFamily));
@@ -121,6 +122,7 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     content->setStyleSheet(QStringLiteral("background-color: #ffffff;"));
 
     QVBoxLayout *contentLayout = createScrollContentLayout(content);
+    contentLayout->setSpacing(4);
 
     statusTitleLabel = new QLabel(
         QStringLiteral("工程状态"),
@@ -169,8 +171,21 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     reasonContentLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     reasonContentLabel->setStyleSheet(reasonBodyStyle());
 
+    QFrame *divider = new QFrame(content);
+    divider->setFrameShape(QFrame::HLine);
+    divider->setFrameShadow(QFrame::Plain);
+    divider->setStyleSheet(
+        QStringLiteral(
+            "QFrame {"
+            " border: none;"
+            " border-top: 1px solid #e5e5e5;"
+            " max-height: 1px;"
+            "}"
+        )
+    );
+
     startButton = new QPushButton(QStringLiteral("开始计算"), content);
-    startButton->setFixedHeight(42);
+    startButton->setFixedSize(160, 42);
     startButton->setCursor(Qt::PointingHandCursor);
     startButton->setStyleSheet(
         QStringLiteral(
@@ -182,7 +197,6 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
             "  background-color: #ffffff;"
             "  border: 1px solid #bfbfbf;"
             "  border-radius: 4px;"
-            "  padding: 8px 28px;"
             "}"
             "QPushButton:hover {"
             "  background-color: #f2f2f2;"
@@ -197,14 +211,23 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     );
 
     contentLayout->addWidget(statusTitleLabel);
+    contentLayout->addSpacing(6);
+
     contentLayout->addWidget(checkParamLabel);
     contentLayout->addWidget(checkFilesLabel);
     contentLayout->addWidget(checkPathLabel);
-    contentLayout->addWidget(hintLabel);
+
     contentLayout->addWidget(errorStatusLabel);
     contentLayout->addWidget(reasonTitleLabel);
     contentLayout->addWidget(reasonContentLabel);
+
     contentLayout->addSpacing(12);
+    contentLayout->addWidget(divider);
+    contentLayout->addSpacing(12);
+
+    contentLayout->addWidget(hintLabel);
+
+    contentLayout->addSpacing(14);
     contentLayout->addWidget(startButton, 0, Qt::AlignLeft);
     contentLayout->addStretch();
 
