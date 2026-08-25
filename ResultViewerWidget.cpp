@@ -272,16 +272,19 @@ void ResultViewerWidget::stopPlayback()
 
 void ResultViewerWidget::setControlsEnabled(bool enabled)
 {
-    for (QWidget *widget : {
-             cureButton,
-             temperatureButton,
-             stressButton,
-             prevButton,
-             playButton,
-             nextButton,
-             frameSlider,
-             openDirButton,
-             reportButton}) {
+    const QList<QWidget *> widgets = {
+        cureButton,
+        temperatureButton,
+        stressButton,
+        prevButton,
+        playButton,
+        nextButton,
+        frameSlider,
+        openDirButton,
+        reportButton,
+    };
+
+    for (QWidget *widget : widgets) {
         widget->setEnabled(enabled);
     }
 }
