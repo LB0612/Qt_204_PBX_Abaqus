@@ -2023,14 +2023,38 @@ void SimulationManager::finishStopState()
     }
 
     const QString projectPath = activeProjectPath();
-    const bool preserveResults =
-        !projectPath.isEmpty()
+    bool preserveResults = false;
+
+    if (!projectPath.isEmpty()
         && readSuccessFlag(
             ProjectInputHash::t1FinishedFlagPath(projectPath))
-        && QFile::exists(
-            ProjectInputHash::lastSuccessInputFingerprintPath(
-                projectPath
-            ));
+        && QFile::exists(ProjectInputHash::solverOdbPath(projectPath))) {
+        const QString currentSolverSha = calculateInputFingerprint();
+        if (!currentSolverSha.isEmpty()) {
+            const bool lastMatches = fingerprintMatchesStored(
+                ProjectInputHash::lastSuccessInputFingerprintPath(projectPath),
+                currentSolverSha
+            );
+            const bool runningMatches = fingerprintMatchesStored(
+                ProjectInputHash::runningInputFingerprintPath(projectPath),
+                currentSolverSha
+            );
+
+            if (lastMatches || runningMatches) {
+                preserveResults = true;
+
+                if (runningMatches
+                    && !promoteRunningInputFingerprint(projectPath)) {
+                    emit logReceived(
+                        QStringLiteral(
+                            "[SYS] 求解成功指纹写入失败，"
+                            "保留 running fingerprint 供下次恢复"
+                        )
+                    );
+                }
+            }
+        }
+    }
 
     setSimulationState(SimulationState::Stopped);
     simulationUserStopped = false;
