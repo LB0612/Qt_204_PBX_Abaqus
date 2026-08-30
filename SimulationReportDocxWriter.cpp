@@ -389,6 +389,127 @@ QString captionParagraph(
     );
 }
 
+QString coverInfoBlockXml(
+    const QString &projectName,
+    const QString &jobName,
+    const QString &appVersion)
+{
+    const int halfPts = ptToHalfPoints(CoverInfoPt);
+    const QString fonts = kaiFonts();
+    const int labelW = mmToTwips(36.0);
+    const int valueW = mmToTwips(55.0);
+    const int tableW = labelW + valueW;
+    const int rowGap = mmToTwips(CoverInfoGapMm);
+
+    auto cell = [&](
+        const QString &text,
+        int widthTwips,
+        const QString &align,
+        int spaceAfterTwips) {
+        QString spacing;
+        if (spaceAfterTwips > 0) {
+            spacing = QStringLiteral(
+                "<w:spacing w:after=\"%1\"/>"
+            ).arg(spaceAfterTwips);
+        }
+
+        return QStringLiteral(
+            "<w:tc>"
+            "<w:tcPr>"
+            "<w:tcW w:w=\"%1\" w:type=\"dxa\"/>"
+            "<w:tcBorders>"
+            "<w:top w:val=\"nil\"/>"
+            "<w:left w:val=\"nil\"/>"
+            "<w:bottom w:val=\"nil\"/>"
+            "<w:right w:val=\"nil\"/>"
+            "</w:tcBorders>"
+            "</w:tcPr>"
+            "<w:p>"
+            "<w:pPr>"
+            "<w:jc w:val=\"%2\"/>"
+            "%3"
+            "</w:pPr>"
+            "<w:r>"
+            "<w:rPr>%4"
+            "<w:sz w:val=\"%5\"/><w:szCs w:val=\"%5\"/></w:rPr>"
+            "<w:t xml:space=\"preserve\">%6</w:t>"
+            "</w:r>"
+            "</w:p>"
+            "</w:tc>"
+        ).arg(widthTwips)
+            .arg(align)
+            .arg(spacing)
+            .arg(fonts)
+            .arg(halfPts)
+            .arg(xmlEscape(text));
+    };
+
+    auto row = [&](
+        const QString &label,
+        const QString &value,
+        int spaceAfterTwips) {
+        return QStringLiteral("<w:tr>%1%2</w:tr>")
+            .arg(
+                cell(
+                    label,
+                    labelW,
+                    QStringLiteral("right"),
+                    spaceAfterTwips
+                ),
+                cell(
+                    value,
+                    valueW,
+                    QStringLiteral("left"),
+                    spaceAfterTwips
+                )
+            );
+    };
+
+    return QStringLiteral(
+        "<w:tbl>"
+        "<w:tblPr>"
+        "<w:tblW w:w=\"%1\" w:type=\"dxa\"/>"
+        "<w:jc w:val=\"center\"/>"
+        "<w:tblLayout w:type=\"fixed\"/>"
+        "<w:tblBorders>"
+        "<w:top w:val=\"nil\"/>"
+        "<w:left w:val=\"nil\"/>"
+        "<w:bottom w:val=\"nil\"/>"
+        "<w:right w:val=\"nil\"/>"
+        "<w:insideH w:val=\"nil\"/>"
+        "<w:insideV w:val=\"nil\"/>"
+        "</w:tblBorders>"
+        "</w:tblPr>"
+        "<w:tblGrid>"
+        "<w:gridCol w:w=\"%2\"/>"
+        "<w:gridCol w:w=\"%3\"/>"
+        "</w:tblGrid>"
+        "%4"
+        "%5"
+        "%6"
+        "</w:tbl>"
+    ).arg(tableW)
+        .arg(labelW)
+        .arg(valueW)
+        .arg(
+            row(
+                QStringLiteral("工程名称："),
+                projectName,
+                rowGap
+            ),
+            row(
+                QStringLiteral("Job名称："),
+                jobName,
+                rowGap
+            ),
+            row(
+                QStringLiteral("软件版本："),
+                appVersion,
+                0
+            )
+        );
+}
+
 QString tableXml(
     const QString &caption,
     const SimulationReportTable &table,
@@ -698,41 +819,10 @@ bool SimulationReportDocxWriter::write(
         0,
         mmToTwips(CoverAfterSubtitleMm + CoverBeforeInfoMm)
     );
-    body += paragraphStyled(
-        QStringLiteral("工程名称：%1").arg(model.projectName),
-        QString(),
-        kaiFonts(),
-        ptToHalfPoints(CoverInfoPt),
-        false,
-        QStringLiteral("center"),
-        false,
-        false,
-        0,
-        mmToTwips(CoverInfoGapMm)
-    );
-    body += paragraphStyled(
-        QStringLiteral("Job名称：%1").arg(model.jobName),
-        QString(),
-        kaiFonts(),
-        ptToHalfPoints(CoverInfoPt),
-        false,
-        QStringLiteral("center"),
-        false,
-        false,
-        0,
-        mmToTwips(CoverInfoGapMm)
-    );
-    body += paragraphStyled(
-        QStringLiteral("软件版本：%1").arg(model.appVersion),
-        QString(),
-        kaiFonts(),
-        ptToHalfPoints(CoverInfoPt),
-        false,
-        QStringLiteral("center"),
-        false,
-        false,
-        0,
-        0
+    body += coverInfoBlockXml(
+        model.projectName,
+        model.jobName,
+        model.appVersion
     );
     body += paragraphStyled(
         formatCoverDate(model.generatedAt),
@@ -794,8 +884,7 @@ bool SimulationReportDocxWriter::write(
             QStringLiteral("表 2.%1 %2")
                 .arg(i + 1)
                 .arg(table.title),
-            table,
-            i == 2
+            table
         );
     }
 
