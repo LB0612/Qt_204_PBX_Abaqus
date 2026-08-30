@@ -36,9 +36,10 @@
 
 namespace {
 
-constexpr int kHomeTitleMaxFontPx = 120;
+constexpr int kHomeTitleMaxFontPx = 136;
 constexpr int kHomeTitleMinFontPx = 64;
 constexpr qreal kHomeTitleLetterSpacing = 96.5;
+constexpr qreal kHomeTitleWidthRatio = 0.82;
 
 const int ROLE_NODE_TYPE = Qt::UserRole + 1;
 
@@ -762,8 +763,14 @@ void MainWindow::updateHomeTitleFont()
     const QString secondLine =
         QStringLiteral("分析软件");
 
-    const int availableWidth =
+    const int contentWidth =
         qMax(1, titleLabel->contentsRect().width());
+
+    const int availableWidth =
+        qMax(
+            1,
+            qRound(contentWidth * kHomeTitleWidthRatio)
+        );
 
     if (availableWidth <= 1) {
         return;
