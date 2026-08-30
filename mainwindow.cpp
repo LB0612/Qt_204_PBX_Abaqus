@@ -1083,6 +1083,7 @@ void MainWindow::exitProject()
         startWatchingProject();
     }
 
+    adjustProjectPaneToContents();
     updateUIStates();
 }
 
@@ -2583,6 +2584,7 @@ void MainWindow::onTreeItemClicked(
             );
 
             delete projectItem;
+            adjustProjectPaneToContents();
             startWatchingProject();
             return;
         }
@@ -2735,6 +2737,8 @@ void MainWindow::onProjectDirectoryChanged()
 
         delete item;
     }
+
+    adjustProjectPaneToContents();
 
     if (currentProjectDeleted && !simulationManager->isActive()) {
         stopWatchingProject();
