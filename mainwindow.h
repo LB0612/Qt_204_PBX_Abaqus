@@ -28,6 +28,7 @@
 
 class NewProjectDialog;
 class OpenProjectDialog;
+class QSplitter;
 
 #include <QSet>
 
@@ -47,6 +48,7 @@ private:
     void createPureStyleToolBar();
     void createTreeWidget();
     void updateTreeStructure(const QString &name, const QString &path);
+    void adjustProjectPaneToContents();
     void selectTreeItem(const QString &itemName);
     void restoreCurrentProjectTreeSelection();
     void startWatchingProject();
@@ -90,10 +92,13 @@ private:
     ProjectConfig currentProject;
     bool isProjectLoaded = false;
     bool projectDirectoryMissing = false;
+    bool projectPaneManuallyResized = false;
+    bool adjustingProjectPaneWidth = false;
     QSet<ParamPage> dirtyParamPages;
 
     QWidget *centralWidget;
     QHBoxLayout *mainLayout;
+    QSplitter *mainSplitter = nullptr;
     QToolBar *toolBar;
     QTreeWidget *treeWidget;
     QStackedWidget *stackedWidget;

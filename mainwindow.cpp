@@ -25,6 +25,8 @@
 #include <QIcon>
 #include <QPushButton>
 #include <QSet>
+#include <QSplitter>
+#include <QTimer>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
 
@@ -214,9 +216,28 @@ void MainWindow::setupUi()
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    QWidget *leftWidget = new QWidget(centralWidget);
-    leftWidget->setFixedWidth(300);
-    leftWidget->setStyleSheet(QStringLiteral("background-color: #ffffff; border-right: 1px solid #e6e6e6;"));
+    mainSplitter = new QSplitter(Qt::Horizontal, centralWidget);
+    mainSplitter->setChildrenCollapsible(false);
+    mainSplitter->setHandleWidth(6);
+    mainSplitter->setStyleSheet(
+        QStringLiteral(
+            "QSplitter::handle {"
+            " background: transparent;"
+            "}"
+            "QSplitter::handle:horizontal {"
+            " border-left: 1px solid #e6e6e6;"
+            "}"
+            "QSplitter::handle:horizontal:hover {"
+            " background-color: #f5f5f5;"
+            " border-left: 1px solid #bfbfbf;"
+            "}"
+        )
+    );
+
+    QWidget *leftWidget = new QWidget(mainSplitter);
+    leftWidget->setMinimumWidth(220);
+    leftWidget->setMaximumWidth(600);
+    leftWidget->setStyleSheet(QStringLiteral("background-color: #ffffff;"));
 
     QVBoxLayout *leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(0, 0, 0, 0);
@@ -224,7 +245,7 @@ void MainWindow::setupUi()
     createTreeWidget();
     leftLayout->addWidget(treeWidget);
 
-    QWidget *rightWidget = new QWidget(centralWidget);
+    QWidget *rightWidget = new QWidget(mainSplitter);
     rightWidget->setStyleSheet(QStringLiteral("background: transparent;"));
 
     QGridLayout *rightLayout = new QGridLayout(rightWidget);
@@ -370,9 +391,26 @@ void MainWindow::setupUi()
 
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
-    mainLayout->addWidget(leftWidget);
-    mainLayout->addWidget(rightWidget);
+    mainSplitter->addWidget(leftWidget);
+    mainSplitter->addWidget(rightWidget);
+    mainSplitter->setStretchFactor(0, 0);
+    mainSplitter->setStretchFactor(1, 1);
+
+    mainLayout->addWidget(mainSplitter);
+
+    connect(
+        mainSplitter,
+        &QSplitter::splitterMoved,
+        this,
+        [this](int, int) {
+            if (!adjustingProjectPaneWidth) {
+                projectPaneManuallyResized = true;
+            }
+        }
+    );
+
     setCentralWidget(centralWidget);
+    adjustProjectPaneToContents();
 }
 
 void MainWindow::createPureStyleToolBar()
@@ -544,6 +582,7 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
         if (child->text(0) == name && child->data(0, Qt::UserRole).toString() == path) {
             treeWidget->setCurrentItem(child);
             root->setExpanded(true);
+            adjustProjectPaneToContents();
             return;
         }
     }
@@ -629,6 +668,63 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
 
     treeWidget->setCurrentItem(infoItem);
     root->setExpanded(true);
+    adjustProjectPaneToContents();
+}
+
+void MainWindow::adjustProjectPaneToContents()
+{
+    if (!mainSplitter
+        || !treeWidget
+        || projectPaneManuallyResized) {
+        return;
+    }
+
+    QTimer::singleShot(
+        0,
+        this,
+        [this]() {
+            if (!mainSplitter
+                || !treeWidget
+                || projectPaneManuallyResized) {
+                return;
+            }
+
+            treeWidget->resizeColumnToContents(0);
+
+            const int contentWidth =
+                treeWidget->columnWidth(0);
+
+            const int preferredWidth =
+                qBound(
+                    220,
+                    contentWidth + 24,
+                    600
+                );
+
+            QList<int> sizes =
+                mainSplitter->sizes();
+
+            int totalWidth = 0;
+            for (int size : sizes) {
+                totalWidth += size;
+            }
+
+            if (totalWidth <= 0) {
+                totalWidth = mainSplitter->width();
+            }
+
+            if (totalWidth <= preferredWidth) {
+                return;
+            }
+
+            adjustingProjectPaneWidth = true;
+            mainSplitter->setSizes({
+                preferredWidth,
+                totalWidth - preferredWidth
+            });
+            adjustingProjectPaneWidth = false;
+        }
+    );
 }
 
 void MainWindow::restoreCurrentProjectTreeSelection()
