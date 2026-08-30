@@ -526,7 +526,9 @@ QString tableXml(
     const int col3Twips =
         tableWidthTwips - col1Twips - col2Twips;
     const int tableBorderSize =
-        qRound(TableRulePt * 8.0);
+        qRound(TableBorderPt * 8.0);
+    const int headerBottomSize =
+        qRound(TableHeaderBottomPt * 8.0);
 
     xml += QStringLiteral(
         "<w:tbl>"
@@ -536,11 +538,11 @@ QString tableXml(
         "<w:tblLayout w:type=\"fixed\"/>"
         "<w:tblBorders>"
         "<w:top w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
-        "<w:left w:val=\"nil\"/>"
+        "<w:left w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
         "<w:bottom w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
-        "<w:right w:val=\"nil\"/>"
-        "<w:insideH w:val=\"nil\"/>"
-        "<w:insideV w:val=\"nil\"/>"
+        "<w:right w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
+        "<w:insideH w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
+        "<w:insideV w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
         "</w:tblBorders>"
         "</w:tblPr>"
         "<w:tblGrid>"
@@ -561,16 +563,23 @@ QString tableXml(
                       const QString &c3,
                       bool header,
                       bool keepWithNext) {
-        const QString headerBottom = header
-            ? QStringLiteral(
+        QString tcExtra;
+        if (header) {
+            tcExtra = QStringLiteral(
                 "<w:tcBorders>"
                 "<w:bottom w:val=\"single\" w:sz=\"%1\" "
                 "w:space=\"0\" w:color=\"000000\"/>"
                 "</w:tcBorders>"
-            ).arg(tableBorderSize)
-            : QString();
+                "<w:shd w:val=\"clear\" w:color=\"auto\" "
+                "w:fill=\"E7E6E6\"/>"
+            ).arg(headerBottomSize);
+        }
+
         const QString keepNextXml = keepWithNext
             ? QStringLiteral("<w:keepNext/>")
+            : QString();
+        const QString boldXml = header
+            ? QStringLiteral("<w:b/><w:bCs/>")
             : QString();
         const int rowHeightTwips = qRound(
             (header ? TableHeaderRowMinPt : TableRowMinPt) * 20.0
@@ -598,16 +607,17 @@ QString tableXml(
                 "%3"
                 "</w:pPr>"
                 "<w:r>"
-                "<w:rPr>%4"
-                "<w:sz w:val=\"%5\"/><w:szCs w:val=\"%5\"/></w:rPr>"
-                "<w:t xml:space=\"preserve\">%6</w:t>"
+                "<w:rPr>%4%5"
+                "<w:sz w:val=\"%6\"/><w:szCs w:val=\"%6\"/></w:rPr>"
+                "<w:t xml:space=\"preserve\">%7</w:t>"
                 "</w:r>"
                 "</w:p>"
                 "</w:tc>"
             ).arg(widthTwips)
-                .arg(headerBottom)
+                .arg(tcExtra)
                 .arg(keepNextXml)
                 .arg(bodyFonts())
+                .arg(boldXml)
                 .arg(tableHalfPts)
                 .arg(xmlEscape(text));
         };
