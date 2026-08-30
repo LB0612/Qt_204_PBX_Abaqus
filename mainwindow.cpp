@@ -273,7 +273,7 @@ void MainWindow::setupUi()
     titleLabel->setContentsMargins(40, 20, 150, 20);
 
     QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
-    titleFont.setPixelSize(148);
+    titleFont.setPixelSize(136);
     titleFont.setWeight(QFont::Medium);
     titleFont.setLetterSpacing(QFont::PercentageSpacing, 96.5);
     titleLabel->setFont(titleFont);
@@ -762,7 +762,7 @@ void MainWindow::updateHomeTitleFont()
         return;
     }
 
-    constexpr int maxFontPx = 148;
+    constexpr int maxFontPx = 136;
     constexpr int minFontPx = 64;
 
     QFont font(QStringLiteral("Microsoft YaHei UI"));
