@@ -145,7 +145,7 @@ void BaseParamWidget::setupHeader(
 
 void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, std::function<void()> onClick) {
     QPushButton* btn = new QPushButton(text);
-    btn->setFixedHeight(60);
+    btn->setFixedHeight(50);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setStyleSheet(
         "QPushButton {"
