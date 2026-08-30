@@ -35,6 +35,14 @@ constexpr double FigureMaxHeightMm = 180.0;
 
 constexpr double TableWidthPct = 0.86;
 
+// Cover: page top margin + this spacer ≈ PDF title at 70 mm.
+constexpr double CoverTopSpacerMm = 40.0;
+constexpr double CoverAfterTitleMm = 14.0;
+constexpr double CoverAfterSubtitleMm = 18.0;
+constexpr double CoverBeforeInfoMm = 10.0;
+constexpr double CoverInfoGapMm = 6.0;
+constexpr double CoverBeforeDateMm = 45.0;
+
 } // namespace SimulationReportStyle
 
 #endif

@@ -275,11 +275,13 @@ QString figureCaption(
 QString pageSzMarXml(bool withHeaderFooterStart)
 {
     QString xml = QStringLiteral(
-        "<w:pgSz w:w=\"11906\" w:h=\"16838\"/>"
-        "<w:pgMar w:top=\"%1\" w:right=\"%2\" "
-        "w:bottom=\"%3\" w:left=\"%4\" "
-        "w:header=\"%5\" w:footer=\"%6\"/>"
-    ).arg(mmToTwips(MarginTopMm))
+        "<w:pgSz w:w=\"%1\" w:h=\"%2\"/>"
+        "<w:pgMar w:top=\"%3\" w:right=\"%4\" "
+        "w:bottom=\"%5\" w:left=\"%6\" "
+        "w:header=\"%7\" w:footer=\"%8\"/>"
+    ).arg(mmToTwips(PageWidthMm))
+        .arg(mmToTwips(PageHeightMm))
+        .arg(mmToTwips(MarginTopMm))
         .arg(mmToTwips(MarginRightMm))
         .arg(mmToTwips(MarginBottomMm))
         .arg(mmToTwips(MarginLeftMm))
@@ -300,18 +302,34 @@ QString paragraphStyled(
     bool bold,
     const QString &align,
     bool firstLineIndent = false,
-    bool bodyLineSpacing = false)
+    bool bodyLineSpacing = false,
+    int spaceBeforeTwips = 0,
+    int spaceAfterTwips = 0)
 {
     QString pPr;
     if (!styleId.isEmpty()) {
         pPr += QStringLiteral("<w:pStyle w:val=\"%1\"/>")
             .arg(styleId);
     }
+
+    QString spacingAttrs;
     if (bodyLineSpacing) {
-        pPr += QStringLiteral(
-            "<w:spacing w:line=\"360\" w:lineRule=\"auto\"/>"
+        spacingAttrs += QStringLiteral(
+            " w:line=\"360\" w:lineRule=\"auto\""
         );
     }
+    if (spaceBeforeTwips > 0) {
+        spacingAttrs += QStringLiteral(" w:before=\"%1\"")
+            .arg(spaceBeforeTwips);
+    }
+    if (spaceAfterTwips > 0) {
+        spacingAttrs += QStringLiteral(" w:after=\"%1\"")
+            .arg(spaceAfterTwips);
+    }
+    if (!spacingAttrs.isEmpty()) {
+        pPr += QStringLiteral("<w:spacing%1/>").arg(spacingAttrs);
+    }
+
     if (firstLineIndent) {
         pPr += QStringLiteral("<w:ind w:firstLine=\"480\"/>");
     }
@@ -366,7 +384,7 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
     xml += QStringLiteral(
         "<w:tbl>"
         "<w:tblPr>"
-        "<w:tblW w:w=\"4300\" w:type=\"pct\"/>"
+        "<w:tblW w:w=\"%1\" w:type=\"pct\"/>"
         "<w:jc w:val=\"center\"/>"
         "<w:tblLayout w:type=\"fixed\"/>"
         "</w:tblPr>"
@@ -375,7 +393,7 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
         "<w:gridCol w:w=\"3200\"/>"
         "<w:gridCol w:w=\"1800\"/>"
         "</w:tblGrid>"
-    );
+    ).arg(qRound(TableWidthPct * 5000.0));
 
     const int tableHalfPts = ptToHalfPoints(TablePt);
 
@@ -553,14 +571,18 @@ bool SimulationReportDocxWriter::write(
 
     QString body;
 
-    // Cover
+    // Cover — top spacer aligns title with PDF (~70 mm from page top).
     body += paragraphStyled(
         model.reportTitle,
         QStringLiteral("Title"),
         headingFonts(),
         ptToHalfPoints(CoverTitlePt),
         true,
-        QStringLiteral("center")
+        QStringLiteral("center"),
+        false,
+        false,
+        mmToTwips(CoverTopSpacerMm),
+        mmToTwips(CoverAfterTitleMm)
     );
     body += paragraphStyled(
         model.productName,
@@ -568,16 +590,23 @@ bool SimulationReportDocxWriter::write(
         headingFonts(),
         ptToHalfPoints(CoverSubtitlePt),
         true,
-        QStringLiteral("center")
+        QStringLiteral("center"),
+        false,
+        false,
+        0,
+        mmToTwips(CoverAfterSubtitleMm + CoverBeforeInfoMm)
     );
-    body += QStringLiteral("<w:p/>");
     body += paragraphStyled(
         QStringLiteral("工程名称：%1").arg(model.projectName),
         QString(),
         kaiFonts(),
         ptToHalfPoints(CoverInfoPt),
         false,
-        QStringLiteral("center")
+        QStringLiteral("center"),
+        false,
+        false,
+        0,
+        mmToTwips(CoverInfoGapMm)
     );
     body += paragraphStyled(
         QStringLiteral("Job名称：%1").arg(model.jobName),
@@ -585,7 +614,11 @@ bool SimulationReportDocxWriter::write(
         kaiFonts(),
         ptToHalfPoints(CoverInfoPt),
         false,
-        QStringLiteral("center")
+        QStringLiteral("center"),
+        false,
+        false,
+        0,
+        mmToTwips(CoverInfoGapMm)
     );
     body += paragraphStyled(
         QStringLiteral("软件版本：%1").arg(model.appVersion),
@@ -593,16 +626,23 @@ bool SimulationReportDocxWriter::write(
         kaiFonts(),
         ptToHalfPoints(CoverInfoPt),
         false,
-        QStringLiteral("center")
+        QStringLiteral("center"),
+        false,
+        false,
+        0,
+        0
     );
-    body += QStringLiteral("<w:p/><w:p/><w:p/>");
     body += paragraphStyled(
         formatCoverDate(model.generatedAt),
         QString(),
         kaiFonts(),
         ptToHalfPoints(CoverDatePt),
         false,
-        QStringLiteral("center")
+        QStringLiteral("center"),
+        false,
+        false,
+        mmToTwips(CoverBeforeDateMm),
+        0
     );
 
     body += QStringLiteral(

@@ -373,17 +373,16 @@ bool drawTable(
         makeFont(QStringLiteral("SimSun"), TablePt);
     const QFontMetricsF captionMetrics =
         metricsFor(ctx, captionFont);
-    const QFontMetricsF tableMetrics =
-        metricsFor(ctx, tableFont);
 
     const qreal captionH = captionMetrics.height() + mmToPx(2.0);
-    const qreal rowH = tableMetrics.height() + mmToPx(3.5);
+    const qreal cellPadY = mmToPx(2.0);
     const qreal tableW = ctx.geom.contentW * TableWidthPct;
     const qreal tableLeft =
         ctx.geom.left + (ctx.geom.contentW - tableW) / 2.0;
     const qreal col1 = tableW * 0.34;
     const qreal col2 = tableW * 0.42;
     const qreal col3 = tableW * 0.24;
+    const qreal cellPadX = 4.0;
 
     auto ensureSpace = [&](qreal need) -> bool {
         if (y + need <= ctx.geom.pageH - ctx.geom.bottom) {
@@ -396,34 +395,88 @@ bool drawTable(
         return true;
     };
 
+    auto measureRowHeight = [&](const QString &c1,
+                                const QString &c2,
+                                const QString &c3,
+                                bool header) -> qreal {
+        QFont rowFont = tableFont;
+        rowFont.setBold(header);
+        const QFontMetricsF metrics = metricsFor(ctx, rowFont);
+
+        const qreal h1 = metrics.boundingRect(
+            QRectF(0, 0, col1 - cellPadX * 2.0, ctx.geom.contentH),
+            Qt::TextWordWrap,
+            c1
+        ).height();
+        const qreal h2 = metrics.boundingRect(
+            QRectF(0, 0, col2 - cellPadX * 2.0, ctx.geom.contentH),
+            Qt::TextWordWrap,
+            c2
+        ).height();
+        const qreal h3 = metrics.boundingRect(
+            QRectF(0, 0, col3 - cellPadX * 2.0, ctx.geom.contentH),
+            Qt::TextWordWrap,
+            c3
+        ).height();
+
+        return qMax(h1, qMax(h2, h3)) + cellPadY * 2.0;
+    };
+
     auto drawRow = [&](const QString &c1,
                        const QString &c2,
                        const QString &c3,
                        bool header) -> bool {
+        const qreal rowH = measureRowHeight(c1, c2, c3, header);
         if (!ensureSpace(rowH)) {
             return false;
         }
 
         if (!ctx.dryRun && ctx.painter) {
             QPainter &painter = *ctx.painter;
-            const QRectF r1(tableLeft, y, col1, rowH);
-            const QRectF r2(tableLeft + col1, y, col2, rowH);
-            const QRectF r3(tableLeft + col1 + col2, y, col3, rowH);
+            const QRectF r1(
+                tableLeft + cellPadX,
+                y,
+                col1 - cellPadX * 2.0,
+                rowH
+            );
+            const QRectF r2(
+                tableLeft + col1 + cellPadX,
+                y,
+                col2 - cellPadX * 2.0,
+                rowH
+            );
+            const QRectF r3(
+                tableLeft + col1 + col2 + cellPadX,
+                y,
+                col3 - cellPadX * 2.0,
+                rowH
+            );
 
             QFont rowFont = tableFont;
             rowFont.setBold(header);
             painter.setFont(rowFont);
             painter.setPen(QColor(QStringLiteral("#222222")));
-            painter.drawText(r1, Qt::AlignCenter, c1);
-            painter.drawText(r2, Qt::AlignCenter, c2);
-            painter.drawText(r3, Qt::AlignCenter, c3);
+            const int flags =
+                Qt::TextWordWrap
+                | Qt::AlignHCenter
+                | Qt::AlignVCenter;
+            painter.drawText(r1, flags, c1);
+            painter.drawText(r2, flags, c2);
+            painter.drawText(r3, flags, c3);
         }
 
         y += rowH;
         return true;
     };
 
-    if (!ensureSpace(captionH + rowH * 2.0)) {
+    const qreal headerRowH = measureRowHeight(
+        QStringLiteral("参数"),
+        QStringLiteral("数值"),
+        QStringLiteral("单位"),
+        true
+    );
+
+    if (!ensureSpace(captionH + headerRowH * 2.0)) {
         return false;
     }
 
@@ -447,6 +500,13 @@ bool drawTable(
     }
 
     for (const SimulationReportRow &row : table.rows) {
+        const qreal rowH = measureRowHeight(
+            row.name,
+            row.value,
+            row.unit,
+            false
+        );
+
         if (y + rowH > ctx.geom.pageH - ctx.geom.bottom) {
             if (!beginBodyPage(ctx)) {
                 return false;
@@ -499,23 +559,23 @@ bool layoutReport(
             );
         }
 
-        qreal y = mmToPx(70.0);
+        qreal y = mmToPx(MarginTopMm + CoverTopSpacerMm);
         drawCenteredText(
             ctx,
             y,
             model.reportTitle,
             makeFont(QStringLiteral("SimHei"), CoverTitlePt, true),
-            14.0
+            CoverAfterTitleMm
         );
         drawCenteredText(
             ctx,
             y,
             model.productName,
             makeFont(QStringLiteral("SimHei"), CoverSubtitlePt, true),
-            18.0
+            CoverAfterSubtitleMm
         );
 
-        y += mmToPx(10.0);
+        y += mmToPx(CoverBeforeInfoMm);
         const QFont infoFont =
             makeFont(QStringLiteral("KaiTi"), CoverInfoPt);
         drawCenteredText(
@@ -523,21 +583,21 @@ bool layoutReport(
             y,
             QStringLiteral("工程名称：%1").arg(model.projectName),
             infoFont,
-            6.0
+            CoverInfoGapMm
         );
         drawCenteredText(
             ctx,
             y,
             QStringLiteral("Job名称：%1").arg(model.jobName),
             infoFont,
-            6.0
+            CoverInfoGapMm
         );
         drawCenteredText(
             ctx,
             y,
             QStringLiteral("软件版本：%1").arg(model.appVersion),
             infoFont,
-            20.0
+            CoverBeforeDateMm
         );
 
         y = ctx.geom.pageH - mmToPx(60.0);
