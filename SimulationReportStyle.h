@@ -49,7 +49,7 @@ constexpr double TableRowMinPt = 38.10;
 constexpr double TableHeaderRowMinPt = 38.65;
 
 constexpr double TableCellPaddingXMm = 1.9;
-constexpr double TableAfterGapMm = 3.0;
+constexpr double TableAfterGapMm = 5.0;
 
 constexpr double HeadingLineSpacingFactor = 1.5;
 constexpr double Heading1BeforePt = 2.5;
