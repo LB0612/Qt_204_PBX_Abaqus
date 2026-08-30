@@ -41,7 +41,7 @@ constexpr double TableWidthPct = 0.86;
 
 constexpr double TableColumn1Pct = 0.34;
 constexpr double TableColumn2Pct = 0.42;
-constexpr double TableColumn3Pct = 0.24;
+// Column 3 width = remainder after col1/col2 (avoids rounding drift).
 
 constexpr double TableBorderPt = 0.5;
 constexpr double TableHeaderBottomPt = 1.0;
