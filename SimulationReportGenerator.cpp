@@ -621,33 +621,6 @@ void recoverInterruptedReportCommit(
     QFile::rename(backupDocxPath, docxPath);
 }
 
-bool removeLegacyPdfReportFiles(
-    const QString &reportDir,
-    QString &errorMessage)
-{
-    const QStringList legacyNames = {
-        QStringLiteral("simulation_report.pdf"),
-        QStringLiteral("simulation_report.pdf.tmp"),
-        QStringLiteral("simulation_report.pdf.bak")
-    };
-
-    for (const QString &name : legacyNames) {
-        const QString path = QDir(reportDir).filePath(name);
-        if (!QFile::exists(path)) {
-            continue;
-        }
-        if (!QFile::remove(path)) {
-            errorMessage = QStringLiteral(
-                "旧 PDF 报告正在被占用，"
-                "请关闭后重新生成 Word 报告。\n%1"
-            ).arg(path);
-            return false;
-        }
-    }
-
-    return true;
-}
-
 } // namespace
 
 bool SimulationReportGenerator::generate(
@@ -674,10 +647,6 @@ bool SimulationReportGenerator::generate(
         SimulationResultService::reportDirectoryPath(projectPath);
     if (!QDir().mkpath(reportDir)) {
         errorMessage = QStringLiteral("无法创建报告目录。");
-        return false;
-    }
-
-    if (!removeLegacyPdfReportFiles(reportDir, errorMessage)) {
         return false;
     }
 
