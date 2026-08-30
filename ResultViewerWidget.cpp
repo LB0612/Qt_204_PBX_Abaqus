@@ -4,6 +4,7 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPalette>
 #include <QPixmap>
 #include <QPushButton>
 #include <QSizePolicy>
@@ -15,6 +16,20 @@ namespace {
 
 const char *kUiFontFamily =
     "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
+
+void applyOpaqueWhitePage(QWidget *widget)
+{
+    widget->setAttribute(Qt::WA_StyledBackground, true);
+    widget->setAutoFillBackground(true);
+
+    QPalette palette = widget->palette();
+    palette.setColor(QPalette::Window, Qt::white);
+    widget->setPalette(palette);
+
+    widget->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
+}
 
 const char *kCardStyle =
     "QFrame {"
@@ -82,11 +97,7 @@ const char *kPrimaryButtonStyle =
 ResultViewerWidget::ResultViewerWidget(QWidget *parent)
     : QWidget(parent)
 {
-    setStyleSheet(
-        QStringLiteral(
-            "ResultViewerWidget { background-color: #ffffff; }"
-        )
-    );
+    applyOpaqueWhitePage(this);
 
     playTimer = new QTimer(this);
     playTimer->setTimerType(Qt::CoarseTimer);
@@ -133,11 +144,17 @@ void ResultViewerWidget::buildUi()
         QSizePolicy::Expanding,
         QSizePolicy::Expanding
     );
+    contentContainer->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
     QVBoxLayout *contentLayout = new QVBoxLayout(contentContainer);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(12);
 
     emptyStatePanel = new QWidget(contentContainer);
+    emptyStatePanel->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
     QVBoxLayout *emptyLayout = new QVBoxLayout(emptyStatePanel);
     emptyLayout->setContentsMargins(0, 40, 0, 40);
     emptyLayout->addStretch();
@@ -208,6 +225,9 @@ void ResultViewerWidget::buildUi()
     contentLayout->addWidget(emptyStatePanel);
 
     playerPanel = new QWidget(contentContainer);
+    playerPanel->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
     QVBoxLayout *playerLayout = new QVBoxLayout(playerPanel);
     playerLayout->setContentsMargins(0, 0, 0, 0);
     playerLayout->setSpacing(10);
@@ -258,7 +278,7 @@ void ResultViewerWidget::buildUi()
     imageLabel->setMinimumHeight(420);
     imageLabel->setStyleSheet(
         QStringLiteral(
-            "background-color: #fafafa;"
+            "background-color: #ffffff;"
             "border: 1px solid #eeeeee;"
             "border-radius: 6px;"
         )
