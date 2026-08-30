@@ -301,6 +301,7 @@ QString imageParagraph(
 {
     return QStringLiteral(
         "<w:p>"
+        "<w:pPr><w:jc w:val=\"center\"/></w:pPr>"
         "<w:r>"
         "<w:drawing>"
         "<wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">"
@@ -398,7 +399,7 @@ bool SimulationReportDocxWriter::write(
             QStringLiteral("word/media/image%1.png")
                 .arg(mediaIndex, 3, 10, QLatin1Char('0'));
         out.relId =
-            QStringLiteral("rId%1").arg(mediaIndex + 3);
+            QStringLiteral("rId%1").arg(mediaIndex + 4);
         out.bytes = imageFile.readAll();
         out.cx = mmToEmu(widthMm);
         out.cy = mmToEmu(heightMm);
@@ -462,6 +463,8 @@ bool SimulationReportDocxWriter::write(
         overview.rows = model.overviewRows;
         body += tableXml(overview);
     }
+
+    body += pageBreakParagraph();
 
     // 2 Parameters
     body += paragraph(
@@ -604,7 +607,7 @@ bool SimulationReportDocxWriter::write(
         "<w:basedOn w:val=\"Normal\"/>"
         "<w:qFormat/>"
         "<w:pPr><w:spacing w:before=\"160\" w:after=\"80\"/></w:pPr>"
-        "<w:rPr><w:b/><w:sz w:val=\"26\"/><w:szCs w:val=\"26\"/></w:rPr>"
+        "<w:rPr><w:b/><w:sz w:val=\"28\"/><w:szCs w:val=\"28\"/></w:rPr>"
         "</w:style>"
         "</w:styles>"
     );
@@ -651,7 +654,7 @@ bool SimulationReportDocxWriter::write(
         "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/></w:rPr>"
         "<w:t xml:space=\"preserve\">第 </w:t>"
         "</w:r>"
-        "<w:fldSimple w:instr=\" PAGE \">"
+        "<w:fldSimple w:instr=\" PAGE \" w:dirty=\"true\">"
         "<w:r>"
         "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
         "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
@@ -665,7 +668,7 @@ bool SimulationReportDocxWriter::write(
         "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/></w:rPr>"
         "<w:t xml:space=\"preserve\"> 页 / 共 </w:t>"
         "</w:r>"
-        "<w:fldSimple w:instr=\" SECTIONPAGES \">"
+        "<w:fldSimple w:instr=\" SECTIONPAGES \" w:dirty=\"true\">"
         "<w:r>"
         "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
         "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
@@ -732,6 +735,8 @@ bool SimulationReportDocxWriter::write(
         "ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>"
         "<Override PartName=\"/word/styles.xml\" "
         "ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/>"
+        "<Override PartName=\"/word/settings.xml\" "
+        "ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml\"/>"
         "<Override PartName=\"/word/header1.xml\" "
         "ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml\"/>"
         "<Override PartName=\"/word/footer1.xml\" "
@@ -772,6 +777,9 @@ bool SimulationReportDocxWriter::write(
         "<Relationship Id=\"rId3\" "
         "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer\" "
         "Target=\"footer1.xml\"/>"
+        "<Relationship Id=\"rId4\" "
+        "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings\" "
+        "Target=\"settings.xml\"/>"
     );
     for (const MediaItem &item : media) {
         const QString target =
@@ -783,6 +791,14 @@ bool SimulationReportDocxWriter::write(
         ).arg(item.relId, target);
     }
     documentRels += QStringLiteral("</Relationships>");
+
+    const QString settingsXml = QStringLiteral(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+        "<w:settings "
+        "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+        "<w:updateFields w:val=\"true\"/>"
+        "</w:settings>"
+    );
 
     DocxPackageWriter package(outputPath);
     package.addFile(
@@ -808,6 +824,10 @@ bool SimulationReportDocxWriter::write(
     package.addFile(
         QStringLiteral("word/styles.xml"),
         stylesXml.toUtf8()
+    );
+    package.addFile(
+        QStringLiteral("word/settings.xml"),
+        settingsXml.toUtf8()
     );
     package.addFile(
         QStringLiteral("word/header1.xml"),
