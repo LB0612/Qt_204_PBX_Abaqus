@@ -28,6 +28,7 @@
 
 class NewProjectDialog;
 class OpenProjectDialog;
+class QResizeEvent;
 
 #include <QSet>
 
@@ -41,6 +42,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     void setupUi();
@@ -48,6 +50,7 @@ private:
     void createTreeWidget();
     void updateTreeStructure(const QString &name, const QString &path);
     void adjustProjectPaneToContents();
+    void updateHomeTitleFont();
     void selectTreeItem(const QString &itemName);
     void restoreCurrentProjectTreeSelection();
     void startWatchingProject();
@@ -99,7 +102,7 @@ private:
     QToolBar *toolBar;
     QTreeWidget *treeWidget;
     QStackedWidget *stackedWidget;
-    QLabel *titleLabel;
+    QLabel *titleLabel = nullptr;
     ProjectInfoWidget *infoWidget;
     StructureParamWidget *structureWidget;
     ExplosiveParamWidget *explosiveWidget;

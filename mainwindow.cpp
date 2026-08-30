@@ -21,11 +21,14 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFont>
+#include <QFontMetrics>
 #include <QGridLayout>
 #include <QHeaderView>
 #include <QIcon>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QSet>
+#include <QSizePolicy>
 #include <QTimer>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
@@ -244,7 +247,12 @@ void MainWindow::setupUi()
 
     titleLabel = new QLabel(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"), stackedWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setWordWrap(false);
+    titleLabel->setWordWrap(true);
+    titleLabel->setSizePolicy(
+        QSizePolicy::Expanding,
+        QSizePolicy::Expanding
+    );
+    titleLabel->setMinimumSize(0, 0);
 
     QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
     titleFont.setPixelSize(70);
@@ -396,6 +404,14 @@ void MainWindow::setupUi()
 
     setCentralWidget(centralWidget);
     adjustProjectPaneToContents();
+
+    QTimer::singleShot(
+        0,
+        this,
+        [this]() {
+            updateHomeTitleFont();
+        }
+    );
 }
 
 void MainWindow::createPureStyleToolBar()
@@ -690,8 +706,87 @@ void MainWindow::adjustProjectPaneToContents()
                 );
 
             leftPaneWidget->setFixedWidth(preferredWidth);
+
+            QTimer::singleShot(
+                0,
+                this,
+                [this]() {
+                    updateHomeTitleFont();
+                }
+            );
         }
     );
+}
+
+void MainWindow::updateHomeTitleFont()
+{
+    if (!titleLabel) {
+        return;
+    }
+
+    const int availableWidth =
+        qMax(1, titleLabel->width() - 40);
+
+    const int availableHeight =
+        qMax(1, titleLabel->height() - 40);
+
+    if (availableWidth <= 1 || availableHeight <= 1) {
+        return;
+    }
+
+    constexpr int maxFontPx = 70;
+    constexpr int preferredMinFontPx = 52;
+    constexpr int absoluteMinFontPx = 40;
+
+    QFont baseFont(QStringLiteral("Microsoft YaHei UI"));
+    baseFont.setWeight(QFont::DemiBold);
+    baseFont.setLetterSpacing(QFont::PercentageSpacing, 100.0);
+
+    baseFont.setPixelSize(maxFontPx);
+    const QFontMetrics maxMetrics(baseFont);
+    const int fullWidthAtMax =
+        maxMetrics.horizontalAdvance(titleLabel->text());
+
+    int targetFontPx = maxFontPx;
+    if (fullWidthAtMax > availableWidth) {
+        const double ratio =
+            static_cast<double>(availableWidth)
+            / static_cast<double>(fullWidthAtMax);
+
+        targetFontPx = qMax(
+            preferredMinFontPx,
+            qRound(maxFontPx * ratio)
+        );
+    }
+
+    for (int fontPx = targetFontPx;
+         fontPx >= absoluteMinFontPx;
+         --fontPx) {
+
+        QFont font = baseFont;
+        font.setPixelSize(fontPx);
+
+        const QFontMetrics metrics(font);
+        const QRect textRect = metrics.boundingRect(
+            QRect(0, 0, availableWidth, availableHeight),
+            Qt::AlignCenter | Qt::TextWordWrap,
+            titleLabel->text()
+        );
+
+        if (textRect.height() <= availableHeight) {
+            titleLabel->setFont(font);
+            return;
+        }
+    }
+
+    baseFont.setPixelSize(absoluteMinFontPx);
+    titleLabel->setFont(baseFont);
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    updateHomeTitleFont();
 }
 
 void MainWindow::restoreCurrentProjectTreeSelection()
