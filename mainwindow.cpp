@@ -57,7 +57,7 @@ constexpr int kHomeTitleMaxFontPx = 136;
 constexpr int kHomeTitleMinFontPx = 64;
 constexpr qreal kHomeTitleLetterSpacing = 96.5;
 constexpr qreal kHomeTitleWidthRatio = 0.82;
-constexpr QFont::Weight kHomeTitleFontWeight = QFont::Medium;
+constexpr QFont::Weight kHomeTitleFontWeight = QFont::Bold;
 
 constexpr int kHomeTitleMarginLeft = 60;
 constexpr int kHomeTitleMarginTop = 20;
