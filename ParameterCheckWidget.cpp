@@ -3,7 +3,6 @@
 #include "BoundaryConfigManager.h"
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
-#include "ProjectManager.h"
 #include "ProjectParameterService.h"
 #include "SimulationConfigManager.h"
 #include "StructureConfigManager.h"

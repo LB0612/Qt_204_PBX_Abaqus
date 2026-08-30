@@ -9,7 +9,6 @@ class QPushButton;
 class QSlider;
 class QTimer;
 class QButtonGroup;
-class QFrame;
 
 class ResultViewerWidget : public BaseParamWidget
 {

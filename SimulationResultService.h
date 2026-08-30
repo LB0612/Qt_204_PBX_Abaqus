@@ -37,7 +37,6 @@ struct ResultValidationResult
 
 struct ResultTypeDescriptor
 {
-    ResultType type = ResultType::Cure;
     QString displayName;
     QString resultsBaseName;
     QString framePrefix;
@@ -57,9 +56,6 @@ public:
         const QString &projectPath,
         ResultType type,
         int frameIndex);
-    static QString aviPath(
-        const QString &projectPath,
-        ResultType type);
     static QString resultsDirectoryPath(const QString &projectPath);
     static QString reportDirectoryPath(const QString &projectPath);
     static QString reportDocxPath(const QString &projectPath);

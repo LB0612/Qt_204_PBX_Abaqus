@@ -118,11 +118,6 @@ inline QString resultsDirectoryPath(const QString &projectPath)
     return QDir(projectPath).filePath(resultsDirName());
 }
 
-inline QString logsDirectoryPath(const QString &projectPath)
-{
-    return QDir(projectPath).filePath(logsDirName());
-}
-
 inline QString structureConfigPath(const QString &projectPath)
 {
     return QDir(projectPath).filePath(structureConfigRelativePath());
@@ -191,12 +186,6 @@ inline QString postProcessManifestPath(const QString &projectPath)
         .filePath(QStringLiteral("postprocess_manifest.json"));
 }
 
-inline QString t0FinishedFlagPath(const QString &projectPath)
-{
-    return QDir(abaqusDirectoryPath(projectPath))
-        .filePath(QStringLiteral("t0_finished.flag"));
-}
-
 inline QString t1FinishedFlagPath(const QString &projectPath)
 {
     return QDir(abaqusDirectoryPath(projectPath))
@@ -255,24 +244,6 @@ inline QString currentJobLockPath(const QString &projectPath)
 {
     return QDir(abaqusDirectoryPath(projectPath))
         .filePath(currentJobName(projectPath) + QStringLiteral(".lck"));
-}
-
-inline QString currentJobMsgPath(const QString &projectPath)
-{
-    return QDir(abaqusDirectoryPath(projectPath))
-        .filePath(currentJobName(projectPath) + QStringLiteral(".msg"));
-}
-
-inline QString currentJobStaPath(const QString &projectPath)
-{
-    return QDir(abaqusDirectoryPath(projectPath))
-        .filePath(currentJobName(projectPath) + QStringLiteral(".sta"));
-}
-
-inline QString currentJobDatPath(const QString &projectPath)
-{
-    return QDir(abaqusDirectoryPath(projectPath))
-        .filePath(currentJobName(projectPath) + QStringLiteral(".dat"));
 }
 
 } // namespace ProjectPaths

@@ -58,7 +58,6 @@ public:
     void stopTask();
 
     void respondToForceKillPrompt(bool continueWaiting);
-    void forceCloseTrackedProcesses();
 
 signals:
     void stateChanged(SimulationState state);
@@ -72,6 +71,8 @@ signals:
     void forceKillRequested();
 
 private:
+    void forceCloseTrackedProcesses();
+
     void startTaskInternal();
     void setSimulationState(SimulationState state);
 

@@ -108,21 +108,18 @@ ResultTypeDescriptor SimulationResultService::descriptorFor(
     switch (type) {
     case ResultType::Cure:
         return {
-            ResultType::Cure,
             QStringLiteral("固化度"),
             QStringLiteral("guhuadu"),
             QStringLiteral("Cure_SDV1_frame"),
         };
     case ResultType::Temperature:
         return {
-            ResultType::Temperature,
             QStringLiteral("温度场"),
             QStringLiteral("wendu"),
             QStringLiteral("NT11_frame"),
         };
     case ResultType::Stress:
         return {
-            ResultType::Stress,
             QStringLiteral("Mises应力场"),
             QStringLiteral("yingli"),
             QStringLiteral("Stress_Mises_frame"),
@@ -152,15 +149,6 @@ QString SimulationResultService::framePngPath(
             .arg(desc.framePrefix)
             .arg(frameIndex, 8, 10, QLatin1Char('0'))
     );
-}
-
-QString SimulationResultService::aviPath(
-    const QString &projectPath,
-    ResultType type)
-{
-    const ResultTypeDescriptor desc = descriptorFor(type);
-    return QDir(resultsDirectoryPath(projectPath))
-        .filePath(desc.resultsBaseName + QStringLiteral(".avi"));
 }
 
 QString SimulationResultService::resultsDirectoryPath(

@@ -24,10 +24,7 @@
 #include "SimulationMonitorWidget.h"
 #include "SimulationPrepareWidget.h"
 #include "ResultViewerWidget.h"
-#include "SimulationReportGenerator.h"
 
-class NewProjectDialog;
-class OpenProjectDialog;
 class QResizeEvent;
 
 #include <QSet>
