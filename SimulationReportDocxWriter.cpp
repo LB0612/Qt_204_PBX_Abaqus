@@ -170,6 +170,11 @@ int ptToHalfPoints(double pt)
     return qRound(pt * 2.0);
 }
 
+int ptToTwips(double pt)
+{
+    return qRound(pt * 20.0);
+}
+
 int mmToTwips(double mm)
 {
     return qRound(mm * 1440.0 / 25.4);
@@ -202,16 +207,16 @@ QString bodyFonts()
 QString headingFonts()
 {
     return QStringLiteral(
-        "<w:rFonts w:ascii=\"SimHei\" "
-        "w:hAnsi=\"SimHei\" w:eastAsia=\"黑体\"/>"
+        "<w:rFonts w:ascii=\"Times New Roman\" "
+        "w:hAnsi=\"Times New Roman\" w:eastAsia=\"黑体\"/>"
     );
 }
 
 QString kaiFonts()
 {
     return QStringLiteral(
-        "<w:rFonts w:ascii=\"KaiTi\" "
-        "w:hAnsi=\"KaiTi\" w:eastAsia=\"楷体\"/>"
+        "<w:rFonts w:ascii=\"Times New Roman\" "
+        "w:hAnsi=\"Times New Roman\" w:eastAsia=\"楷体\"/>"
     );
 }
 
@@ -557,6 +562,7 @@ QString tableXml(
         .arg(col3Twips);
 
     const int tableHalfPts = ptToHalfPoints(TablePt);
+    const int cellPadXTwips = mmToTwips(TableCellPaddingXMm);
 
     auto addRow = [&](const QString &c1,
                       const QString &c2,
@@ -593,27 +599,28 @@ QString tableXml(
                 "<w:vAlign w:val=\"center\"/>"
                 "<w:tcMar>"
                 "<w:top w:w=\"0\" w:type=\"dxa\"/>"
-                "<w:left w:w=\"108\" w:type=\"dxa\"/>"
+                "<w:left w:w=\"%2\" w:type=\"dxa\"/>"
                 "<w:bottom w:w=\"0\" w:type=\"dxa\"/>"
-                "<w:right w:w=\"108\" w:type=\"dxa\"/>"
+                "<w:right w:w=\"%2\" w:type=\"dxa\"/>"
                 "</w:tcMar>"
-                "%2"
+                "%3"
                 "</w:tcPr>"
                 "<w:p>"
                 "<w:pPr>"
                 "<w:jc w:val=\"center\"/>"
                 "<w:spacing w:line=\"360\" w:lineRule=\"auto\" "
                 "w:before=\"120\" w:after=\"120\"/>"
-                "%3"
+                "%4"
                 "</w:pPr>"
                 "<w:r>"
-                "<w:rPr>%4%5"
-                "<w:sz w:val=\"%6\"/><w:szCs w:val=\"%6\"/></w:rPr>"
-                "<w:t xml:space=\"preserve\">%7</w:t>"
+                "<w:rPr>%5%6"
+                "<w:sz w:val=\"%7\"/><w:szCs w:val=\"%7\"/></w:rPr>"
+                "<w:t xml:space=\"preserve\">%8</w:t>"
                 "</w:r>"
                 "</w:p>"
                 "</w:tc>"
             ).arg(widthTwips)
+                .arg(cellPadXTwips)
                 .arg(tcExtra)
                 .arg(keepNextXml)
                 .arg(bodyFonts())
@@ -1083,10 +1090,12 @@ bool SimulationReportDocxWriter::write(
             "<w:qFormat/>"
             "<w:pPr>"
             "<w:spacing w:line=\"360\" w:lineRule=\"auto\" "
-            "w:before=\"50\" w:after=\"50\"/>"
+            "w:before=\"%2\" w:after=\"%3\"/>"
             "<w:jc w:val=\"left\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(CoverTitlePt))
+            .arg(ptToTwips(Heading1BeforePt))
+            .arg(ptToTwips(Heading1AfterPt))
         + headingFontXml
         + QStringLiteral(
             "<w:b/><w:bCs/>"
@@ -1130,19 +1139,22 @@ bool SimulationReportDocxWriter::write(
         "<w:pPr>"
         "<w:jc w:val=\"center\"/>"
         "<w:pBdr>"
-        "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"000000\"/>"
+        "<w:bottom w:val=\"single\" w:sz=\"%1\" w:space=\"1\" "
+        "w:color=\"000000\"/>"
         "</w:pBdr>"
         "</w:pPr>"
         "<w:r>"
-        "<w:rPr>%1"
-        "<w:spacing w:val=\"20\"/>"
-        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\">%3</w:t>"
+        "<w:rPr>%2"
+        "<w:spacing w:val=\"%3\"/>"
+        "<w:sz w:val=\"%4\"/><w:szCs w:val=\"%4\"/></w:rPr>"
+        "<w:t xml:space=\"preserve\">%5</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:hdr>"
     ).arg(
+        QString::number(qRound(HeaderRulePt * 8.0)),
         headingFonts(),
+        QString::number(ptToTwips(HeaderLetterSpacingPt)),
         QString::number(ptToHalfPoints(HeaderPt)),
         xmlEscape(model.reportTitle)
     );
