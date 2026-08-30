@@ -134,7 +134,7 @@ QString hashPostProcessInput(const QString &projectPath)
         return QString();
     }
 
-    hash.addData(QStringLiteral("abaqus/t2.py").toUtf8());
+    hash.addData(ProjectPaths::t2ScriptRelativePath().toUtf8());
     hash.addData(t2File.readAll());
 
     hash.addData(QByteArray("POSTPROCESS_PIPELINE_VERSION"));

@@ -746,7 +746,7 @@ void SimulationManager::startTaskInternal()
         && !forceFullRerun) {
         emit logReceived(
             QStringLiteral(
-                "[SYS] 检测到有效求解结果，跳过后处理恢复运行"
+                "[SYS] 检测到有效求解结果，跳过 Abaqus 求解，恢复 t2 后处理"
             )
         );
 

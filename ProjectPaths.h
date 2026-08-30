@@ -168,10 +168,15 @@ inline QString userSubroutinePath(const QString &projectPath)
     return QDir(projectPath).filePath(userSubroutineRelativePath());
 }
 
-inline QString caeModelPath(const QString &projectPath)
+inline QString caeModelBasePath(const QString &projectPath)
 {
     return QDir(abaqusDirectoryPath(projectPath))
-        .filePath(QStringLiteral("guhua.cae"));
+        .filePath(QStringLiteral("guhua"));
+}
+
+inline QString caeModelPath(const QString &projectPath)
+{
+    return caeModelBasePath(projectPath) + QStringLiteral(".cae");
 }
 
 inline QString generationCompleteFlagPath(const QString &projectPath)

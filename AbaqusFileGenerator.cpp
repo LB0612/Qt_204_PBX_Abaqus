@@ -149,8 +149,7 @@ bool AbaqusFileGenerator::generate(
 
     QString caeSavePath =
         QDir::fromNativeSeparators(
-            QDir(ProjectPaths::abaqusDirectoryPath(projectPath))
-                .filePath(QStringLiteral("guhua"))
+            ProjectPaths::caeModelBasePath(projectPath)
         );
     caeSavePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
     content.replace(QStringLiteral("{{CAE_SAVE_PATH}}"), caeSavePath);
