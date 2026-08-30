@@ -256,17 +256,24 @@ void MainWindow::setupUi()
     stackedWidget = new QStackedWidget(rightWidget);
     stackedWidget->setAttribute(Qt::WA_TranslucentBackground);
 
-    titleLabel = new QLabel(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"), stackedWidget);
+    titleLabel = new QLabel(
+        QStringLiteral(
+            "浇注XX固化监测与三维参数重构\n"
+            "分析软件"
+        ),
+        stackedWidget
+    );
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setWordWrap(true);
+    titleLabel->setWordWrap(false);
     titleLabel->setSizePolicy(
         QSizePolicy::Expanding,
         QSizePolicy::Expanding
     );
     titleLabel->setMinimumSize(0, 0);
+    titleLabel->setContentsMargins(40, 20, 150, 20);
 
     QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
-    titleFont.setPixelSize(136);
+    titleFont.setPixelSize(148);
     titleFont.setWeight(QFont::Medium);
     titleFont.setLetterSpacing(QFont::PercentageSpacing, 96.5);
     titleLabel->setFont(titleFont);
@@ -743,15 +750,20 @@ void MainWindow::updateHomeTitleFont()
         return;
     }
 
+    const QString firstLine =
+        QStringLiteral("浇注XX固化监测与三维参数重构");
+    const QString secondLine =
+        QStringLiteral("分析软件");
+
     const int availableWidth =
-        qMax(1, titleLabel->width() - 40);
+        qMax(1, titleLabel->contentsRect().width());
 
     if (availableWidth <= 1) {
         return;
     }
 
-    constexpr int maxFontPx = 136;
-    constexpr int minFontPx = 62;
+    constexpr int maxFontPx = 148;
+    constexpr int minFontPx = 64;
 
     QFont font(QStringLiteral("Microsoft YaHei UI"));
     font.setWeight(QFont::Medium);
@@ -763,8 +775,12 @@ void MainWindow::updateHomeTitleFont()
         font.setPixelSize(fontPx);
 
         const QFontMetrics metrics(font);
-        if (metrics.horizontalAdvance(titleLabel->text())
-            <= availableWidth) {
+        const int firstWidth =
+            metrics.horizontalAdvance(firstLine);
+        const int secondWidth =
+            metrics.horizontalAdvance(secondLine);
+
+        if (qMax(firstWidth, secondWidth) <= availableWidth) {
             targetFontPx = fontPx;
             break;
         }
