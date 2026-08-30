@@ -130,7 +130,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
             "  border: 1px solid #dddddd;"
             "  border-radius: 4px;"
             "  font-family: Consolas, 'Courier New', monospace;"
-            "  font-size: 14px;"
+            "  font-size: 16px;"
             "  padding: 8px;"
             "  color: #000000;"
             "}"
