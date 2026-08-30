@@ -960,7 +960,7 @@ bool SimulationReportDocxWriter::write(
         "<w:r>"
         "<w:rPr>%1<w:b/><w:bCs/>"
         "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\">PBX浇注固化仿真分析报告</w:t>"
+        "<w:t xml:space=\"preserve\">浇注PBX固化仿真分析报告</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:hdr>"

@@ -199,7 +199,7 @@ void drawHeaderFooter(PdfDrawContext &ctx, bool isCover)
     painter.drawText(
         QRectF(geom.left, headerY, geom.contentW, mmToPx(8.0)),
         Qt::AlignCenter | Qt::AlignVCenter,
-        QStringLiteral("PBX浇注固化仿真分析报告")
+        QStringLiteral("浇注PBX固化仿真分析报告")
     );
 
     const qreal lineY = mmToPx(HeaderMm) - mmToPx(2.0);

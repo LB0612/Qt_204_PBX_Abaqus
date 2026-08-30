@@ -147,7 +147,7 @@ bool buildReportModel(
 
     model = SimulationReportModel();
     model.reportTitle =
-        QStringLiteral("PBX浇注固化仿真分析报告");
+        QStringLiteral("浇注PBX固化仿真分析报告");
     model.productName = AppInfo::ProductName;
     model.appVersion =
         QCoreApplication::applicationVersion();
