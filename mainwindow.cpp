@@ -22,6 +22,7 @@
 #include <QFileInfo>
 #include <QFont>
 #include <QGridLayout>
+#include <QHeaderView>
 #include <QIcon>
 #include <QPushButton>
 #include <QSet>
@@ -517,6 +518,13 @@ void MainWindow::createTreeWidget()
     treeWidget = new QTreeWidget(this);
     treeWidget->setHeaderHidden(true);
     treeWidget->setColumnCount(1);
+
+    treeWidget->header()->setStretchLastSection(false);
+    treeWidget->header()->setSectionResizeMode(
+        0,
+        QHeaderView::ResizeToContents
+    );
+
     treeWidget->setIndentation(20);
     treeWidget->setStyleSheet(
         "QTreeWidget { background: transparent; border: none; font-size: 14px; outline: none; }"
@@ -664,7 +672,7 @@ void MainWindow::adjustProjectPaneToContents()
             const int preferredWidth =
                 qBound(
                     220,
-                    contentWidth + 24,
+                    contentWidth + 12,
                     600
                 );
 
