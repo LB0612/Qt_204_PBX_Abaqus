@@ -11,7 +11,8 @@ public:
     static bool write(
         const SimulationReportModel &model,
         const QString &outputPath,
-        QString &errorMessage
+        QString &errorMessage,
+        int *outBodyPageCount = nullptr
     );
 };
 

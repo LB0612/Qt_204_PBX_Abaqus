@@ -738,10 +738,12 @@ bool SimulationReportGenerator::generate(
         QFile::remove(tempDocxPath);
     }
 
+    int bodyTotalPages = 0;
     if (!SimulationReportPdfWriter::write(
             model,
             tempPdfPath,
-            errorMessage)) {
+            errorMessage,
+            &bodyTotalPages)) {
         if (QFile::exists(tempPdfPath)) {
             QFile::remove(tempPdfPath);
         }
@@ -751,7 +753,8 @@ bool SimulationReportGenerator::generate(
     if (!SimulationReportDocxWriter::write(
             model,
             tempDocxPath,
-            errorMessage)) {
+            errorMessage,
+            bodyTotalPages)) {
         if (QFile::exists(tempPdfPath)) {
             QFile::remove(tempPdfPath);
         }

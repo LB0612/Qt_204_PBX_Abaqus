@@ -405,17 +405,17 @@ bool drawTable(
 
         const qreal h1 = metrics.boundingRect(
             QRectF(0, 0, col1 - cellPadX * 2.0, ctx.geom.contentH),
-            Qt::TextWordWrap,
+            Qt::TextWordWrap | Qt::TextWrapAnywhere,
             c1
         ).height();
         const qreal h2 = metrics.boundingRect(
             QRectF(0, 0, col2 - cellPadX * 2.0, ctx.geom.contentH),
-            Qt::TextWordWrap,
+            Qt::TextWordWrap | Qt::TextWrapAnywhere,
             c2
         ).height();
         const qreal h3 = metrics.boundingRect(
             QRectF(0, 0, col3 - cellPadX * 2.0, ctx.geom.contentH),
-            Qt::TextWordWrap,
+            Qt::TextWordWrap | Qt::TextWrapAnywhere,
             c3
         ).height();
 
@@ -458,6 +458,7 @@ bool drawTable(
             painter.setPen(QColor(QStringLiteral("#222222")));
             const int flags =
                 Qt::TextWordWrap
+                | Qt::TextWrapAnywhere
                 | Qt::AlignHCenter
                 | Qt::AlignVCenter;
             painter.drawText(r1, flags, c1);
@@ -541,7 +542,7 @@ bool drawTable(
         }
     }
 
-    y += mmToPx(6.0);
+    y += mmToPx(3.0);
     return true;
 }
 
@@ -792,7 +793,8 @@ bool layoutReport(
 bool SimulationReportPdfWriter::write(
     const SimulationReportModel &model,
     const QString &outputPath,
-    QString &errorMessage)
+    QString &errorMessage,
+    int *outBodyPageCount)
 {
     PdfDrawContext countCtx;
     countCtx.geom = makeGeom();
@@ -808,6 +810,10 @@ bool SimulationReportPdfWriter::write(
     if (bodyTotalPages < 1) {
         errorMessage = QStringLiteral("报告页数无效。");
         return false;
+    }
+
+    if (outBodyPageCount) {
+        *outBodyPageCount = bodyTotalPages;
     }
 
     QPdfWriter writer(outputPath);

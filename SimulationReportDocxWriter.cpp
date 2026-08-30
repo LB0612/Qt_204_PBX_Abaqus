@@ -443,7 +443,13 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
     }
 
     xml += QStringLiteral("</w:tbl>");
-    xml += QStringLiteral("<w:p/>");
+    xml += QStringLiteral(
+        "<w:p>"
+        "<w:pPr>"
+        "<w:spacing w:before=\"0\" w:after=\"%1\" w:line=\"20\" w:lineRule=\"exact\"/>"
+        "</w:pPr>"
+        "</w:p>"
+    ).arg(mmToTwips(3.0));
     return xml;
 }
 
@@ -507,8 +513,13 @@ QString imageParagraph(
 bool SimulationReportDocxWriter::write(
     const SimulationReportModel &model,
     const QString &outputPath,
-    QString &errorMessage)
+    QString &errorMessage,
+    int bodyTotalPages)
 {
+    if (bodyTotalPages < 1) {
+        errorMessage = QStringLiteral("报告页数无效。");
+        return false;
+    }
     struct MediaItem
     {
         QString partName;
@@ -899,47 +910,52 @@ bool SimulationReportDocxWriter::write(
         QString::number(ptToHalfPoints(HeaderPt))
     );
 
-    const QString footerXml = QStringLiteral(
+    const QString footerFontXml = bodyFonts();
+    const QString footerSizeXml =
+        QString::number(ptToHalfPoints(FooterPt));
+    const QString footerPagesXml =
+        QString::number(bodyTotalPages);
+    QString footerXml = QStringLiteral(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
         "<w:ftr "
         "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
         "<w:p>"
         "<w:pPr><w:jc w:val=\"right\"/></w:pPr>"
         "<w:r>"
-        "<w:rPr>%1"
-        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
+        "<w:rPr>__RF__"
+        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
         "<w:t xml:space=\"preserve\">第 </w:t>"
         "</w:r>"
         "<w:fldSimple w:instr=\" PAGE \" w:dirty=\"true\">"
         "<w:r>"
-        "<w:rPr>%1"
-        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
+        "<w:rPr>__RF__"
+        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
         "<w:t>1</w:t>"
         "</w:r>"
         "</w:fldSimple>"
         "<w:r>"
-        "<w:rPr>%1"
-        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
+        "<w:rPr>__RF__"
+        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
         "<w:t xml:space=\"preserve\"> 页 共 </w:t>"
         "</w:r>"
         "<w:fldSimple w:instr=\" SECTIONPAGES \" w:dirty=\"true\">"
         "<w:r>"
-        "<w:rPr>%1"
-        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
-        "<w:t>1</w:t>"
+        "<w:rPr>__RF__"
+        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
+        "<w:t>__PAGES__</w:t>"
         "</w:r>"
         "</w:fldSimple>"
         "<w:r>"
-        "<w:rPr>%1"
-        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
+        "<w:rPr>__RF__"
+        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
         "<w:t xml:space=\"preserve\"> 页</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:ftr>"
-    ).arg(
-        bodyFonts(),
-        QString::number(ptToHalfPoints(FooterPt))
     );
+    footerXml.replace(QStringLiteral("__RF__"), footerFontXml);
+    footerXml.replace(QStringLiteral("__SZ__"), footerSizeXml);
+    footerXml.replace(QStringLiteral("__PAGES__"), footerPagesXml);
 
     const QString created =
         QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
