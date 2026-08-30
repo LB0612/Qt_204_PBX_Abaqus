@@ -1,5 +1,7 @@
 #include "ExplosiveConfigManager.h"
 
+#include "ProjectPaths.h"
+
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -8,13 +10,7 @@
 #include <QSaveFile>
 
 namespace {
-const QString FILE_EXPLOSIVE = QStringLiteral("explosive.json");
 const int EXPLOSIVE_SCHEMA_VERSION = 1;
-
-QString explosiveFilePath(const QString &projectPath)
-{
-    return QDir(projectPath).filePath(QStringLiteral("config/") + FILE_EXPLOSIVE);
-}
 }
 
 bool ExplosiveConfigManager::validate(
@@ -78,8 +74,10 @@ bool ExplosiveConfigManager::save(
         return false;
     }
 
-    QDir configDir(QDir(projectPath).filePath(QStringLiteral("config")));
-    if (!configDir.exists() && !QDir(projectPath).mkpath(QStringLiteral("config"))) {
+    const QString configDirPath =
+        ProjectPaths::configDirectoryPath(projectPath);
+    if (!QDir(configDirPath).exists()
+        && !QDir().mkpath(configDirPath)) {
         return false;
     }
 
@@ -95,7 +93,7 @@ bool ExplosiveConfigManager::save(
     jsonObj[QStringLiteral("specificHeat")] = config.specificHeat;
     jsonObj[QStringLiteral("expansionCoefficient")] = config.expansionCoefficient;
 
-    QSaveFile file(explosiveFilePath(projectPath));
+    QSaveFile file(ProjectPaths::explosiveConfigPath(projectPath));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
@@ -108,7 +106,7 @@ bool ExplosiveConfigManager::load(
     const QString &projectPath,
     ExplosiveConfig &config)
 {
-    QFile file(explosiveFilePath(projectPath));
+    QFile file(ProjectPaths::explosiveConfigPath(projectPath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }

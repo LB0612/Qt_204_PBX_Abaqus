@@ -3,50 +3,40 @@
 #include "BoundaryConfigManager.h"
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
+#include "ProjectPaths.h"
 #include "SimulationConfigManager.h"
 #include "StructureConfigManager.h"
 
-#include <QDir>
 #include <QFileInfo>
 
 QString ProjectParameterService::structureConfigPath(
     const QString &projectPath)
 {
-    return QDir(projectPath).filePath(
-        QStringLiteral("config/structure.json")
-    );
+    return ProjectPaths::structureConfigPath(projectPath);
 }
 
 QString ProjectParameterService::explosiveConfigPath(
     const QString &projectPath)
 {
-    return QDir(projectPath).filePath(
-        QStringLiteral("config/explosive.json")
-    );
+    return ProjectPaths::explosiveConfigPath(projectPath);
 }
 
 QString ProjectParameterService::moldConfigPath(
     const QString &projectPath)
 {
-    return QDir(projectPath).filePath(
-        QStringLiteral("config/mold.json")
-    );
+    return ProjectPaths::moldConfigPath(projectPath);
 }
 
 QString ProjectParameterService::boundaryConfigPath(
     const QString &projectPath)
 {
-    return QDir(projectPath).filePath(
-        QStringLiteral("config/boundary.json")
-    );
+    return ProjectPaths::boundaryConfigPath(projectPath);
 }
 
 QString ProjectParameterService::simulationConfigPath(
     const QString &projectPath)
 {
-    return QDir(projectPath).filePath(
-        QStringLiteral("config/simulation.json")
-    );
+    return ProjectPaths::simulationConfigPath(projectPath);
 }
 
 bool ProjectParameterService::loadAll(

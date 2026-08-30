@@ -1,6 +1,7 @@
 #include "AbaqusFileGenerator.h"
 
 #include "ProjectInputHash.h"
+#include "ProjectPaths.h"
 
 #include <QDir>
 #include <QFile>
@@ -63,24 +64,19 @@ bool AbaqusFileGenerator::generate(
         return false;
     }
 
-    if (!projectDir.exists(QStringLiteral("abaqus"))
-        && !projectDir.mkdir(QStringLiteral("abaqus"))) {
+    if (!QDir(ProjectPaths::abaqusDirectoryPath(projectPath)).exists()
+        && !projectDir.mkdir(ProjectPaths::abaqusDirName())) {
         errorMessage = QStringLiteral("无法创建 abaqus 目录。");
         return false;
     }
 
-    const QString t0OutputPath =
-        projectDir.filePath(QStringLiteral("abaqus/t0.py"));
-    const QString t1OutputPath =
-        projectDir.filePath(QStringLiteral("abaqus/t1.py"));
-    const QString t2OutputPath =
-        projectDir.filePath(QStringLiteral("abaqus/t2.py"));
+    const QString t0OutputPath = ProjectPaths::t0ScriptPath(projectPath);
+    const QString t1OutputPath = ProjectPaths::t1ScriptPath(projectPath);
+    const QString t2OutputPath = ProjectPaths::t2ScriptPath(projectPath);
     const QString forOutputPath =
-        projectDir.filePath(QStringLiteral("abaqus/335K.for"));
+        ProjectPaths::userSubroutinePath(projectPath);
     const QString generationFlagPath =
-        projectDir.filePath(
-            QStringLiteral("abaqus/generation_complete.flag")
-        );
+        ProjectPaths::generationCompleteFlagPath(projectPath);
 
     QFile::remove(generationFlagPath);
 
@@ -153,7 +149,8 @@ bool AbaqusFileGenerator::generate(
 
     QString caeSavePath =
         QDir::fromNativeSeparators(
-            projectDir.filePath(QStringLiteral("abaqus/guhua"))
+            QDir(ProjectPaths::abaqusDirectoryPath(projectPath))
+                .filePath(QStringLiteral("guhua"))
         );
     caeSavePath.replace(QStringLiteral("'"), QStringLiteral("\\'"));
     content.replace(QStringLiteral("{{CAE_SAVE_PATH}}"), caeSavePath);
@@ -220,20 +217,20 @@ bool AbaqusFileGenerator::generate(
 
     QString abaqusWorkDir =
         QDir::fromNativeSeparators(
-            projectDir.filePath(QStringLiteral("abaqus"))
+            ProjectPaths::abaqusDirectoryPath(projectPath)
         );
     QString caeFilePath =
         QDir::fromNativeSeparators(
-            projectDir.filePath(QStringLiteral("abaqus/guhua.cae"))
+            ProjectPaths::caeModelPath(projectPath)
         );
     QString userSubroutinePath =
         QDir::fromNativeSeparators(
-            projectDir.filePath(QStringLiteral("abaqus/335K.for"))
+            ProjectPaths::userSubroutinePath(projectPath)
         );
 
-    QString resultsDir = projectDir.filePath(QStringLiteral("results"));
-    if (!projectDir.exists(QStringLiteral("results"))
-        && !projectDir.mkdir(QStringLiteral("results"))) {
+    QString resultsDir = ProjectPaths::resultsDirectoryPath(projectPath);
+    if (!QDir(resultsDir).exists()
+        && !projectDir.mkdir(ProjectPaths::resultsDirName())) {
         errorMessage = QStringLiteral("无法创建 results 目录。");
         return false;
     }

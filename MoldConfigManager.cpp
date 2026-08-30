@@ -1,5 +1,7 @@
 #include "MoldConfigManager.h"
 
+#include "ProjectPaths.h"
+
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -8,13 +10,7 @@
 #include <QSaveFile>
 
 namespace {
-const QString FILE_MOLD = QStringLiteral("mold.json");
 const int MOLD_SCHEMA_VERSION = 1;
-
-QString moldFilePath(const QString &projectPath)
-{
-    return QDir(projectPath).filePath(QStringLiteral("config/") + FILE_MOLD);
-}
 }
 
 bool MoldConfigManager::validate(
@@ -58,8 +54,10 @@ bool MoldConfigManager::save(
         return false;
     }
 
-    QDir configDir(QDir(projectPath).filePath(QStringLiteral("config")));
-    if (!configDir.exists() && !QDir(projectPath).mkpath(QStringLiteral("config"))) {
+    const QString configDirPath =
+        ProjectPaths::configDirectoryPath(projectPath);
+    if (!QDir(configDirPath).exists()
+        && !QDir().mkpath(configDirPath)) {
         return false;
     }
 
@@ -71,7 +69,7 @@ bool MoldConfigManager::save(
     jsonObj[QStringLiteral("thermalConductivity")] = config.thermalConductivity;
     jsonObj[QStringLiteral("specificHeat")] = config.specificHeat;
 
-    QSaveFile file(moldFilePath(projectPath));
+    QSaveFile file(ProjectPaths::moldConfigPath(projectPath));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
@@ -84,7 +82,7 @@ bool MoldConfigManager::load(
     const QString &projectPath,
     MoldConfig &config)
 {
-    QFile file(moldFilePath(projectPath));
+    QFile file(ProjectPaths::moldConfigPath(projectPath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }

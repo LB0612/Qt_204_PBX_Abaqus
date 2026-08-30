@@ -1,5 +1,7 @@
 #include "ProjectManager.h"
 
+#include "ProjectPaths.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -8,10 +10,6 @@
 #include <QJsonParseError>
 #include <QRegularExpression>
 #include <QSaveFile>
-
-namespace {
-const QString FILE_PROJECT = QStringLiteral("project.json");
-}
 
 bool ProjectManager::isValidProjectName(
     const QString &projectName,
@@ -69,10 +67,10 @@ bool ProjectManager::createProject(
     }
 
     QDir projectDir(projectPath);
-    if (!projectDir.mkdir(QStringLiteral("config"))
-        || !projectDir.mkdir(QStringLiteral("abaqus"))
-        || !projectDir.mkdir(QStringLiteral("results"))
-        || !projectDir.mkdir(QStringLiteral("logs"))) {
+    if (!projectDir.mkdir(ProjectPaths::configDirName())
+        || !projectDir.mkdir(ProjectPaths::abaqusDirName())
+        || !projectDir.mkdir(ProjectPaths::resultsDirName())
+        || !projectDir.mkdir(ProjectPaths::logsDirName())) {
         QDir(projectPath).removeRecursively();
         errorMessage = QStringLiteral("无法创建工程子目录。");
         return false;
@@ -103,7 +101,7 @@ bool ProjectManager::saveProject(
     jsonObj[QStringLiteral("createdDate")] = config.createdDate;
     jsonObj[QStringLiteral("schemaVersion")] = config.schemaVersion;
 
-    QSaveFile file(QDir(folderPath).filePath(FILE_PROJECT));
+    QSaveFile file(ProjectPaths::projectJsonPath(folderPath));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
@@ -121,7 +119,7 @@ bool ProjectManager::loadProject(
         return false;
     }
 
-    QFile file(dir.filePath(FILE_PROJECT));
+    QFile file(ProjectPaths::projectJsonPath(folderPath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }

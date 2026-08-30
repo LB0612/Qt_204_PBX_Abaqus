@@ -40,6 +40,7 @@ SOURCES += \
 
 HEADERS += \
     AppInfo.h \
+    ProjectPaths.h \
     mainwindow.h \
     BaseParamWidget.h \
     ProjectManager.h \

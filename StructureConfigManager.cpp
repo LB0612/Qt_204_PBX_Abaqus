@@ -1,5 +1,7 @@
 #include "StructureConfigManager.h"
 
+#include "ProjectPaths.h"
+
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -8,13 +10,7 @@
 #include <QSaveFile>
 
 namespace {
-const QString FILE_STRUCTURE = QStringLiteral("structure.json");
 const int STRUCTURE_SCHEMA_VERSION = 1;
-
-QString structureFilePath(const QString &projectPath)
-{
-    return QDir(projectPath).filePath(QStringLiteral("config/") + FILE_STRUCTURE);
-}
 }
 
 bool StructureConfigManager::validate(
@@ -48,8 +44,10 @@ bool StructureConfigManager::save(
         return false;
     }
 
-    QDir configDir(QDir(projectPath).filePath(QStringLiteral("config")));
-    if (!configDir.exists() && !QDir(projectPath).mkpath(QStringLiteral("config"))) {
+    const QString configDirPath =
+        ProjectPaths::configDirectoryPath(projectPath);
+    if (!QDir(configDirPath).exists()
+        && !QDir().mkpath(configDirPath)) {
         return false;
     }
 
@@ -59,7 +57,7 @@ bool StructureConfigManager::save(
     jsonObj[QStringLiteral("chargeHeight")] = config.chargeHeight;
     jsonObj[QStringLiteral("shellThickness")] = config.shellThickness;
 
-    QSaveFile file(structureFilePath(projectPath));
+    QSaveFile file(ProjectPaths::structureConfigPath(projectPath));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
@@ -72,7 +70,7 @@ bool StructureConfigManager::load(
     const QString &projectPath,
     StructureConfig &config)
 {
-    QFile file(structureFilePath(projectPath));
+    QFile file(ProjectPaths::structureConfigPath(projectPath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }

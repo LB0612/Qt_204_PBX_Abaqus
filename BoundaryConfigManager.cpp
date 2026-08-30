@@ -1,5 +1,7 @@
 #include "BoundaryConfigManager.h"
 
+#include "ProjectPaths.h"
+
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -8,13 +10,7 @@
 #include <QSaveFile>
 
 namespace {
-const QString FILE_BOUNDARY = QStringLiteral("boundary.json");
 const int BOUNDARY_SCHEMA_VERSION = 1;
-
-QString boundaryFilePath(const QString &projectPath)
-{
-    return QDir(projectPath).filePath(QStringLiteral("config/") + FILE_BOUNDARY);
-}
 }
 
 bool BoundaryConfigManager::validate(
@@ -38,8 +34,10 @@ bool BoundaryConfigManager::save(
         return false;
     }
 
-    QDir configDir(QDir(projectPath).filePath(QStringLiteral("config")));
-    if (!configDir.exists() && !QDir(projectPath).mkpath(QStringLiteral("config"))) {
+    const QString configDirPath =
+        ProjectPaths::configDirectoryPath(projectPath);
+    if (!QDir(configDirPath).exists()
+        && !QDir().mkpath(configDirPath)) {
         return false;
     }
 
@@ -47,7 +45,7 @@ bool BoundaryConfigManager::save(
     jsonObj[QStringLiteral("schemaVersion")] = BOUNDARY_SCHEMA_VERSION;
     jsonObj[QStringLiteral("ambientTemperature")] = config.ambientTemperature;
 
-    QSaveFile file(boundaryFilePath(projectPath));
+    QSaveFile file(ProjectPaths::boundaryConfigPath(projectPath));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
@@ -60,7 +58,7 @@ bool BoundaryConfigManager::load(
     const QString &projectPath,
     BoundaryConfig &config)
 {
-    QFile file(boundaryFilePath(projectPath));
+    QFile file(ProjectPaths::boundaryConfigPath(projectPath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }

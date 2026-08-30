@@ -1,5 +1,7 @@
 #include "ProjectInputHash.h"
 
+#include "ProjectPaths.h"
+
 #include <QByteArray>
 #include <QCryptographicHash>
 #include <QDir>
@@ -13,27 +15,6 @@
 namespace ProjectInputHash {
 
 namespace {
-
-QStringList configRelativePaths()
-{
-    return {
-        QStringLiteral("config/structure.json"),
-        QStringLiteral("config/explosive.json"),
-        QStringLiteral("config/mold.json"),
-        QStringLiteral("config/boundary.json"),
-        QStringLiteral("config/simulation.json"),
-    };
-}
-
-QStringList generatedAbaqusRelativePaths()
-{
-    return {
-        QStringLiteral("abaqus/t0.py"),
-        QStringLiteral("abaqus/t1.py"),
-        QStringLiteral("abaqus/t2.py"),
-        QStringLiteral("abaqus/335K.for"),
-    };
-}
 
 QString hashRelativeFiles(
     const QString &projectPath,
@@ -59,12 +40,6 @@ QString hashRelativeFiles(
     return QString::fromLatin1(hash.result().toHex());
 }
 
-QString generationFlagPath(const QString &projectPath)
-{
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("generation_complete.flag"));
-}
-
 QString normalizedProjectPath(const QString &projectPath)
 {
     return QDir::fromNativeSeparators(
@@ -79,12 +54,6 @@ bool projectPathsMatch(const QString &left, const QString &right)
 #else
     return left == right;
 #endif
-}
-
-QString postProcessManifestPath(const QString &projectPath)
-{
-    return QDir(QDir(projectPath).filePath(QStringLiteral("results")))
-        .filePath(QStringLiteral("postprocess_manifest.json"));
 }
 
 QString framePngPath(
@@ -103,13 +72,16 @@ QString framePngPath(
 
 QString hashConfigFiles(const QString &projectPath)
 {
-    return hashRelativeFiles(projectPath, configRelativePaths());
+    return hashRelativeFiles(
+        projectPath,
+        ProjectPaths::parameterConfigRelativePaths()
+    );
 }
 
 QString hashGeneratedFiles(const QString &projectPath)
 {
-    QStringList paths = configRelativePaths();
-    paths += generatedAbaqusRelativePaths();
+    QStringList paths = ProjectPaths::parameterConfigRelativePaths();
+    paths += ProjectPaths::generatedAbaqusRelativePaths();
     return hashRelativeFiles(projectPath, paths);
 }
 
@@ -122,11 +94,11 @@ QString hashSolverInput(const QString &projectPath)
     QCryptographicHash hash(QCryptographicHash::Sha256);
     const QDir projectDir(projectPath);
 
-    QStringList paths = configRelativePaths();
+    QStringList paths = ProjectPaths::parameterConfigRelativePaths();
     paths += {
-        QStringLiteral("abaqus/t0.py"),
-        QStringLiteral("abaqus/t1.py"),
-        QStringLiteral("abaqus/335K.for"),
+        ProjectPaths::t0ScriptRelativePath(),
+        ProjectPaths::t1ScriptRelativePath(),
+        ProjectPaths::userSubroutineRelativePath(),
     };
 
     for (const QString &relativePath : paths) {
@@ -157,9 +129,7 @@ QString hashPostProcessInput(const QString &projectPath)
     QCryptographicHash hash(QCryptographicHash::Sha256);
     hash.addData(solverSha.toLatin1());
 
-    QFile t2File(
-        QDir(projectPath).filePath(QStringLiteral("abaqus/t2.py"))
-    );
+    QFile t2File(ProjectPaths::t2ScriptPath(projectPath));
     if (!t2File.open(QIODevice::ReadOnly)) {
         return QString();
     }
@@ -179,7 +149,7 @@ GenerationManifest readGenerationManifest(const QString &projectPath)
 {
     GenerationManifest manifest;
 
-    QFile file(generationFlagPath(projectPath));
+    QFile file(ProjectPaths::generationCompleteFlagPath(projectPath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return manifest;
     }
@@ -244,7 +214,7 @@ bool writeGenerationManifest(
             .arg(generatedSha256)
             .arg(normalizedPath);
 
-    QSaveFile flagFile(generationFlagPath(projectPath));
+    QSaveFile flagFile(ProjectPaths::generationCompleteFlagPath(projectPath));
     if (!flagFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
         errorMessage = QStringLiteral("无法写入 Abaqus 文件生成完成标志。");
         return false;
@@ -263,7 +233,7 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
 {
     PostProcessManifest manifest;
 
-    QFile file(postProcessManifestPath(projectPath));
+    QFile file(ProjectPaths::postProcessManifestPath(projectPath));
     if (!file.open(QIODevice::ReadOnly)) {
         return manifest;
     }
@@ -343,7 +313,7 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
 
 QString resultsDirectory(const QString &projectPath)
 {
-    return QDir(projectPath).filePath(QStringLiteral("results"));
+    return ProjectPaths::resultsDirectoryPath(projectPath);
 }
 
 bool isValidPngFile(const QString &path)
@@ -530,7 +500,8 @@ bool clearPostProcessOutputs(
         }
     }
 
-    const QString manifestPath = postProcessManifestPath(projectPath);
+    const QString manifestPath =
+        ProjectPaths::postProcessManifestPath(projectPath);
     if (QFileInfo::exists(manifestPath) && !QFile::remove(manifestPath)) {
         errorMessage =
             QStringLiteral("无法删除后处理清单：\n%1").arg(manifestPath);
@@ -550,62 +521,52 @@ bool clearPostProcessOutputs(
 
 QString runningInputFingerprintPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("running_input.sha256"));
+    return ProjectPaths::runningInputFingerprintPath(projectPath);
 }
 
 QString runningInputPrepareFingerprintPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("running_input.prepare.sha256"));
+    return ProjectPaths::runningInputPrepareFingerprintPath(projectPath);
 }
 
 QString lastSuccessInputFingerprintPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("last_success_input.sha256"));
+    return ProjectPaths::lastSuccessInputFingerprintPath(projectPath);
 }
 
 QString runningPostFingerprintPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("results")))
-        .filePath(QStringLiteral("running_post_input.sha256"));
+    return ProjectPaths::runningPostFingerprintPath(projectPath);
 }
 
 QString lastSuccessPostFingerprintPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("results")))
-        .filePath(QStringLiteral("last_success_post.sha256"));
+    return ProjectPaths::lastSuccessPostFingerprintPath(projectPath);
 }
 
 QString t1FinishedFlagPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("t1_finished.flag"));
+    return ProjectPaths::t1FinishedFlagPath(projectPath);
 }
 
 QString t2FinishedFlagPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(QStringLiteral("t2_finished.flag"));
+    return ProjectPaths::t2FinishedFlagPath(projectPath);
 }
 
 QString solverOdbPath(const QString &projectPath)
 {
-    const QString jobName = currentJobName(projectPath);
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(jobName + QStringLiteral(".odb"));
+    return ProjectPaths::solverOdbPath(projectPath);
 }
 
 QString currentJobName(const QString &projectPath)
 {
-    return QDir(projectPath).dirName() + QStringLiteral("_Job");
+    return ProjectPaths::currentJobName(projectPath);
 }
 
 QString currentJobLockPath(const QString &projectPath)
 {
-    return QDir(QDir(projectPath).filePath(QStringLiteral("abaqus")))
-        .filePath(currentJobName(projectPath) + QStringLiteral(".lck"));
+    return ProjectPaths::currentJobLockPath(projectPath);
 }
 
 } // namespace ProjectInputHash

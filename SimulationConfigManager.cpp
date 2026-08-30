@@ -1,5 +1,7 @@
 #include "SimulationConfigManager.h"
 
+#include "ProjectPaths.h"
+
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -8,13 +10,7 @@
 #include <QSaveFile>
 
 namespace {
-const QString FILE_SIMULATION = QStringLiteral("simulation.json");
 const int SIMULATION_SCHEMA_VERSION = 1;
-
-QString simulationFilePath(const QString &projectPath)
-{
-    return QDir(projectPath).filePath(QStringLiteral("config/") + FILE_SIMULATION);
-}
 }
 
 bool SimulationConfigManager::validate(
@@ -38,8 +34,10 @@ bool SimulationConfigManager::save(
         return false;
     }
 
-    QDir configDir(QDir(projectPath).filePath(QStringLiteral("config")));
-    if (!configDir.exists() && !QDir(projectPath).mkpath(QStringLiteral("config"))) {
+    const QString configDirPath =
+        ProjectPaths::configDirectoryPath(projectPath);
+    if (!QDir(configDirPath).exists()
+        && !QDir().mkpath(configDirPath)) {
         return false;
     }
 
@@ -47,7 +45,7 @@ bool SimulationConfigManager::save(
     jsonObj[QStringLiteral("schemaVersion")] = SIMULATION_SCHEMA_VERSION;
     jsonObj[QStringLiteral("timeLength")] = config.timeLength;
 
-    QSaveFile file(simulationFilePath(projectPath));
+    QSaveFile file(ProjectPaths::simulationConfigPath(projectPath));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
@@ -60,7 +58,7 @@ bool SimulationConfigManager::load(
     const QString &projectPath,
     SimulationConfig &config)
 {
-    QFile file(simulationFilePath(projectPath));
+    QFile file(ProjectPaths::simulationConfigPath(projectPath));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }
