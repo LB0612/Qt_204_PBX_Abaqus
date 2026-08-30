@@ -537,7 +537,7 @@ void MainWindow::createTreeWidget()
     connect(treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
 
     QTreeWidgetItem *rootItem = new QTreeWidgetItem(treeWidget);
-    rootItem->setText(0, QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件"));
+    rootItem->setText(0, QStringLiteral("浇注XX固化仿真工程"));
     rootItem->setData(0, Qt::UserRole, QStringLiteral("CATEGORY_ROOT"));
     rootItem->setData(0, ROLE_NODE_TYPE, NODE_ROOT);
     rootItem->setExpanded(true);
