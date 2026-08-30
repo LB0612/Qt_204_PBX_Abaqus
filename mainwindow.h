@@ -28,7 +28,6 @@
 
 class NewProjectDialog;
 class OpenProjectDialog;
-class QSplitter;
 
 #include <QSet>
 
@@ -92,13 +91,11 @@ private:
     ProjectConfig currentProject;
     bool isProjectLoaded = false;
     bool projectDirectoryMissing = false;
-    bool projectPaneManuallyResized = false;
-    bool adjustingProjectPaneWidth = false;
     QSet<ParamPage> dirtyParamPages;
 
     QWidget *centralWidget;
     QHBoxLayout *mainLayout;
-    QSplitter *mainSplitter = nullptr;
+    QWidget *leftPaneWidget = nullptr;
     QToolBar *toolBar;
     QTreeWidget *treeWidget;
     QStackedWidget *stackedWidget;
