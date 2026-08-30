@@ -1,5 +1,7 @@
 #include "SimulationReportDocxWriter.h"
 
+#include "SimulationReportStyle.h"
+
 #include <QByteArray>
 #include <QDateTime>
 #include <QFile>
@@ -10,6 +12,8 @@
 #include <QtGlobal>
 
 namespace {
+
+using namespace SimulationReportStyle;
 
 quint32 crc32Of(const QByteArray &data)
 {
@@ -161,6 +165,21 @@ private:
     QVector<QByteArray> m_data;
 };
 
+int ptToHalfPoints(double pt)
+{
+    return qRound(pt * 2.0);
+}
+
+int mmToTwips(double mm)
+{
+    return qRound(mm * 1440.0 / 25.4);
+}
+
+qint64 mmToEmu(double mm)
+{
+    return qRound64(mm * 36000.0);
+}
+
 QString xmlEscape(const QString &text)
 {
     QString out = text;
@@ -172,50 +191,153 @@ QString xmlEscape(const QString &text)
     return out;
 }
 
-qint64 mmToEmu(double mm)
+QString bodyFonts()
 {
-    return qRound64(mm * 36000.0);
+    return QStringLiteral(
+        "<w:rFonts w:ascii=\"Times New Roman\" "
+        "w:hAnsi=\"Times New Roman\" w:eastAsia=\"宋体\"/>"
+    );
+}
+
+QString headingFonts()
+{
+    return QStringLiteral(
+        "<w:rFonts w:ascii=\"SimHei\" "
+        "w:hAnsi=\"SimHei\" w:eastAsia=\"黑体\"/>"
+    );
+}
+
+QString kaiFonts()
+{
+    return QStringLiteral(
+        "<w:rFonts w:ascii=\"KaiTi\" "
+        "w:hAnsi=\"KaiTi\" w:eastAsia=\"楷体\"/>"
+    );
+}
+
+QString formatCoverDate(const QString &generatedAt)
+{
+    const QDateTime dt = QDateTime::fromString(
+        generatedAt,
+        QStringLiteral("yyyy-MM-dd HH:mm:ss")
+    );
+    if (!dt.isValid()) {
+        return generatedAt;
+    }
+
+    return QStringLiteral("%1 年 %2 月 %3 日")
+        .arg(dt.date().year())
+        .arg(dt.date().month(), 2, 10, QLatin1Char('0'))
+        .arg(dt.date().day(), 2, 10, QLatin1Char('0'));
+}
+
+QString compactFrameText(const QString &frameText)
+{
+    QString text = frameText;
+    text.replace(QStringLiteral(" / "), QStringLiteral("/"));
+    return text;
+}
+
+QString compactTimeText(const QString &timeText)
+{
+    if (timeText.isEmpty()) {
+        return QString();
+    }
+
+    QString text = timeText;
+    text.replace(QStringLiteral("仿真时间："), QStringLiteral("t="));
+    text.replace(QStringLiteral("仿真时间:"), QStringLiteral("t="));
+    return text;
+}
+
+QString figureCaption(
+    int sectionNumber,
+    int figureIndex,
+    const QString &sectionTitle,
+    const SimulationReportFigure &figure)
+{
+    QString caption =
+        QStringLiteral("图 %1.%2 %3（%4，%5")
+            .arg(sectionNumber)
+            .arg(figureIndex)
+            .arg(sectionTitle)
+            .arg(figure.label)
+            .arg(compactFrameText(figure.frameText));
+
+    const QString timePart = compactTimeText(figure.timeText);
+    if (!timePart.isEmpty()) {
+        caption += QStringLiteral("，%1").arg(timePart);
+    }
+    caption += QStringLiteral("）");
+    return caption;
 }
 
 QString pageSzMarXml(bool withHeaderFooterStart)
 {
-    QString xml;
-    xml += QStringLiteral(
+    QString xml = QStringLiteral(
         "<w:pgSz w:w=\"11906\" w:h=\"16838\"/>"
-        "<w:pgMar w:top=\"1134\" w:right=\"1134\" "
-        "w:bottom=\"1134\" w:left=\"1134\" "
-        "w:header=\"567\" w:footer=\"567\"/>"
-    );
+        "<w:pgMar w:top=\"%1\" w:right=\"%2\" "
+        "w:bottom=\"%3\" w:left=\"%4\" "
+        "w:header=\"%5\" w:footer=\"%6\"/>"
+    ).arg(mmToTwips(MarginTopMm))
+        .arg(mmToTwips(MarginRightMm))
+        .arg(mmToTwips(MarginBottomMm))
+        .arg(mmToTwips(MarginLeftMm))
+        .arg(mmToTwips(HeaderMm))
+        .arg(mmToTwips(FooterMm));
+
     if (withHeaderFooterStart) {
         xml += QStringLiteral("<w:pgNumType w:start=\"1\"/>");
     }
     return xml;
 }
 
-QString paragraph(
+QString paragraphStyled(
     const QString &text,
-    const QString &styleId = QString(),
-    int fontSizeHalfPoints = 24)
+    const QString &styleId,
+    const QString &rFonts,
+    int halfPoints,
+    bool bold,
+    const QString &align,
+    bool firstLineIndent = false,
+    bool bodyLineSpacing = false)
 {
     QString pPr;
     if (!styleId.isEmpty()) {
         pPr += QStringLiteral("<w:pStyle w:val=\"%1\"/>")
             .arg(styleId);
     }
+    if (bodyLineSpacing) {
+        pPr += QStringLiteral(
+            "<w:spacing w:line=\"360\" w:lineRule=\"auto\"/>"
+        );
+    }
+    if (firstLineIndent) {
+        pPr += QStringLiteral("<w:ind w:firstLine=\"480\"/>");
+    }
+    if (!align.isEmpty()) {
+        pPr += QStringLiteral("<w:jc w:val=\"%1\"/>").arg(align);
+    }
+
+    const QString boldXml =
+        bold ? QStringLiteral("<w:b/><w:bCs/>") : QString();
 
     return QStringLiteral(
         "<w:p>"
         "<w:pPr>%1</w:pPr>"
         "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\">%3</w:t>"
+        "<w:rPr>%2%3"
+        "<w:sz w:val=\"%4\"/><w:szCs w:val=\"%4\"/></w:rPr>"
+        "<w:t xml:space=\"preserve\">%5</w:t>"
         "</w:r>"
         "</w:p>"
-    ).arg(pPr)
-        .arg(fontSizeHalfPoints)
-        .arg(xmlEscape(text));
+    ).arg(
+        pPr,
+        rFonts,
+        boldXml,
+        QString::number(halfPoints),
+        xmlEscape(text)
+    );
 }
 
 QString pageBreakParagraph()
@@ -225,51 +347,66 @@ QString pageBreakParagraph()
     );
 }
 
-QString tableXml(const SimulationReportTable &table)
+QString captionParagraph(const QString &text)
+{
+    return paragraphStyled(
+        text,
+        QString(),
+        bodyFonts(),
+        ptToHalfPoints(CaptionPt),
+        false,
+        QStringLiteral("center")
+    );
+}
+
+QString tableXml(const QString &caption, const SimulationReportTable &table)
 {
     QString xml;
-    xml += paragraph(table.title, QStringLiteral("Heading2"), 28);
+    xml += captionParagraph(caption);
     xml += QStringLiteral(
         "<w:tbl>"
         "<w:tblPr>"
-        "<w:tblW w:w=\"0\" w:type=\"auto\"/>"
-        "<w:tblBorders>"
-        "<w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"AAAAAA\"/>"
-        "<w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"AAAAAA\"/>"
-        "<w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"AAAAAA\"/>"
-        "<w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"AAAAAA\"/>"
-        "<w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"AAAAAA\"/>"
-        "<w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"AAAAAA\"/>"
-        "</w:tblBorders>"
+        "<w:tblW w:w=\"4300\" w:type=\"pct\"/>"
+        "<w:jc w:val=\"center\"/>"
+        "<w:tblLayout w:type=\"fixed\"/>"
         "</w:tblPr>"
         "<w:tblGrid>"
-        "<w:gridCol w:w=\"3120\"/>"
-        "<w:gridCol w:w=\"3960\"/>"
-        "<w:gridCol w:w=\"2160\"/>"
+        "<w:gridCol w:w=\"2500\"/>"
+        "<w:gridCol w:w=\"3200\"/>"
+        "<w:gridCol w:w=\"1800\"/>"
         "</w:tblGrid>"
     );
+
+    const int tableHalfPts = ptToHalfPoints(TablePt);
 
     auto addRow = [&](const QString &c1,
                       const QString &c2,
                       const QString &c3,
                       bool header) {
         const QString bold = header
-            ? QStringLiteral("<w:b/>")
+            ? QStringLiteral("<w:b/><w:bCs/>")
             : QString();
         auto cell = [&](const QString &text) {
             return QStringLiteral(
                 "<w:tc>"
                 "<w:tcPr><w:tcW w:w=\"0\" w:type=\"auto\"/></w:tcPr>"
-                "<w:p><w:r>"
-                "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-                "w:hAnsi=\"Microsoft YaHei\" "
-                "w:eastAsia=\"Microsoft YaHei\"/>"
-                "%1"
-                "<w:sz w:val=\"20\"/><w:szCs w:val=\"20\"/></w:rPr>"
-                "<w:t xml:space=\"preserve\">%2</w:t>"
-                "</w:r></w:p></w:tc>"
-            ).arg(bold, xmlEscape(text));
+                "<w:p>"
+                "<w:pPr><w:jc w:val=\"center\"/></w:pPr>"
+                "<w:r>"
+                "<w:rPr>%1%2"
+                "<w:sz w:val=\"%3\"/><w:szCs w:val=\"%3\"/></w:rPr>"
+                "<w:t xml:space=\"preserve\">%4</w:t>"
+                "</w:r>"
+                "</w:p>"
+                "</w:tc>"
+            ).arg(
+                bodyFonts(),
+                bold,
+                QString::number(tableHalfPts),
+                xmlEscape(text)
+            );
         };
+
         xml += QStringLiteral("<w:tr>");
         xml += cell(c1);
         xml += cell(c2);
@@ -288,7 +425,7 @@ QString tableXml(const SimulationReportTable &table)
     }
 
     xml += QStringLiteral("</w:tbl>");
-    xml += paragraph(QString());
+    xml += QStringLiteral("<w:p/>");
     return xml;
 }
 
@@ -386,8 +523,8 @@ bool SimulationReportDocxWriter::write(
         }
 
         const double scale = qMin(
-            165.0 / figure.imagePixelSize.width(),
-            190.0 / figure.imagePixelSize.height()
+            FigureMaxWidthMm / figure.imagePixelSize.width(),
+            FigureMaxHeightMm / figure.imagePixelSize.height()
         );
         const double widthMm =
             figure.imagePixelSize.width() * scale;
@@ -417,31 +554,55 @@ bool SimulationReportDocxWriter::write(
     QString body;
 
     // Cover
-    body += paragraph(model.reportTitle, QStringLiteral("Title"), 44);
-    body += paragraph(
-        QStringLiteral("工程名称：") + model.projectName,
-        QString(),
-        28
+    body += paragraphStyled(
+        model.reportTitle,
+        QStringLiteral("Title"),
+        headingFonts(),
+        ptToHalfPoints(CoverTitlePt),
+        true,
+        QStringLiteral("center")
     );
-    body += paragraph(
-        QStringLiteral("Job名称：") + model.jobName,
+    body += paragraphStyled(
+        model.productName,
         QString(),
-        28
+        headingFonts(),
+        ptToHalfPoints(CoverSubtitlePt),
+        true,
+        QStringLiteral("center")
     );
-    body += paragraph(
-        QStringLiteral("软件名称：") + model.productName,
+    body += QStringLiteral("<w:p/>");
+    body += paragraphStyled(
+        QStringLiteral("工程名称：%1").arg(model.projectName),
         QString(),
-        28
+        kaiFonts(),
+        ptToHalfPoints(CoverInfoPt),
+        false,
+        QStringLiteral("center")
     );
-    body += paragraph(
-        QStringLiteral("软件版本：") + model.appVersion,
+    body += paragraphStyled(
+        QStringLiteral("Job名称：%1").arg(model.jobName),
         QString(),
-        28
+        kaiFonts(),
+        ptToHalfPoints(CoverInfoPt),
+        false,
+        QStringLiteral("center")
     );
-    body += paragraph(
-        QStringLiteral("生成时间：") + model.generatedAt,
+    body += paragraphStyled(
+        QStringLiteral("软件版本：%1").arg(model.appVersion),
         QString(),
-        28
+        kaiFonts(),
+        ptToHalfPoints(CoverInfoPt),
+        false,
+        QStringLiteral("center")
+    );
+    body += QStringLiteral("<w:p/><w:p/><w:p/>");
+    body += paragraphStyled(
+        formatCoverDate(model.generatedAt),
+        QString(),
+        kaiFonts(),
+        ptToHalfPoints(CoverDatePt),
+        false,
+        QStringLiteral("center")
     );
 
     body += QStringLiteral(
@@ -452,64 +613,67 @@ bool SimulationReportDocxWriter::write(
     body += QStringLiteral("</w:sectPr></w:pPr></w:p>");
 
     // 1 Overview
-    body += paragraph(
+    body += paragraphStyled(
         QStringLiteral("1 仿真概况"),
         QStringLiteral("Heading1"),
-        32
+        headingFonts(),
+        ptToHalfPoints(Heading1Pt),
+        true,
+        QStringLiteral("left")
     );
     {
         SimulationReportTable overview;
-        overview.title = QStringLiteral("概况");
         overview.rows = model.overviewRows;
-        body += tableXml(overview);
+        body += tableXml(
+            QStringLiteral("表 1.1 仿真概况"),
+            overview
+        );
     }
 
     body += pageBreakParagraph();
 
     // 2 Parameters
-    body += paragraph(
+    body += paragraphStyled(
         QStringLiteral("2 输入参数"),
         QStringLiteral("Heading1"),
-        32
+        headingFonts(),
+        ptToHalfPoints(Heading1Pt),
+        true,
+        QStringLiteral("left")
     );
-    const QStringList prefixes = {
-        QStringLiteral("2.1 "),
-        QStringLiteral("2.2 "),
-        QStringLiteral("2.3 "),
-        QStringLiteral("2.4 "),
-        QStringLiteral("2.5 "),
-    };
     for (int i = 0; i < model.parameterTables.size(); ++i) {
-        SimulationReportTable table = model.parameterTables.at(i);
-        if (i < prefixes.size()) {
-            table.title = prefixes.at(i) + table.title;
-        }
-        body += tableXml(table);
+        const SimulationReportTable &table =
+            model.parameterTables.at(i);
+        body += tableXml(
+            QStringLiteral("表 2.%1 %2")
+                .arg(i + 1)
+                .arg(table.title),
+            table
+        );
     }
 
-    // 3/4/5 result sections
+    // 3/4/5 figures
     int sectionNumber = 3;
     int drawingId = 1;
     bool firstResultFigure = true;
     for (const SimulationReportResultSection &section
          : model.resultSections) {
+        int figureIndex = 1;
         for (const SimulationReportFigure &figure
              : section.figures) {
             body += pageBreakParagraph();
             firstResultFigure = false;
 
-            body += paragraph(
+            body += paragraphStyled(
                 QStringLiteral("%1 %2")
                     .arg(sectionNumber)
                     .arg(section.title),
                 QStringLiteral("Heading1"),
-                32
+                headingFonts(),
+                ptToHalfPoints(Heading1Pt),
+                true,
+                QStringLiteral("left")
             );
-            body += paragraph(figure.label, QString(), 26);
-            body += paragraph(figure.frameText, QString(), 22);
-            if (!figure.timeText.isEmpty()) {
-                body += paragraph(figure.timeText, QString(), 22);
-            }
 
             MediaItem item;
             if (!addFigureMedia(figure, item)) {
@@ -523,6 +687,15 @@ bool SimulationReportDocxWriter::write(
                 item.cy,
                 item.displayName
             );
+            body += captionParagraph(
+                figureCaption(
+                    sectionNumber,
+                    figureIndex,
+                    section.title,
+                    figure
+                )
+            );
+            ++figureIndex;
         }
         ++sectionNumber;
     }
@@ -530,33 +703,46 @@ bool SimulationReportDocxWriter::write(
     if (!firstResultFigure) {
         body += pageBreakParagraph();
     }
-    body += paragraph(
+
+    body += paragraphStyled(
         QStringLiteral("6 结果文件说明"),
         QStringLiteral("Heading1"),
-        32
+        headingFonts(),
+        ptToHalfPoints(Heading1Pt),
+        true,
+        QStringLiteral("left")
     );
     for (const QString &note : model.notes) {
-        body += paragraph(
-            QStringLiteral("• %1").arg(note),
+        body += paragraphStyled(
+            note,
             QString(),
-            22
+            bodyFonts(),
+            ptToHalfPoints(BodyPt),
+            false,
+            QStringLiteral("both"),
+            true,
+            true
         );
     }
 
     body += pageBreakParagraph();
-    body += paragraph(
+    body += paragraphStyled(
         QStringLiteral("7 报告追溯信息"),
         QStringLiteral("Heading1"),
-        32
+        headingFonts(),
+        ptToHalfPoints(Heading1Pt),
+        true,
+        QStringLiteral("left")
     );
     {
         SimulationReportTable trace;
-        trace.title = QStringLiteral("追溯信息");
         trace.rows = model.traceRows;
-        body += tableXml(trace);
+        body += tableXml(
+            QStringLiteral("表 7.1 报告追溯信息"),
+            trace
+        );
     }
 
-    // Final body section properties
     body += QStringLiteral(
         "<w:sectPr>"
         "<w:headerReference w:type=\"default\" r:id=\"rId2\"/>"
@@ -575,42 +761,80 @@ bool SimulationReportDocxWriter::write(
         "</w:document>"
     ).arg(body);
 
-    const QString stylesXml = QStringLiteral(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
-        "<w:styles "
-        "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
-        "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\">"
-        "<w:name w:val=\"Normal\"/>"
-        "<w:qFormat/>"
-        "<w:rPr>"
-        "<w:rFonts w:ascii=\"Microsoft YaHei\" w:hAnsi=\"Microsoft YaHei\" "
-        "w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"22\"/><w:szCs w:val=\"22\"/>"
-        "</w:rPr>"
-        "</w:style>"
-        "<w:style w:type=\"paragraph\" w:styleId=\"Title\">"
-        "<w:name w:val=\"Title\"/>"
-        "<w:basedOn w:val=\"Normal\"/>"
-        "<w:qFormat/>"
-        "<w:pPr><w:spacing w:before=\"240\" w:after=\"240\"/></w:pPr>"
-        "<w:rPr><w:b/><w:sz w:val=\"44\"/><w:szCs w:val=\"44\"/></w:rPr>"
-        "</w:style>"
-        "<w:style w:type=\"paragraph\" w:styleId=\"Heading1\">"
-        "<w:name w:val=\"heading 1\"/>"
-        "<w:basedOn w:val=\"Normal\"/>"
-        "<w:qFormat/>"
-        "<w:pPr><w:spacing w:before=\"240\" w:after=\"120\"/></w:pPr>"
-        "<w:rPr><w:b/><w:sz w:val=\"32\"/><w:szCs w:val=\"32\"/></w:rPr>"
-        "</w:style>"
-        "<w:style w:type=\"paragraph\" w:styleId=\"Heading2\">"
-        "<w:name w:val=\"heading 2\"/>"
-        "<w:basedOn w:val=\"Normal\"/>"
-        "<w:qFormat/>"
-        "<w:pPr><w:spacing w:before=\"160\" w:after=\"80\"/></w:pPr>"
-        "<w:rPr><w:b/><w:sz w:val=\"28\"/><w:szCs w:val=\"28\"/></w:rPr>"
-        "</w:style>"
-        "</w:styles>"
-    );
+    const QString bodyFontXml = bodyFonts();
+    const QString headingFontXml = headingFonts();
+    const QString stylesXml =
+        QStringLiteral(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            "<w:styles "
+            "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+            "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\">"
+            "<w:name w:val=\"Normal\"/>"
+            "<w:qFormat/>"
+            "<w:pPr>"
+            "<w:spacing w:line=\"360\" w:lineRule=\"auto\"/>"
+            "<w:jc w:val=\"both\"/>"
+            "</w:pPr>"
+            "<w:rPr>"
+        )
+        + bodyFontXml
+        + QStringLiteral(
+            "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/>"
+            "</w:rPr>"
+            "</w:style>"
+            "<w:style w:type=\"paragraph\" w:styleId=\"Title\">"
+            "<w:name w:val=\"Title\"/>"
+            "<w:basedOn w:val=\"Normal\"/>"
+            "<w:qFormat/>"
+            "<w:pPr><w:jc w:val=\"center\"/>"
+            "<w:spacing w:before=\"240\" w:after=\"240\"/></w:pPr>"
+            "<w:rPr>"
+        ).arg(ptToHalfPoints(BodyPt))
+        + headingFontXml
+        + QStringLiteral(
+            "<w:b/><w:bCs/>"
+            "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"
+            "</w:style>"
+            "<w:style w:type=\"paragraph\" w:styleId=\"Heading1\">"
+            "<w:name w:val=\"heading 1\"/>"
+            "<w:basedOn w:val=\"Normal\"/>"
+            "<w:qFormat/>"
+            "<w:pPr><w:spacing w:before=\"240\" w:after=\"120\"/>"
+            "<w:jc w:val=\"left\"/></w:pPr>"
+            "<w:rPr>"
+        ).arg(ptToHalfPoints(CoverTitlePt))
+        + headingFontXml
+        + QStringLiteral(
+            "<w:b/><w:bCs/>"
+            "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"
+            "</w:style>"
+            "<w:style w:type=\"paragraph\" w:styleId=\"Heading2\">"
+            "<w:name w:val=\"heading 2\"/>"
+            "<w:basedOn w:val=\"Normal\"/>"
+            "<w:qFormat/>"
+            "<w:pPr><w:spacing w:before=\"160\" w:after=\"80\"/>"
+            "<w:jc w:val=\"left\"/></w:pPr>"
+            "<w:rPr>"
+        ).arg(ptToHalfPoints(Heading1Pt))
+        + headingFontXml
+        + QStringLiteral(
+            "<w:b/><w:bCs/>"
+            "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"
+            "</w:style>"
+            "<w:style w:type=\"paragraph\" w:styleId=\"Heading3\">"
+            "<w:name w:val=\"heading 3\"/>"
+            "<w:basedOn w:val=\"Normal\"/>"
+            "<w:qFormat/>"
+            "<w:pPr><w:spacing w:before=\"120\" w:after=\"60\"/>"
+            "<w:jc w:val=\"left\"/></w:pPr>"
+            "<w:rPr>"
+        ).arg(ptToHalfPoints(Heading2Pt))
+        + headingFontXml
+        + QStringLiteral(
+            "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"
+            "</w:style>"
+            "</w:styles>"
+        ).arg(ptToHalfPoints(Heading3Pt));
 
     const QString headerXml = QStringLiteral(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
@@ -618,77 +842,67 @@ bool SimulationReportDocxWriter::write(
         "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
         "<w:p>"
         "<w:pPr>"
-        "<w:tabs><w:tab w:val=\"right\" w:pos=\"9026\"/></w:tabs>"
+        "<w:jc w:val=\"center\"/>"
         "<w:pBdr>"
-        "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"AAAAAA\"/>"
+        "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"333333\"/>"
         "</w:pBdr>"
         "</w:pPr>"
         "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/>"
-        "<w:color w:val=\"555555\"/></w:rPr>"
+        "<w:rPr>%1<w:b/><w:bCs/>"
+        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
         "<w:t xml:space=\"preserve\">PBX浇注固化仿真分析报告</w:t>"
-        "</w:r>"
-        "<w:r><w:tab/></w:r>"
-        "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/>"
-        "<w:color w:val=\"555555\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\">%1</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:hdr>"
-    ).arg(xmlEscape(model.projectName));
+    ).arg(
+        headingFonts(),
+        QString::number(ptToHalfPoints(HeaderPt))
+    );
 
     const QString footerXml = QStringLiteral(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
         "<w:ftr "
         "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
         "<w:p>"
-        "<w:pPr><w:jc w:val=\"center\"/></w:pPr>"
+        "<w:pPr><w:jc w:val=\"right\"/></w:pPr>"
         "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/></w:rPr>"
+        "<w:rPr>%1"
+        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
         "<w:t xml:space=\"preserve\">第 </w:t>"
         "</w:r>"
         "<w:fldSimple w:instr=\" PAGE \" w:dirty=\"true\">"
         "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/></w:rPr>"
+        "<w:rPr>%1"
+        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
         "<w:t>1</w:t>"
         "</w:r>"
         "</w:fldSimple>"
         "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\"> 页 / 共 </w:t>"
+        "<w:rPr>%1"
+        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
+        "<w:t xml:space=\"preserve\"> 页 共 </w:t>"
         "</w:r>"
         "<w:fldSimple w:instr=\" SECTIONPAGES \" w:dirty=\"true\">"
         "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/></w:rPr>"
+        "<w:rPr>%1"
+        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
         "<w:t>1</w:t>"
         "</w:r>"
         "</w:fldSimple>"
         "<w:r>"
-        "<w:rPr><w:rFonts w:ascii=\"Microsoft YaHei\" "
-        "w:hAnsi=\"Microsoft YaHei\" w:eastAsia=\"Microsoft YaHei\"/>"
-        "<w:sz w:val=\"18\"/><w:szCs w:val=\"18\"/></w:rPr>"
+        "<w:rPr>%1"
+        "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
         "<w:t xml:space=\"preserve\"> 页</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:ftr>"
+    ).arg(
+        bodyFonts(),
+        QString::number(ptToHalfPoints(FooterPt))
     );
 
     const QString created =
-        QDateTime::currentDateTimeUtc()
-            .toString(Qt::ISODate);
+        QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
     const QString coreXml = QStringLiteral(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
         "<cp:coreProperties "
@@ -721,7 +935,15 @@ bool SimulationReportDocxWriter::write(
         xmlEscape(model.appVersion)
     );
 
-    QString contentTypes = QStringLiteral(
+    const QString settingsXml = QStringLiteral(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+        "<w:settings "
+        "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+        "<w:updateFields w:val=\"true\"/>"
+        "</w:settings>"
+    );
+
+    const QString contentTypes = QStringLiteral(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
         "<Types "
         "xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
@@ -791,14 +1013,6 @@ bool SimulationReportDocxWriter::write(
         ).arg(item.relId, target);
     }
     documentRels += QStringLiteral("</Relationships>");
-
-    const QString settingsXml = QStringLiteral(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
-        "<w:settings "
-        "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
-        "<w:updateFields w:val=\"true\"/>"
-        "</w:settings>"
-    );
 
     DocxPackageWriter package(outputPath);
     package.addFile(

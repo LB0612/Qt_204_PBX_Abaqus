@@ -75,6 +75,7 @@ HEADERS += \
     ResultViewerWidget.h \
     SimulationResultService.h \
     SimulationReportModel.h \
+    SimulationReportStyle.h \
     SimulationReportGenerator.h \
     SimulationReportPdfWriter.h \
     SimulationReportDocxWriter.h \
