@@ -22,6 +22,7 @@
 #include <QFileInfo>
 #include <QFont>
 #include <QFontMetrics>
+#include <QGraphicsDropShadowEffect>
 #include <QGridLayout>
 #include <QHeaderView>
 #include <QIcon>
