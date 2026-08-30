@@ -902,7 +902,7 @@ bool SimulationReportDocxWriter::write(
         );
     }
 
-    // 3/4/5 figures — keepNext figure blocks; Word pages naturally
+    // Result chapters: keepNext figure blocks; Word pages naturally.
     int sectionNumber = 3;
     int drawingId = 1;
     for (const SimulationReportResultSection &section
