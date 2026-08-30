@@ -2,7 +2,6 @@
 #include <QHBoxLayout> 
 #include <QPushButton> 
 #include <QScrollArea> 
-#include <QSizePolicy>
 #include <QDoubleValidator>
 
 BaseParamWidget::BaseParamWidget(QWidget *parent) : QWidget(parent) {} 
@@ -146,27 +145,22 @@ void BaseParamWidget::setupHeader(
 
 void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, std::function<void()> onClick) {
     QPushButton* btn = new QPushButton(text);
-    btn->setFixedHeight(48);
-    btn->setMinimumWidth(0);
-    btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    btn->setFixedHeight(60);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setStyleSheet(
         "QPushButton {"
-        " background-color: #1890ff;"
+        " background-color: #007bff;"
         " color: white;"
-        " border: 1px solid #1890ff;"
-        " border-radius: 4px;"
+        " border-radius: 5px;"
         " font-family: 'Microsoft YaHei';"
         " font-weight: bold;"
         " font-size: 18px;"
         "} "
         "QPushButton:hover {"
-        " background-color: #40a9ff;"
-        " border-color: #40a9ff;"
+        " background-color: #0069d9;"
         "} "
         "QPushButton:disabled {"
         " background-color: #bfbfbf;"
-        " border-color: #bfbfbf;"
         " color: #f5f5f5;"
         "}"
     );
@@ -174,7 +168,7 @@ void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, st
 
     m_saveButtons.append(btn);
 
-    layout->addSpacing(20);
+    layout->addSpacing(25);
     layout->addWidget(btn);
 } 
 
