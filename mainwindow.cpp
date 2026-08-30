@@ -176,7 +176,7 @@ PostProcessResumeAction promptPostProcessResume(
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件"));
+    setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
     setMinimumSize(1300, 800);
     resize(1300, 800);
     setupUi();
@@ -242,7 +242,7 @@ void MainWindow::setupUi()
     stackedWidget = new QStackedWidget(rightWidget);
     stackedWidget->setAttribute(Qt::WA_TranslucentBackground);
 
-    titleLabel = new QLabel(QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件"), stackedWidget);
+    titleLabel = new QLabel(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"), stackedWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
     titleLabel->setWordWrap(true);
     titleLabel->setStyleSheet(QStringLiteral("font-family: 'Microsoft YaHei'; font-size: 60px; color: #333; font-weight: bold; background: transparent; padding: 20px;"));
@@ -955,7 +955,7 @@ void MainWindow::loadProjectToUi()
             );
         }
     }
-    setWindowTitle(QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件 - %1").arg(currentProject.projectName));
+    setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件 - %1").arg(currentProject.projectName));
     selectTreeItem(QStringLiteral("工程信息"));
     stackedWidget->setCurrentWidget(infoWidget);
     updateUIStates();
@@ -1079,7 +1079,7 @@ void MainWindow::exitProject()
         isProjectLoaded = false;
         currentProject = ProjectConfig();
         stackedWidget->setCurrentIndex(0);
-        setWindowTitle(QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件"));
+        setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
         treeWidget->clearSelection();
     } else if (root && root->childCount() > 0) {
         QTreeWidgetItem *nextProject = root->child(0);
@@ -1738,7 +1738,7 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
 
             setWindowTitle(
                 QStringLiteral(
-                    "浇注XX固化过程仿真分析与三维参数重构分析软件"
+                    "浇注XX固化监测与三维参数重构分析软件"
                 )
             );
 
@@ -2434,7 +2434,7 @@ void MainWindow::help()
         QMessageBox::Information,
         QStringLiteral("关于"),
         QStringLiteral(
-            "浇注XX固化过程仿真分析与三维参数重构分析软件\n\n"
+            "浇注XX固化监测与三维参数重构分析软件\n\n"
             "版本 1.0"
         )
     );
@@ -2610,7 +2610,7 @@ void MainWindow::onTreeItemClicked(
     // 更新窗口标题
     setWindowTitle(
         QStringLiteral(
-            "浇注XX固化过程仿真分析与三维参数重构分析软件 - %1"
+            "浇注XX固化监测与三维参数重构分析软件 - %1"
         ).arg(currentProject.projectName)
     );
 
@@ -2752,7 +2752,7 @@ void MainWindow::onProjectDirectoryChanged()
         isProjectLoaded = false;
         currentProject = ProjectConfig();
         stackedWidget->setCurrentIndex(0);
-        setWindowTitle(QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件"));
+        setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
         updateUIStates();
         startWatchingProject();
     }

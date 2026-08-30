@@ -139,7 +139,7 @@ void OpenProjectDialog::scanProjects()
         const int row = projectTable->rowCount();
         projectTable->insertRow(row);
         projectTable->setItem(row, 0, new QTableWidgetItem(config.projectName));
-        projectTable->setItem(row, 1, new QTableWidgetItem(QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件")));
+        projectTable->setItem(row, 1, new QTableWidgetItem(QStringLiteral("浇注XX固化监测与三维参数重构分析软件")));
         projectTable->setItem(row, 2, new QTableWidgetItem(config.createdDate));
         projectTable->setItem(row, 3, new QTableWidgetItem(config.projectPath));
     }

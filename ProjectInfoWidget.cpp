@@ -57,7 +57,7 @@ void ProjectInfoWidget::setProjectData(const ProjectConfig &config)
     nameEdit->setText(config.projectName);
 
     if (config.projectType == QStringLiteral("PBX_CASTING_CURING")) {
-        typeEdit->setText(QStringLiteral("浇注XX固化过程仿真分析与三维参数重构分析软件"));
+        typeEdit->setText(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
     } else {
         typeEdit->setText(QStringLiteral("未知工程类型"));
     }
