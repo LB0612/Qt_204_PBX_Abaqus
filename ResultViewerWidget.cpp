@@ -62,21 +62,6 @@ const char *kSecondaryButtonStyle =
     "  border-color: #888888;"
     "}";
 
-const char *kPrimaryButtonStyle =
-    "QPushButton {"
-    "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
-    "  font-size: 16px;"
-    "  font-weight: bold;"
-    "  border: 1px solid #1890ff;"
-    "  border-radius: 4px;"
-    "  background: #1890ff;"
-    "  color: #ffffff;"
-    "}"
-    "QPushButton:hover {"
-    "  background: #40a9ff;"
-    "  border-color: #40a9ff;"
-    "}";
-
 } // namespace
 
 ResultViewerWidget::ResultViewerWidget(QWidget *parent)
@@ -165,7 +150,7 @@ void ResultViewerWidget::buildUi()
     continueButton = new QPushButton(emptyStateCard);
     continueButton->setFixedSize(160, 42);
     continueButton->setCursor(Qt::PointingHandCursor);
-    continueButton->setStyleSheet(QString::fromUtf8(kPrimaryButtonStyle));
+    continueButton->setStyleSheet(primaryActionButtonStyle());
 
     emptyCardLayout->addWidget(emptyStateTitleLabel);
     emptyCardLayout->addWidget(emptyStateMessageLabel);
@@ -305,7 +290,7 @@ void ResultViewerWidget::buildUi()
     openDirButton->setCursor(Qt::PointingHandCursor);
     reportButton->setCursor(Qt::PointingHandCursor);
     openDirButton->setStyleSheet(QString::fromUtf8(kSecondaryButtonStyle));
-    reportButton->setStyleSheet(QString::fromUtf8(kPrimaryButtonStyle));
+    reportButton->setStyleSheet(primaryActionButtonStyle());
     bottomLayout->addWidget(infoPrimaryLabel);
     bottomLayout->addWidget(infoSecondaryLabel);
     bottomLayout->addStretch();

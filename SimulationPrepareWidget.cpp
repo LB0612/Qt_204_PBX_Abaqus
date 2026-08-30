@@ -8,31 +8,7 @@
 
 namespace {
 
-QString sectionTitleStyle()
-{
-    return QStringLiteral(
-        "font-family: %1;"
-        "font-size: 18px;"
-        "font-weight: bold;"
-        "color: #333333;"
-        "background: transparent;"
-        "border: none;"
-    ).arg(BaseParamWidget::uiFontFamily());
-}
-
-QString checkItemStyle()
-{
-    return QStringLiteral(
-        "font-family: %1;"
-        "font-size: 16px;"
-        "font-weight: 400;"
-        "color: #000000;"
-        "background: transparent;"
-        "border: none;"
-    ).arg(BaseParamWidget::uiFontFamily());
-}
-
-QString hintStyle()
+QString bodyTextStyle()
 {
     return QStringLiteral(
         "font-family: %1;"
@@ -50,18 +26,6 @@ QString errorStatusStyle()
         "font-family: %1;"
         "font-size: 16px;"
         "font-weight: 500;"
-        "color: #000000;"
-        "background: transparent;"
-        "border: none;"
-    ).arg(BaseParamWidget::uiFontFamily());
-}
-
-QString reasonBodyStyle()
-{
-    return QStringLiteral(
-        "font-family: %1;"
-        "font-size: 16px;"
-        "font-weight: 400;"
         "color: #000000;"
         "background: transparent;"
         "border: none;"
@@ -96,25 +60,25 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
         QStringLiteral("✓ 参数配置完整"),
         content
     );
-    checkParamLabel->setStyleSheet(checkItemStyle());
+    checkParamLabel->setStyleSheet(bodyTextStyle());
 
     checkFilesLabel = new QLabel(
         QStringLiteral("✓ Abaqus文件完整"),
         content
     );
-    checkFilesLabel->setStyleSheet(checkItemStyle());
+    checkFilesLabel->setStyleSheet(bodyTextStyle());
 
     checkPathLabel = new QLabel(
         QStringLiteral("✓ Abaqus路径有效"),
         content
     );
-    checkPathLabel->setStyleSheet(checkItemStyle());
+    checkPathLabel->setStyleSheet(bodyTextStyle());
 
     hintLabel = new QLabel(
         QStringLiteral("确认后即可开始计算"),
         content
     );
-    hintLabel->setStyleSheet(hintStyle());
+    hintLabel->setStyleSheet(bodyTextStyle());
 
     errorStatusLabel = new QLabel(
         QStringLiteral("✕ 当前不能开始仿真"),
@@ -131,7 +95,7 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     reasonContentLabel = new QLabel(content);
     reasonContentLabel->setWordWrap(true);
     reasonContentLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    reasonContentLabel->setStyleSheet(reasonBodyStyle());
+    reasonContentLabel->setStyleSheet(bodyTextStyle());
 
     QFrame *divider = new QFrame(content);
     divider->setFrameShape(QFrame::HLine);
@@ -149,28 +113,7 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     startButton = new QPushButton(QStringLiteral("开始计算"), content);
     startButton->setFixedSize(160, 42);
     startButton->setCursor(Qt::PointingHandCursor);
-    startButton->setStyleSheet(
-        QStringLiteral(
-            "QPushButton {"
-            "  font-family: %1;"
-            "  font-size: 16px;"
-            "  font-weight: bold;"
-            "  color: #ffffff;"
-            "  background-color: #1890ff;"
-            "  border: 1px solid #1890ff;"
-            "  border-radius: 4px;"
-            "}"
-            "QPushButton:hover {"
-            "  background-color: #40a9ff;"
-            "  border-color: #40a9ff;"
-            "}"
-            "QPushButton:disabled {"
-            "  color: #f5f5f5;"
-            "  background-color: #bfbfbf;"
-            "  border-color: #bfbfbf;"
-            "}"
-        ).arg(uiFontFamily())
-    );
+    startButton->setStyleSheet(primaryActionButtonStyle());
 
     contentLayout->addWidget(statusTitleLabel);
     contentLayout->addSpacing(6);

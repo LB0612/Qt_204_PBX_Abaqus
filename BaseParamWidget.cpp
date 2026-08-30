@@ -16,6 +16,42 @@ QString BaseParamWidget::uiFontFamily()
     );
 }
 
+QString BaseParamWidget::sectionTitleStyle()
+{
+    return QStringLiteral(
+        "font-family: %1;"
+        "font-size: 18px;"
+        "font-weight: bold;"
+        "color: #333333;"
+        "background: transparent;"
+        "border: none;"
+    ).arg(uiFontFamily());
+}
+
+QString BaseParamWidget::primaryActionButtonStyle()
+{
+    return QStringLiteral(
+        "QPushButton {"
+        "  font-family: %1;"
+        "  font-size: 16px;"
+        "  font-weight: bold;"
+        "  color: #ffffff;"
+        "  background-color: #1890ff;"
+        "  border: 1px solid #1890ff;"
+        "  border-radius: 4px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #40a9ff;"
+        "  border-color: #40a9ff;"
+        "}"
+        "QPushButton:disabled {"
+        "  color: #f5f5f5;"
+        "  background-color: #bfbfbf;"
+        "  border-color: #bfbfbf;"
+        "}"
+    ).arg(uiFontFamily());
+}
+
 void BaseParamWidget::applyOpaqueWhitePage()
 {
     setAttribute(Qt::WA_StyledBackground, true);

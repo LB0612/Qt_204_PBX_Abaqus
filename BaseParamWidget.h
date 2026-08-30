@@ -20,6 +20,8 @@ public:
 
     void setReadOnlyMode(bool readOnly);
     static QString uiFontFamily();
+    static QString sectionTitleStyle();
+    static QString primaryActionButtonStyle();
 
 protected:
     void addParamRow(QBoxLayout* layout, const QString& name, QLineEdit* edit, const QString& unit = "");

@@ -7,22 +7,6 @@
 #include <QPlainTextEdit>
 #include <QVBoxLayout>
 
-namespace {
-
-QString sectionTitleStyle()
-{
-    return QStringLiteral(
-        "font-family: %1;"
-        "font-size: 18px;"
-        "font-weight: bold;"
-        "color: #333333;"
-        "border: none;"
-        "background: transparent;"
-    ).arg(BaseParamWidget::uiFontFamily());
-}
-
-} // namespace
-
 SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
