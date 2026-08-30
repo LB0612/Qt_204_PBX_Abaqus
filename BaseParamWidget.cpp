@@ -2,6 +2,7 @@
 #include <QHBoxLayout> 
 #include <QPushButton> 
 #include <QScrollArea> 
+#include <QSizePolicy>
 #include <QDoubleValidator>
 
 BaseParamWidget::BaseParamWidget(QWidget *parent) : QWidget(parent) {} 
@@ -145,7 +146,9 @@ void BaseParamWidget::setupHeader(
 
 void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, std::function<void()> onClick) {
     QPushButton* btn = new QPushButton(text);
-    btn->setFixedSize(160, 42);
+    btn->setFixedHeight(48);
+    btn->setMinimumWidth(0);
+    btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setStyleSheet(
         "QPushButton {"
@@ -172,7 +175,7 @@ void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, st
     m_saveButtons.append(btn);
 
     layout->addSpacing(20);
-    layout->addWidget(btn, 0, Qt::AlignRight);
+    layout->addWidget(btn);
 } 
 
 QLineEdit* BaseParamWidget::createSciEdit(const QString &text) { 
