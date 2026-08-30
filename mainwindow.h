@@ -103,6 +103,7 @@ private:
     QTreeWidget *treeWidget;
     QStackedWidget *stackedWidget;
     QLabel *titleLabel = nullptr;
+    QTimer *homeTitleResizeTimer = nullptr;
     ProjectInfoWidget *infoWidget;
     StructureParamWidget *structureWidget;
     ExplosiveParamWidget *explosiveWidget;

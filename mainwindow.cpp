@@ -184,6 +184,16 @@ MainWindow::MainWindow(QWidget *parent)
     resize(1300, 800);
     setupUi();
 
+    homeTitleResizeTimer = new QTimer(this);
+    homeTitleResizeTimer->setSingleShot(true);
+    homeTitleResizeTimer->setInterval(120);
+    connect(
+        homeTitleResizeTimer,
+        &QTimer::timeout,
+        this,
+        &MainWindow::updateHomeTitleFont
+    );
+
     setStyleSheet(R"(
     QMainWindow {
         border-image: url(:/toolbar/back.png) 0 0 0 0 stretch stretch;
@@ -725,68 +735,46 @@ void MainWindow::updateHomeTitleFont()
     }
 
     const int availableWidth =
-        qMax(1, titleLabel->width() - 40);
+        qMax(1, titleLabel->width() - 60);
 
-    const int availableHeight =
-        qMax(1, titleLabel->height() - 40);
-
-    if (availableWidth <= 1 || availableHeight <= 1) {
+    if (availableWidth <= 1) {
         return;
     }
 
     constexpr int maxFontPx = 70;
-    constexpr int preferredMinFontPx = 52;
-    constexpr int absoluteMinFontPx = 40;
+    constexpr int minFontPx = 46;
 
-    QFont baseFont(QStringLiteral("Microsoft YaHei UI"));
-    baseFont.setWeight(QFont::DemiBold);
-    baseFont.setLetterSpacing(QFont::PercentageSpacing, 100.0);
+    QFont font(QStringLiteral("Microsoft YaHei UI"));
+    font.setWeight(QFont::DemiBold);
+    font.setLetterSpacing(QFont::PercentageSpacing, 100.0);
 
-    baseFont.setPixelSize(maxFontPx);
-    const QFontMetrics maxMetrics(baseFont);
-    const int fullWidthAtMax =
-        maxMetrics.horizontalAdvance(titleLabel->text());
+    int targetFontPx = minFontPx;
 
-    int targetFontPx = maxFontPx;
-    if (fullWidthAtMax > availableWidth) {
-        const double ratio =
-            static_cast<double>(availableWidth)
-            / static_cast<double>(fullWidthAtMax);
-
-        targetFontPx = qMax(
-            preferredMinFontPx,
-            qRound(maxFontPx * ratio)
-        );
-    }
-
-    for (int fontPx = targetFontPx;
-         fontPx >= absoluteMinFontPx;
-         --fontPx) {
-
-        QFont font = baseFont;
+    for (int fontPx = maxFontPx; fontPx >= minFontPx; --fontPx) {
         font.setPixelSize(fontPx);
 
         const QFontMetrics metrics(font);
-        const QRect textRect = metrics.boundingRect(
-            QRect(0, 0, availableWidth, availableHeight),
-            Qt::AlignCenter | Qt::TextWordWrap,
-            titleLabel->text()
-        );
-
-        if (textRect.height() <= availableHeight) {
-            titleLabel->setFont(font);
-            return;
+        if (metrics.horizontalAdvance(titleLabel->text())
+            <= availableWidth) {
+            targetFontPx = fontPx;
+            break;
         }
     }
 
-    baseFont.setPixelSize(absoluteMinFontPx);
-    titleLabel->setFont(baseFont);
+    font.setPixelSize(targetFontPx);
+
+    if (titleLabel->font().pixelSize() != targetFontPx) {
+        titleLabel->setFont(font);
+    }
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     QMainWindow::resizeEvent(event);
-    updateHomeTitleFont();
+
+    if (homeTitleResizeTimer) {
+        homeTitleResizeTimer->start();
+    }
 }
 
 void MainWindow::restoreCurrentProjectTreeSelection()
