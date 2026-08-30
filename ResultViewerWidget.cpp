@@ -214,15 +214,12 @@ void ResultViewerWidget::buildUi()
 
     connect(cureButton, &QPushButton::clicked, this, [this]() {
         switchResultType(ResultType::Cure);
-        togglePlayback();
     });
     connect(temperatureButton, &QPushButton::clicked, this, [this]() {
         switchResultType(ResultType::Temperature);
-        togglePlayback();
     });
     connect(stressButton, &QPushButton::clicked, this, [this]() {
         switchResultType(ResultType::Stress);
-        togglePlayback();
     });
 
     QFrame *imageCard = new QFrame(playerPanel);
@@ -426,7 +423,13 @@ void ResultViewerWidget::showEmptyState(const ResultValidationResult &result)
             ? QStringLiteral("请先完成 Abaqus 仿真及后处理。")
             : result.message
     );
-    continueButton->setText(continueButtonText(result.state));
+
+    const bool showContinue =
+        result.state != ResultValidationState::ProjectMissing;
+    continueButton->setVisible(showContinue);
+    if (showContinue) {
+        continueButton->setText(continueButtonText(result.state));
+    }
 }
 
 QString ResultViewerWidget::emptyStateTitle(
