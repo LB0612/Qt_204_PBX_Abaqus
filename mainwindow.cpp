@@ -2414,6 +2414,11 @@ void MainWindow::generateSimulationReport()
             currentProject.projectPath
         );
 
+    const QString docxPath =
+        SimulationResultService::reportDocxPath(
+            currentProject.projectPath
+        );
+
     if (resultViewerWidget) {
         resultViewerWidget->updateReportButtonText();
     }
@@ -2422,7 +2427,10 @@ void MainWindow::generateSimulationReport()
         this,
         QMessageBox::Information,
         QStringLiteral("报告已生成"),
-        QStringLiteral("PDF 报告已保存至：\n%1").arg(pdfPath)
+        QStringLiteral(
+            "PDF 报告：\n%1\n\n"
+            "Word 报告：\n%2"
+        ).arg(pdfPath, docxPath)
     );
 }
 

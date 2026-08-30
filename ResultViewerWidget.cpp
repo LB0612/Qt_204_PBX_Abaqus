@@ -284,7 +284,7 @@ void ResultViewerWidget::buildUi()
     QHBoxLayout *bottomLayout = new QHBoxLayout();
     bottomLayout->setSpacing(12);
     openDirButton = new QPushButton(QStringLiteral("打开结果目录"), playerPanel);
-    reportButton = new QPushButton(QStringLiteral("生成PDF报告"), playerPanel);
+    reportButton = new QPushButton(QStringLiteral("生成报告"), playerPanel);
     openDirButton->setFixedSize(140, 42);
     reportButton->setFixedSize(160, 42);
     openDirButton->setCursor(Qt::PointingHandCursor);
@@ -335,8 +335,8 @@ void ResultViewerWidget::updateReportButtonText()
     reportButton->setText(
         (!projectPath.isEmpty()
          && SimulationResultService::isReportCurrent(projectPath))
-            ? QStringLiteral("重新生成PDF报告")
-            : QStringLiteral("生成PDF报告")
+            ? QStringLiteral("重新生成报告")
+            : QStringLiteral("生成报告")
     );
 }
 

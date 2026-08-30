@@ -11,6 +11,12 @@ public:
     static bool readSuccessFlag(const QString &flagPath);
     static bool isNonEmptyRegularFile(const QString &path);
 
+    static QString fileSha256(const QString &path);
+
+    static QString t2CompletionStampUtc(
+        const QString &projectPath
+    );
+
     static bool fingerprintFileMatches(
         const QString &storedPath,
         const QString &expectedFingerprint

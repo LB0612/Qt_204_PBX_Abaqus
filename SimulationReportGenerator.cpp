@@ -1,50 +1,142 @@
 #include "SimulationReportGenerator.h"
 
+#include "AppInfo.h"
 #include "ProjectInputHash.h"
 #include "ProjectManager.h"
 #include "ProjectParameterService.h"
+#include "SimulationArtifactStateService.h"
+#include "SimulationReportDocxWriter.h"
+#include "SimulationReportModel.h"
+#include "SimulationReportPdfWriter.h"
 #include "SimulationResultService.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QImageReader>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QPageLayout>
-#include <QPageSize>
-#include <QMarginsF>
-#include <QPdfWriter>
 #include <QSaveFile>
-#include <QTextDocument>
-#include <QUrl>
+#include <QVector>
 
 namespace {
-
-QString htmlEscape(const QString &text)
-{
-    QString escaped = text;
-    escaped.replace(QLatin1Char('&'), QStringLiteral("&amp;"));
-    escaped.replace(QLatin1Char('<'), QStringLiteral("&lt;"));
-    escaped.replace(QLatin1Char('>'), QStringLiteral("&gt;"));
-    return escaped;
-}
 
 QString formatNumber(double value)
 {
     return QString::number(value, 'g', 15);
 }
 
-QString formatSimulationTime(double value)
+struct RepresentativeFrame
 {
-    return QString::number(value, 'f', 2);
+    int index = 0;
+    QString label;
+};
+
+QVector<RepresentativeFrame> representativeFrames(int frameCount)
+{
+    QVector<RepresentativeFrame> result;
+
+    if (frameCount <= 0) {
+        return result;
+    }
+
+    if (frameCount == 1) {
+        result.append({0, QStringLiteral("结果时刻")});
+        return result;
+    }
+
+    if (frameCount == 2) {
+        result.append({0, QStringLiteral("初始时刻")});
+        result.append({1, QStringLiteral("最终时刻")});
+        return result;
+    }
+
+    result.append({0, QStringLiteral("初始时刻")});
+    result.append({(frameCount - 1) / 2, QStringLiteral("中间时刻")});
+    result.append({frameCount - 1, QStringLiteral("最终时刻")});
+    return result;
 }
 
-bool buildParameterSectionHtml(
+bool buildResultSection(
     const QString &projectPath,
-    QString &html,
+    const ProjectInputHash::PostProcessManifest &manifest,
+    ResultType type,
+    const QString &title,
+    SimulationReportResultSection &section,
     QString &errorMessage)
 {
+    section = SimulationReportResultSection();
+    section.title = title;
+
+    const int frameCount = manifest.odbFrames;
+    const QVector<RepresentativeFrame> frames =
+        representativeFrames(frameCount);
+
+    for (const RepresentativeFrame &frame : frames) {
+        const QString imagePath =
+            SimulationResultService::framePngPath(
+                projectPath,
+                type,
+                frame.index
+            );
+
+        QImageReader reader(imagePath);
+        if (!reader.canRead()) {
+            errorMessage =
+                QStringLiteral("无法读取报告代表帧：\n%1")
+                    .arg(imagePath);
+            return false;
+        }
+
+        const QSize imageSize = reader.size();
+        if (!imageSize.isValid()) {
+            errorMessage =
+                QStringLiteral("无法取得报告图片尺寸：\n%1")
+                    .arg(imagePath);
+            return false;
+        }
+
+        SimulationReportFigure figure;
+        figure.label = frame.label;
+        figure.frameText =
+            QStringLiteral("Frame %1 / %2")
+                .arg(frame.index + 1)
+                .arg(frameCount);
+
+        if (manifest.frameTimes.size() == frameCount) {
+            figure.timeText =
+                QStringLiteral("仿真时间：%1 s")
+                    .arg(
+                        QString::number(
+                            manifest.frameTimes.at(frame.index),
+                            'f',
+                            2
+                        )
+                    );
+        }
+
+        figure.imagePath = imagePath;
+        figure.imagePixelSize = imageSize;
+        section.figures.append(figure);
+    }
+
+    return true;
+}
+
+bool buildReportModel(
+    const QString &projectPath,
+    const ResultValidationResult &validation,
+    SimulationReportModel &model,
+    QString &errorMessage)
+{
+    ProjectConfig project;
+    if (!ProjectManager::loadProject(projectPath, project)) {
+        errorMessage = QStringLiteral("无法读取工程信息。");
+        return false;
+    }
+
     ProjectParameters parameters;
     if (!ProjectParameterService::loadAll(
             projectPath,
@@ -53,185 +145,425 @@ bool buildParameterSectionHtml(
         return false;
     }
 
-    const StructureConfig &structure = parameters.structure;
-    const ExplosiveConfig &explosive = parameters.explosive;
-    const MoldConfig &mold = parameters.mold;
-    const BoundaryConfig &boundary = parameters.boundary;
-    const SimulationConfig &simulation = parameters.simulation;
+    model = SimulationReportModel();
+    model.reportTitle =
+        QStringLiteral("PBX浇注固化仿真分析报告");
+    model.productName = AppInfo::ProductName;
+    model.appVersion =
+        QCoreApplication::applicationVersion();
+    model.projectName = project.projectName;
+    model.jobName =
+        ProjectInputHash::currentJobName(projectPath);
+    model.generatedAt =
+        QDateTime::currentDateTime().toString(
+            QStringLiteral("yyyy-MM-dd HH:mm:ss")
+        );
+    model.t2CompletedAt =
+        SimulationArtifactStateService::t2CompletionStampUtc(
+            projectPath
+        );
 
-    html.clear();
-    html += QStringLiteral("<h2>输入参数</h2>");
+    if (model.t2CompletedAt.isEmpty()) {
+        errorMessage =
+            QStringLiteral("无法取得后处理完成时间。");
+        return false;
+    }
 
-    html += QStringLiteral("<h3>结构参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
-    html += QStringLiteral("<tr><td>药柱半径</td><td>%1</td><td>mm</td></tr>")
-        .arg(formatNumber(structure.chargeRadius));
-    html += QStringLiteral("<tr><td>药柱高度</td><td>%1</td><td>mm</td></tr>")
-        .arg(formatNumber(structure.chargeHeight));
-    html += QStringLiteral("<tr><td>外壳厚度</td><td>%1</td><td>mm</td></tr>")
-        .arg(formatNumber(structure.shellThickness));
-    html += QStringLiteral("</table>");
+    model.postSha256 = validation.manifest.postSha256;
 
-    html += QStringLiteral("<h3>炸药参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
-    html += QStringLiteral("<tr><td>密度</td><td>%1</td><td>t/mm³</td></tr>")
-        .arg(formatNumber(explosive.density));
-    html += QStringLiteral("<tr><td>初始杨氏模量</td><td>%1</td><td>MPa</td></tr>")
-        .arg(formatNumber(explosive.initialElasticModulus));
-    html += QStringLiteral("<tr><td>初始泊松比</td><td>%1</td><td>-</td></tr>")
-        .arg(formatNumber(explosive.initialPoissonRatio));
-    html += QStringLiteral("<tr><td>最终杨氏模量</td><td>%1</td><td>MPa</td></tr>")
-        .arg(formatNumber(explosive.finalElasticModulus));
-    html += QStringLiteral("<tr><td>最终泊松比</td><td>%1</td><td>-</td></tr>")
-        .arg(formatNumber(explosive.finalPoissonRatio));
-    html += QStringLiteral("<tr><td>热导率</td><td>%1</td><td>W/(m·K)</td></tr>")
-        .arg(formatNumber(explosive.thermalConductivity));
-    html += QStringLiteral("<tr><td>屈服应力</td><td>%1</td><td>MPa</td></tr>")
-        .arg(formatNumber(explosive.yieldStress));
-    html += QStringLiteral("<tr><td>比热</td><td>%1</td><td>N·mm/(t·K)</td></tr>")
-        .arg(formatNumber(explosive.specificHeat));
-    html += QStringLiteral("<tr><td>膨胀系数</td><td>%1</td><td>1/K</td></tr>")
-        .arg(formatNumber(explosive.expansionCoefficient));
-    html += QStringLiteral("</table>");
+    QString actualTimeRange = QStringLiteral("未记录");
+    if (validation.manifest.odbFrames > 0
+        && validation.manifest.frameTimes.size()
+            == validation.manifest.odbFrames) {
+        actualTimeRange =
+            QStringLiteral("%1 ～ %2 s")
+                .arg(
+                    QString::number(
+                        validation.manifest.frameTimes.first(),
+                        'f',
+                        2
+                    )
+                )
+                .arg(
+                    QString::number(
+                        validation.manifest.frameTimes.last(),
+                        'f',
+                        2
+                    )
+                );
+    }
 
-    html += QStringLiteral("<h3>模具参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
-    html += QStringLiteral("<tr><td>密度</td><td>%1</td><td>t/mm³</td></tr>")
-        .arg(formatNumber(mold.density));
-    html += QStringLiteral("<tr><td>杨氏模量</td><td>%1</td><td>MPa</td></tr>")
-        .arg(formatNumber(mold.elasticModulus));
-    html += QStringLiteral("<tr><td>泊松比</td><td>%1</td><td>-</td></tr>")
-        .arg(formatNumber(mold.poissonRatio));
-    html += QStringLiteral("<tr><td>热导率</td><td>%1</td><td>W/(m·K)</td></tr>")
-        .arg(formatNumber(mold.thermalConductivity));
-    html += QStringLiteral("<tr><td>比热</td><td>%1</td><td>N·mm/(t·K)</td></tr>")
-        .arg(formatNumber(mold.specificHeat));
-    html += QStringLiteral("</table>");
+    model.overviewRows = {
+        {
+            QStringLiteral("工程名称"),
+            model.projectName,
+            QString()
+        },
+        {
+            QStringLiteral("Abaqus Job"),
+            model.jobName,
+            QString()
+        },
+        {
+            QStringLiteral("设定仿真时长"),
+            formatNumber(parameters.simulation.timeLength),
+            QStringLiteral("s")
+        },
+        {
+            QStringLiteral("实际结果时间范围"),
+            actualTimeRange,
+            QString()
+        },
+        {
+            QStringLiteral("ODB总帧数"),
+            QString::number(validation.manifest.odbFrames),
+            QStringLiteral("帧")
+        },
+        {
+            QStringLiteral("固化度结果帧数"),
+            QString::number(validation.manifest.curePngFrames),
+            QStringLiteral("帧")
+        },
+        {
+            QStringLiteral("温度场结果帧数"),
+            QString::number(
+                validation.manifest.temperaturePngFrames
+            ),
+            QStringLiteral("帧")
+        },
+        {
+            QStringLiteral("Mises应力结果帧数"),
+            QString::number(validation.manifest.stressPngFrames),
+            QStringLiteral("帧")
+        },
+        {
+            QStringLiteral("视频帧率"),
+            QString::number(validation.manifest.videoFps),
+            QStringLiteral("fps")
+        }
+    };
 
-    html += QStringLiteral("<h3>边界条件</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
-    html += QStringLiteral("<tr><td>环境温度</td><td>%1</td><td>K</td></tr>")
-        .arg(formatNumber(boundary.ambientTemperature));
-    html += QStringLiteral("</table>");
+    {
+        SimulationReportTable structureTable;
+        structureTable.title = QStringLiteral("结构参数");
+        structureTable.rows = {
+            {
+                QStringLiteral("药柱半径"),
+                formatNumber(parameters.structure.chargeRadius),
+                QStringLiteral("mm")
+            },
+            {
+                QStringLiteral("药柱高度"),
+                formatNumber(parameters.structure.chargeHeight),
+                QStringLiteral("mm")
+            },
+            {
+                QStringLiteral("外壳厚度"),
+                formatNumber(parameters.structure.shellThickness),
+                QStringLiteral("mm")
+            }
+        };
+        model.parameterTables.append(structureTable);
+    }
 
-    html += QStringLiteral("<h3>仿真参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
-    html += QStringLiteral("<tr><th>参数</th><th>数值</th><th>单位</th></tr>");
-    html += QStringLiteral("<tr><td>仿真时间长度</td><td>%1</td><td>s</td></tr>")
-        .arg(formatNumber(simulation.timeLength));
-    html += QStringLiteral("</table>");
+    {
+        SimulationReportTable explosiveTable;
+        explosiveTable.title = QStringLiteral("炸药参数");
+        explosiveTable.rows = {
+            {
+                QStringLiteral("密度"),
+                formatNumber(parameters.explosive.density),
+                QStringLiteral("t/mm³")
+            },
+            {
+                QStringLiteral("初始杨氏模量"),
+                formatNumber(
+                    parameters.explosive.initialElasticModulus
+                ),
+                QStringLiteral("MPa")
+            },
+            {
+                QStringLiteral("初始泊松比"),
+                formatNumber(
+                    parameters.explosive.initialPoissonRatio
+                ),
+                QStringLiteral("-")
+            },
+            {
+                QStringLiteral("最终杨氏模量"),
+                formatNumber(
+                    parameters.explosive.finalElasticModulus
+                ),
+                QStringLiteral("MPa")
+            },
+            {
+                QStringLiteral("最终泊松比"),
+                formatNumber(
+                    parameters.explosive.finalPoissonRatio
+                ),
+                QStringLiteral("-")
+            },
+            {
+                QStringLiteral("热导率"),
+                formatNumber(
+                    parameters.explosive.thermalConductivity
+                ),
+                QStringLiteral("W/(m·K)")
+            },
+            {
+                QStringLiteral("屈服应力"),
+                formatNumber(parameters.explosive.yieldStress),
+                QStringLiteral("MPa")
+            },
+            {
+                QStringLiteral("比热"),
+                formatNumber(parameters.explosive.specificHeat),
+                QStringLiteral("N·mm/(t·K)")
+            },
+            {
+                QStringLiteral("膨胀系数"),
+                formatNumber(
+                    parameters.explosive.expansionCoefficient
+                ),
+                QStringLiteral("1/K")
+            }
+        };
+        model.parameterTables.append(explosiveTable);
+    }
+
+    {
+        SimulationReportTable moldTable;
+        moldTable.title = QStringLiteral("模具参数");
+        moldTable.rows = {
+            {
+                QStringLiteral("密度"),
+                formatNumber(parameters.mold.density),
+                QStringLiteral("t/mm³")
+            },
+            {
+                QStringLiteral("杨氏模量"),
+                formatNumber(parameters.mold.elasticModulus),
+                QStringLiteral("MPa")
+            },
+            {
+                QStringLiteral("泊松比"),
+                formatNumber(parameters.mold.poissonRatio),
+                QStringLiteral("-")
+            },
+            {
+                QStringLiteral("热导率"),
+                formatNumber(parameters.mold.thermalConductivity),
+                QStringLiteral("W/(m·K)")
+            },
+            {
+                QStringLiteral("比热"),
+                formatNumber(parameters.mold.specificHeat),
+                QStringLiteral("N·mm/(t·K)")
+            }
+        };
+        model.parameterTables.append(moldTable);
+    }
+
+    {
+        SimulationReportTable boundaryTable;
+        boundaryTable.title = QStringLiteral("边界条件");
+        boundaryTable.rows = {
+            {
+                QStringLiteral("环境温度"),
+                formatNumber(
+                    parameters.boundary.ambientTemperature
+                ),
+                QStringLiteral("K")
+            }
+        };
+        model.parameterTables.append(boundaryTable);
+    }
+
+    {
+        SimulationReportTable simulationTable;
+        simulationTable.title = QStringLiteral("仿真参数");
+        simulationTable.rows = {
+            {
+                QStringLiteral("仿真时间长度"),
+                formatNumber(parameters.simulation.timeLength),
+                QStringLiteral("s")
+            }
+        };
+        model.parameterTables.append(simulationTable);
+    }
+
+    SimulationReportResultSection cure;
+    if (!buildResultSection(
+            projectPath,
+            validation.manifest,
+            ResultType::Cure,
+            QStringLiteral("固化度结果"),
+            cure,
+            errorMessage)) {
+        return false;
+    }
+
+    SimulationReportResultSection temperature;
+    if (!buildResultSection(
+            projectPath,
+            validation.manifest,
+            ResultType::Temperature,
+            QStringLiteral("温度场结果"),
+            temperature,
+            errorMessage)) {
+        return false;
+    }
+
+    SimulationReportResultSection stress;
+    if (!buildResultSection(
+            projectPath,
+            validation.manifest,
+            ResultType::Stress,
+            QStringLiteral("Mises应力结果"),
+            stress,
+            errorMessage)) {
+        return false;
+    }
+
+    model.resultSections = {cure, temperature, stress};
+
+    model.notes = {
+        QStringLiteral("本报告展示当前工程代表性结果帧。"),
+        QStringLiteral("固化度完整动态结果：guhuadu.avi"),
+        QStringLiteral("温度场完整动态结果：wendu.avi"),
+        QStringLiteral("Mises应力完整动态结果：yingli.avi"),
+        QStringLiteral(
+            "完整动态过程请查看工程 results 目录。"
+        )
+    };
+
+    model.traceRows = {
+        {
+            QStringLiteral("软件版本"),
+            model.appVersion,
+            QString()
+        },
+        {
+            QStringLiteral("报告格式版本"),
+            QString::number(model.reportFormatVersion),
+            QString()
+        },
+        {
+            QStringLiteral("后处理SHA256"),
+            model.postSha256,
+            QString()
+        },
+        {
+            QStringLiteral("后处理完成时间"),
+            model.t2CompletedAt,
+            QStringLiteral("UTC")
+        },
+        {
+            QStringLiteral("报告生成时间"),
+            model.generatedAt,
+            QString()
+        }
+    };
 
     return true;
 }
 
-QString buildResultImageSectionHtml(
-    const QString &projectPath,
-    const ProjectInputHash::PostProcessManifest &manifest,
-    ResultType type,
-    const QString &sectionTitle)
-{
-    const int frameCount = manifest.odbFrames;
-    if (frameCount <= 0) {
-        return QString();
-    }
-
-    const int indices[] = {
-        0,
-        (frameCount - 1) / 2,
-        frameCount - 1,
-    };
-    const QString labels[] = {
-        QStringLiteral("初始时刻"),
-        QStringLiteral("中间时刻"),
-        QStringLiteral("最终时刻"),
-    };
-
-    QString html;
-    html += QStringLiteral("<h3>%1</h3>").arg(htmlEscape(sectionTitle));
-
-    for (int i = 0; i < 3; ++i) {
-        const int frameIndex = indices[i];
-        const QString pngPath =
-            SimulationResultService::framePngPath(
-                projectPath,
-                type,
-                frameIndex
-            );
-
-        html += QStringLiteral("<p><b>%1</b></p>").arg(labels[i]);
-
-        if (manifest.frameTimes.size() == frameCount) {
-            html += QStringLiteral(
-                "<p>Frame %1 / %2<br/>仿真时间：%3 s</p>"
-            ).arg(frameIndex + 1)
-                .arg(frameCount)
-                .arg(formatSimulationTime(manifest.frameTimes.at(frameIndex)));
-        } else {
-            html += QStringLiteral(
-                "<p>Frame %1 / %2</p>"
-            ).arg(frameIndex + 1).arg(frameCount);
-        }
-
-        html += QStringLiteral(
-            "<p><img src='%1' width='480'/></p>"
-        ).arg(htmlEscape(QUrl::fromLocalFile(pngPath).toString()));
-    }
-
-    return html;
-}
-
-QString t2CompletionStamp(const QString &projectPath)
-{
-    const QFileInfo info(
-        ProjectInputHash::t2FinishedFlagPath(projectPath)
-    );
-
-    if (!info.exists() || !info.isFile()) {
-        return QString();
-    }
-
-    return info.lastModified().toUTC().toString(Qt::ISODateWithMs);
-}
-
 bool writeReportManifest(
     const QString &projectPath,
-    const QString &postSha256,
+    const SimulationReportModel &model,
+    const QString &pdfPath,
+    const QString &docxPath,
+    const QString &pdfSha256,
+    const QString &docxSha256,
     QString &errorMessage)
 {
-    QDir().mkpath(SimulationResultService::reportDirectoryPath(projectPath));
-
-    const QString t2CompletedAt = t2CompletionStamp(projectPath);
-    if (t2CompletedAt.isEmpty()) {
-        errorMessage =
-            QStringLiteral("无法取得本次后处理完成时间。");
-        return false;
-    }
+    const QFileInfo pdfInfo(pdfPath);
+    const QFileInfo docxInfo(docxPath);
 
     const QJsonObject json = {
-        {QStringLiteral("version"), 2},
-        {QStringLiteral("postSha256"), postSha256},
-        {QStringLiteral("t2CompletedAt"), t2CompletedAt},
+        {QStringLiteral("version"), 3},
+        {QStringLiteral("postSha256"), model.postSha256},
+        {QStringLiteral("t2CompletedAt"), model.t2CompletedAt},
+        {QStringLiteral("generatedAt"), model.generatedAt},
+        {QStringLiteral("pdf"), pdfInfo.fileName()},
+        {QStringLiteral("docx"), docxInfo.fileName()},
         {
-            QStringLiteral("generatedAt"),
-            QDateTime::currentDateTime().toString(
-                QStringLiteral("yyyy-MM-dd HH:mm:ss")
-            )
+            QStringLiteral("pdfBytes"),
+            static_cast<double>(pdfInfo.size())
         },
-        {QStringLiteral("pdf"), QStringLiteral("simulation_report.pdf")},
+        {
+            QStringLiteral("docxBytes"),
+            static_cast<double>(docxInfo.size())
+        },
+        {QStringLiteral("pdfSha256"), pdfSha256},
+        {QStringLiteral("docxSha256"), docxSha256}
     };
 
-    QSaveFile file(SimulationResultService::reportManifestPath(projectPath));
+    QSaveFile file(
+        SimulationResultService::reportManifestPath(projectPath)
+    );
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         errorMessage = QStringLiteral("无法写入报告清单。");
         return false;
     }
 
-    file.write(QJsonDocument(json).toJson(QJsonDocument::Indented));
+    file.write(
+        QJsonDocument(json).toJson(QJsonDocument::Indented)
+    );
+
     if (!file.commit()) {
         errorMessage = QStringLiteral("报告清单保存失败。");
         return false;
     }
 
     return true;
+}
+
+bool validatePdfFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    return file.size() > 0
+        && file.read(5) == QByteArray("%PDF-");
+}
+
+bool validateDocxFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    const QByteArray signature = file.read(4);
+    return file.size() > 0
+        && signature.size() == 4
+        && signature.at(0) == 'P'
+        && signature.at(1) == 'K'
+        && static_cast<unsigned char>(signature.at(2)) == 0x03
+        && static_cast<unsigned char>(signature.at(3)) == 0x04;
+}
+
+void restoreFromBackup(
+    const QString &finalPath,
+    const QString &backupPath,
+    bool hadBackup)
+{
+    if (QFile::exists(finalPath)) {
+        QFile::remove(finalPath);
+    }
+    if (hadBackup) {
+        QFile::rename(backupPath, finalPath);
+    }
+}
+
+void cleanupBackup(const QString &backupPath, bool hadBackup)
+{
+    if (hadBackup && QFile::exists(backupPath)) {
+        QFile::remove(backupPath);
+    }
 }
 
 } // namespace
@@ -247,113 +579,36 @@ bool SimulationReportGenerator::generate(
         return false;
     }
 
-    ProjectConfig project;
-    if (!ProjectManager::loadProject(projectPath, project)) {
-        errorMessage = QStringLiteral("无法读取工程信息。");
-        return false;
-    }
-
-    const QString jobName =
-        ProjectInputHash::currentJobName(projectPath);
-    const QString reportDir =
-        SimulationResultService::reportDirectoryPath(projectPath);
-    const QString pdfPath =
-        SimulationResultService::reportPdfPath(projectPath);
-    const QString tempPdfPath =
-        pdfPath + QStringLiteral(".tmp.pdf");
-
-    QDir().mkpath(reportDir);
-
-    if (QFile::exists(tempPdfPath)) {
-        QFile::remove(tempPdfPath);
-    }
-
-    const QString generatedAt =
-        QDateTime::currentDateTime().toString(
-            QStringLiteral("yyyy-MM-dd HH:mm:ss")
-        );
-
-    QString html;
-    html += QStringLiteral("<html><head><meta charset='utf-8'/>");
-    html += QStringLiteral(
-        "<style>"
-        "body { font-family: 'Microsoft YaHei', sans-serif; }"
-        "h1,h2,h3 { color: #333333; }"
-        "table { border-collapse: collapse; width: 100%; }"
-        "th,td { border: 1px solid #cccccc; padding: 6px; }"
-        "</style></head><body>"
-    );
-
-    html += QStringLiteral("<h1>PBX浇注固化仿真分析报告</h1>");
-    html += QStringLiteral("<p>工程名称：%1</p>")
-        .arg(htmlEscape(project.projectName));
-    html += QStringLiteral("<p>Job名称：%1</p>").arg(htmlEscape(jobName));
-    html += QStringLiteral("<p>报告生成时间：%1</p>").arg(generatedAt);
-    html += QStringLiteral("<p>QT_PBX_204_ABAQUS</p>");
-
-    QString parameterHtml;
-    if (!buildParameterSectionHtml(
+    SimulationReportModel model;
+    if (!buildReportModel(
             projectPath,
-            parameterHtml,
+            validation,
+            model,
             errorMessage)) {
         return false;
     }
-    html += parameterHtml;
 
-    html += QStringLiteral("<h2>仿真结果</h2>");
-    html += buildResultImageSectionHtml(
-        projectPath,
-        validation.manifest,
-        ResultType::Cure,
-        QStringLiteral("固化度结果")
-    );
-    html += buildResultImageSectionHtml(
-        projectPath,
-        validation.manifest,
-        ResultType::Temperature,
-        QStringLiteral("温度场结果")
-    );
-    html += buildResultImageSectionHtml(
-        projectPath,
-        validation.manifest,
-        ResultType::Stress,
-        QStringLiteral("Mises应力结果")
-    );
-
-    html += QStringLiteral("<h2>说明</h2>");
-    html += QStringLiteral(
-        "<p>本报告记录当前工程输入参数及 Abaqus 固化仿真后处理结果。</p>"
-        "<p>结果包含：固化度场、温度场、Mises应力场。</p>"
-        "<p>详细动态过程请查看工程 results 目录中的对应视频。</p>"
-    );
-    html += QStringLiteral("</body></html>");
-
-    {
-        QTextDocument document;
-        document.setHtml(html);
-
-        QPdfWriter pdfWriter(tempPdfPath);
-        pdfWriter.setPageSize(QPageSize(QPageSize::A4));
-        pdfWriter.setPageMargins(
-            QMarginsF(20, 20, 20, 20),
-            QPageLayout::Millimeter
-        );
-
-        document.print(&pdfWriter);
-    }
-
-    const QFileInfo tempInfo(tempPdfPath);
-    if (!tempInfo.exists() || tempInfo.size() <= 0) {
-        if (QFile::exists(tempPdfPath)) {
-            QFile::remove(tempPdfPath);
-        }
-        errorMessage = QStringLiteral("PDF 报告生成失败。");
+    const QString reportDir =
+        SimulationResultService::reportDirectoryPath(projectPath);
+    if (!QDir().mkpath(reportDir)) {
+        errorMessage = QStringLiteral("无法创建报告目录。");
         return false;
     }
 
+    const QString pdfPath =
+        SimulationResultService::reportPdfPath(projectPath);
+    const QString docxPath =
+        SimulationResultService::reportDocxPath(projectPath);
+    const QString tempPdfPath =
+        pdfPath + QStringLiteral(".tmp");
+    const QString tempDocxPath =
+        docxPath + QStringLiteral(".tmp");
     const QString backupPdfPath =
         pdfPath + QStringLiteral(".bak");
+    const QString backupDocxPath =
+        docxPath + QStringLiteral(".bak");
 
+    // Recover leftover backups if finals are missing.
     if (QFile::exists(backupPdfPath)) {
         if (!QFile::exists(pdfPath)) {
             QFile::rename(backupPdfPath, pdfPath);
@@ -361,12 +616,78 @@ bool SimulationReportGenerator::generate(
             QFile::remove(backupPdfPath);
         }
     }
+    if (QFile::exists(backupDocxPath)) {
+        if (!QFile::exists(docxPath)) {
+            QFile::rename(backupDocxPath, docxPath);
+        } else {
+            QFile::remove(backupDocxPath);
+        }
+    }
+
+    if (QFile::exists(tempPdfPath)) {
+        QFile::remove(tempPdfPath);
+    }
+    if (QFile::exists(tempDocxPath)) {
+        QFile::remove(tempDocxPath);
+    }
+
+    if (!SimulationReportPdfWriter::write(
+            model,
+            tempPdfPath,
+            errorMessage)) {
+        if (QFile::exists(tempPdfPath)) {
+            QFile::remove(tempPdfPath);
+        }
+        return false;
+    }
+
+    if (!SimulationReportDocxWriter::write(
+            model,
+            tempDocxPath,
+            errorMessage)) {
+        if (QFile::exists(tempPdfPath)) {
+            QFile::remove(tempPdfPath);
+        }
+        if (QFile::exists(tempDocxPath)) {
+            QFile::remove(tempDocxPath);
+        }
+        return false;
+    }
+
+    if (!validatePdfFile(tempPdfPath)) {
+        QFile::remove(tempPdfPath);
+        QFile::remove(tempDocxPath);
+        errorMessage = QStringLiteral("PDF 报告校验失败。");
+        return false;
+    }
+
+    if (!validateDocxFile(tempDocxPath)) {
+        QFile::remove(tempPdfPath);
+        QFile::remove(tempDocxPath);
+        errorMessage = QStringLiteral("Word 报告校验失败。");
+        return false;
+    }
+
+    const QString pdfSha256 =
+        SimulationArtifactStateService::fileSha256(tempPdfPath);
+    const QString docxSha256 =
+        SimulationArtifactStateService::fileSha256(tempDocxPath);
+
+    if (pdfSha256.isEmpty() || docxSha256.isEmpty()) {
+        QFile::remove(tempPdfPath);
+        QFile::remove(tempDocxPath);
+        errorMessage =
+            QStringLiteral("无法计算报告文件校验值。");
+        return false;
+    }
 
     bool oldPdfBackedUp = false;
+    bool oldDocxBackedUp = false;
 
     if (QFile::exists(pdfPath)) {
         if (!QFile::rename(pdfPath, backupPdfPath)) {
             QFile::remove(tempPdfPath);
+            QFile::remove(tempDocxPath);
             errorMessage =
                 QStringLiteral(
                     "无法暂存旧 PDF 报告，"
@@ -377,28 +698,71 @@ bool SimulationReportGenerator::generate(
         oldPdfBackedUp = true;
     }
 
-    if (!QFile::rename(tempPdfPath, pdfPath)) {
-        if (oldPdfBackedUp) {
-            QFile::rename(backupPdfPath, pdfPath);
+    if (QFile::exists(docxPath)) {
+        if (!QFile::rename(docxPath, backupDocxPath)) {
+            QFile::remove(tempPdfPath);
+            QFile::remove(tempDocxPath);
+            restoreFromBackup(
+                pdfPath,
+                backupPdfPath,
+                oldPdfBackedUp
+            );
+            errorMessage =
+                QStringLiteral(
+                    "无法暂存旧 Word 报告，"
+                    "文件可能正在被占用：\n%1"
+                ).arg(docxPath);
+            return false;
         }
-        errorMessage = QStringLiteral("无法提交正式 PDF 报告文件。");
+        oldDocxBackedUp = true;
+    }
+
+    if (!QFile::rename(tempPdfPath, pdfPath)) {
+        QFile::remove(tempPdfPath);
+        QFile::remove(tempDocxPath);
+        restoreFromBackup(pdfPath, backupPdfPath, oldPdfBackedUp);
+        restoreFromBackup(
+            docxPath,
+            backupDocxPath,
+            oldDocxBackedUp
+        );
+        errorMessage =
+            QStringLiteral("无法提交正式 PDF 报告文件。");
+        return false;
+    }
+
+    if (!QFile::rename(tempDocxPath, docxPath)) {
+        QFile::remove(tempDocxPath);
+        // Critical: never leave new PDF + old DOCX.
+        restoreFromBackup(pdfPath, backupPdfPath, oldPdfBackedUp);
+        restoreFromBackup(
+            docxPath,
+            backupDocxPath,
+            oldDocxBackedUp
+        );
+        errorMessage =
+            QStringLiteral("无法提交正式 Word 报告文件。");
         return false;
     }
 
     if (!writeReportManifest(
             projectPath,
-            validation.manifest.postSha256,
+            model,
+            pdfPath,
+            docxPath,
+            pdfSha256,
+            docxSha256,
             errorMessage)) {
-        QFile::remove(pdfPath);
-        if (oldPdfBackedUp) {
-            QFile::rename(backupPdfPath, pdfPath);
-        }
+        restoreFromBackup(pdfPath, backupPdfPath, oldPdfBackedUp);
+        restoreFromBackup(
+            docxPath,
+            backupDocxPath,
+            oldDocxBackedUp
+        );
         return false;
     }
 
-    if (oldPdfBackedUp) {
-        QFile::remove(backupPdfPath);
-    }
-
+    cleanupBackup(backupPdfPath, oldPdfBackedUp);
+    cleanupBackup(backupDocxPath, oldDocxBackedUp);
     return true;
 }

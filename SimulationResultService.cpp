@@ -2,29 +2,11 @@
 
 #include "SimulationArtifactStateService.h"
 
-#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
-
-namespace {
-
-QString t2CompletionStamp(const QString &projectPath)
-{
-    const QFileInfo info(
-        ProjectInputHash::t2FinishedFlagPath(projectPath)
-    );
-
-    if (!info.exists() || !info.isFile()) {
-        return QString();
-    }
-
-    return info.lastModified().toUTC().toString(Qt::ISODateWithMs);
-}
-
-} // namespace
 
 ResultValidationResult SimulationResultService::validate(
     const QString &projectPath)
@@ -201,6 +183,13 @@ QString SimulationResultService::reportPdfPath(
         .filePath(QStringLiteral("simulation_report.pdf"));
 }
 
+QString SimulationResultService::reportDocxPath(
+    const QString &projectPath)
+{
+    return QDir(reportDirectoryPath(projectPath))
+        .filePath(QStringLiteral("simulation_report.docx"));
+}
+
 QString SimulationResultService::reportManifestPath(
     const QString &projectPath)
 {
@@ -227,7 +216,11 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
         return false;
     }
 
-    const QString currentT2Stamp = t2CompletionStamp(projectPath);
+    const QString currentT2Stamp =
+        SimulationArtifactStateService::t2CompletionStampUtc(
+            projectPath
+        );
+
     if (currentT2Stamp.isEmpty()) {
         return false;
     }
@@ -247,21 +240,74 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
     }
 
     const QJsonObject json = document.object();
-    if (json.value(QStringLiteral("version")).toInt() != 2) {
+
+    if (json.value(QStringLiteral("version")).toInt() != 3) {
         return false;
     }
 
-    const QString storedSha =
+    const QString storedPostSha =
         json.value(QStringLiteral("postSha256")).toString();
     const QString storedT2Stamp =
         json.value(QStringLiteral("t2CompletedAt")).toString();
+    const QString storedPdfName =
+        json.value(QStringLiteral("pdf")).toString();
+    const QString storedDocxName =
+        json.value(QStringLiteral("docx")).toString();
+    const qint64 storedPdfBytes =
+        static_cast<qint64>(
+            json.value(QStringLiteral("pdfBytes")).toDouble(-1)
+        );
+    const qint64 storedDocxBytes =
+        static_cast<qint64>(
+            json.value(QStringLiteral("docxBytes")).toDouble(-1)
+        );
+    const QString storedPdfSha =
+        json.value(QStringLiteral("pdfSha256")).toString();
+    const QString storedDocxSha =
+        json.value(QStringLiteral("docxSha256")).toString();
 
-    const QFileInfo pdfInfo(reportPdfPath(projectPath));
+    if (storedPostSha.isEmpty()
+        || storedPostSha != postManifest.postSha256
+        || storedT2Stamp != currentT2Stamp) {
+        return false;
+    }
 
-    return !storedSha.isEmpty()
-        && storedSha == postManifest.postSha256
-        && storedT2Stamp == currentT2Stamp
-        && pdfInfo.exists()
-        && pdfInfo.isFile()
-        && pdfInfo.size() > 0;
+    const QString pdfPath = reportPdfPath(projectPath);
+    const QString docxPath = reportDocxPath(projectPath);
+
+    if (storedPdfName != QFileInfo(pdfPath).fileName()
+        || storedDocxName != QFileInfo(docxPath).fileName()) {
+        return false;
+    }
+
+    const QFileInfo pdfInfo(pdfPath);
+    const QFileInfo docxInfo(docxPath);
+
+    if (!pdfInfo.exists()
+        || !pdfInfo.isFile()
+        || pdfInfo.size() <= 0
+        || !docxInfo.exists()
+        || !docxInfo.isFile()
+        || docxInfo.size() <= 0) {
+        return false;
+    }
+
+    if (pdfInfo.size() != storedPdfBytes
+        || docxInfo.size() != storedDocxBytes) {
+        return false;
+    }
+
+    if (storedPdfSha.isEmpty() || storedDocxSha.isEmpty()) {
+        return false;
+    }
+
+    const QString actualPdfSha =
+        SimulationArtifactStateService::fileSha256(pdfPath);
+    const QString actualDocxSha =
+        SimulationArtifactStateService::fileSha256(docxPath);
+
+    return !actualPdfSha.isEmpty()
+        && !actualDocxSha.isEmpty()
+        && actualPdfSha == storedPdfSha
+        && actualDocxSha == storedDocxSha;
 }

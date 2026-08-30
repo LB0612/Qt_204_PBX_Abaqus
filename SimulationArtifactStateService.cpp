@@ -1,5 +1,6 @@
 #include "SimulationArtifactStateService.h"
 
+#include <QCryptographicHash>
 #include <QFile>
 #include <QFileInfo>
 
@@ -21,6 +22,47 @@ bool SimulationArtifactStateService::isNonEmptyRegularFile(
 {
     const QFileInfo info(path);
     return info.exists() && info.isFile() && info.size() > 0;
+}
+
+QString SimulationArtifactStateService::fileSha256(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return QString();
+    }
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+
+    constexpr qint64 kChunkSize = 1024 * 1024;
+
+    while (!file.atEnd()) {
+        const QByteArray chunk = file.read(kChunkSize);
+
+        if (chunk.isEmpty()) {
+            if (file.error() != QFile::NoError) {
+                return QString();
+            }
+            break;
+        }
+
+        hash.addData(chunk);
+    }
+
+    return QString::fromLatin1(hash.result().toHex());
+}
+
+QString SimulationArtifactStateService::t2CompletionStampUtc(
+    const QString &projectPath)
+{
+    const QFileInfo info(
+        ProjectInputHash::t2FinishedFlagPath(projectPath)
+    );
+
+    if (!info.exists() || !info.isFile()) {
+        return QString();
+    }
+
+    return info.lastModified().toUTC().toString(Qt::ISODateWithMs);
 }
 
 bool SimulationArtifactStateService::fingerprintFileMatches(

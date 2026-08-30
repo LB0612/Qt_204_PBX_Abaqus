@@ -63,6 +63,7 @@ public:
     static QString resultsDirectoryPath(const QString &projectPath);
     static QString reportDirectoryPath(const QString &projectPath);
     static QString reportPdfPath(const QString &projectPath);
+    static QString reportDocxPath(const QString &projectPath);
     static QString reportManifestPath(const QString &projectPath);
 
     static bool isReportCurrent(const QString &projectPath);
