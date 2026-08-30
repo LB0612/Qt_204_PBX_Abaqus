@@ -648,7 +648,7 @@ QString tableXml(
     xml += QStringLiteral(
         "<w:p>"
         "<w:pPr>"
-        "<w:spacing w:before=\"0\" w:after=\"%1\" w:line=\"20\" w:lineRule=\"exact\"/>"
+        "<w:spacing w:before=\"0\" w:after=\"0\" w:line=\"%1\" w:lineRule=\"exact\"/>"
         "</w:pPr>"
         "</w:p>"
     ).arg(mmToTwips(TableAfterGapMm));
