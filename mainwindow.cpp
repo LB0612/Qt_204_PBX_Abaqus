@@ -36,6 +36,10 @@
 
 namespace {
 
+constexpr int kHomeTitleMaxFontPx = 120;
+constexpr int kHomeTitleMinFontPx = 64;
+constexpr qreal kHomeTitleLetterSpacing = 96.5;
+
 const int ROLE_NODE_TYPE = Qt::UserRole + 1;
 
 const QString NODE_ROOT =
@@ -273,9 +277,12 @@ void MainWindow::setupUi()
     titleLabel->setContentsMargins(60, 20, 220, 20);
 
     QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
-    titleFont.setPixelSize(120);
+    titleFont.setPixelSize(kHomeTitleMaxFontPx);
     titleFont.setWeight(QFont::Medium);
-    titleFont.setLetterSpacing(QFont::PercentageSpacing, 96.5);
+    titleFont.setLetterSpacing(
+        QFont::PercentageSpacing,
+        kHomeTitleLetterSpacing
+    );
     titleLabel->setFont(titleFont);
 
     titleLabel->setStyleSheet(
@@ -762,16 +769,18 @@ void MainWindow::updateHomeTitleFont()
         return;
     }
 
-    constexpr int maxFontPx = 136;
-    constexpr int minFontPx = 64;
-
     QFont font(QStringLiteral("Microsoft YaHei UI"));
     font.setWeight(QFont::Medium);
-    font.setLetterSpacing(QFont::PercentageSpacing, 96.5);
+    font.setLetterSpacing(
+        QFont::PercentageSpacing,
+        kHomeTitleLetterSpacing
+    );
 
-    int targetFontPx = minFontPx;
+    int targetFontPx = kHomeTitleMinFontPx;
 
-    for (int fontPx = maxFontPx; fontPx >= minFontPx; --fontPx) {
+    for (int fontPx = kHomeTitleMaxFontPx;
+         fontPx >= kHomeTitleMinFontPx;
+         --fontPx) {
         font.setPixelSize(fontPx);
 
         const QFontMetrics metrics(font);
