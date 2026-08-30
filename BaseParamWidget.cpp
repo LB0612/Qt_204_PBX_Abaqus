@@ -158,7 +158,7 @@ void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, st
         " border-radius: 4px;"
         " font-family: 'Microsoft YaHei';"
         " font-weight: bold;"
-        " font-size: 16px;"
+        " font-size: 18px;"
         "} "
         "QPushButton:hover {"
         " background-color: #40a9ff;"
