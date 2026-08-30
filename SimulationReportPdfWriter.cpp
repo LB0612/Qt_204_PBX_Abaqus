@@ -37,7 +37,9 @@ QFont makeFont(
     font.setPointSizeF(pointSize);
     font.setBold(bold);
     font.setStyleStrategy(
-        QFont::PreferAntialias | QFont::PreferQuality
+        static_cast<QFont::StyleStrategy>(
+            QFont::PreferAntialias | QFont::PreferQuality
+        )
     );
     return font;
 }
