@@ -160,6 +160,7 @@ struct PdfDrawContext
     QPainter *painter = nullptr;
     QPdfWriter *writer = nullptr;
     PageGeom geom;
+    QString reportTitle;
     int bodyPageIndex = 1;
     int bodyTotalPages = 1;
     bool coverDrawn = false;
@@ -199,22 +200,20 @@ void drawHeaderFooter(PdfDrawContext &ctx, bool isCover)
         makeFont(QStringLiteral("SimHei"), HeaderPt, false);
     headerFont.setLetterSpacing(
         QFont::AbsoluteSpacing,
-        ptToPx(1.0)
+        ptToPx(HeaderLetterSpacingPt)
     );
     painter.setFont(headerFont);
-    painter.setPen(QColor(QStringLiteral("#222222")));
+    painter.setPen(Qt::black);
 
     const qreal headerY = mmToPx(HeaderMm) - mmToPx(8.0);
     painter.drawText(
         QRectF(geom.left, headerY, geom.contentW, mmToPx(8.0)),
         Qt::AlignCenter | Qt::AlignVCenter,
-        QStringLiteral("浇注PBX固化仿真分析报告")
+        ctx.reportTitle
     );
 
     const qreal lineY = mmToPx(HeaderMm) - mmToPx(2.0);
-    painter.setPen(
-        QPen(QColor(QStringLiteral("#333333")), ptToPx(0.75))
-    );
+    painter.setPen(QPen(Qt::black, ptToPx(HeaderRulePt)));
     painter.drawLine(
         QPointF(geom.left, lineY),
         QPointF(geom.pageW - geom.right, lineY)
@@ -223,7 +222,7 @@ void drawHeaderFooter(PdfDrawContext &ctx, bool isCover)
     painter.setFont(
         makeFont(QStringLiteral("SimSun"), FooterPt)
     );
-    painter.setPen(QColor(QStringLiteral("#222222")));
+    painter.setPen(Qt::black);
     painter.drawText(
         QRectF(
             geom.left,
@@ -315,7 +314,7 @@ void drawLeftText(
 
     if (!ctx.dryRun && ctx.painter) {
         ctx.painter->setFont(font);
-        ctx.painter->setPen(QColor(QStringLiteral("#222222")));
+        ctx.painter->setPen(Qt::black);
         ctx.painter->drawText(
             QRectF(ctx.geom.left, y, ctx.geom.contentW, h),
             Qt::TextWordWrap | Qt::AlignLeft | Qt::AlignTop,
@@ -324,6 +323,38 @@ void drawLeftText(
     }
 
     y += h + mmToPx(extraGapMm);
+}
+
+void drawHeading1(
+    PdfDrawContext &ctx,
+    qreal &y,
+    const QString &text)
+{
+    const QFont font =
+        makeFont(QStringLiteral("SimHei"), Heading1Pt, true);
+    const QFontMetricsF metrics = metricsFor(ctx, font);
+
+    y += ptToPx(Heading1BeforePt);
+
+    const qreal lineHeight =
+        metrics.height() * HeadingLineSpacingFactor;
+
+    if (!ctx.dryRun && ctx.painter) {
+        ctx.painter->setFont(font);
+        ctx.painter->setPen(Qt::black);
+        ctx.painter->drawText(
+            QRectF(
+                ctx.geom.left,
+                y,
+                ctx.geom.contentW,
+                lineHeight
+            ),
+            Qt::AlignLeft | Qt::AlignVCenter,
+            text
+        );
+    }
+
+    y += lineHeight + ptToPx(Heading1AfterPt);
 }
 
 void drawBodyParagraph(
@@ -385,22 +416,22 @@ bool drawTable(
     const QFontMetricsF captionMetrics =
         metricsFor(ctx, captionFont);
 
-    const qreal captionH = captionMetrics.height() + mmToPx(1.5);
+    const qreal captionH = captionMetrics.height() * 1.5;
     const qreal tableW = ctx.geom.contentW * TableWidthPct;
     const qreal tableLeft =
         ctx.geom.left + (ctx.geom.contentW - tableW) / 2.0;
-    const qreal col1 = tableW * 0.34;
-    const qreal col2 = tableW * 0.42;
-    const qreal col3 = tableW * 0.24;
-    const qreal cellPadX = mmToPx(1.9);
+    const qreal col1 = tableW * TableColumn1Pct;
+    const qreal col2 = tableW * TableColumn2Pct;
+    const qreal col3 = tableW * TableColumn3Pct;
+    const qreal cellPadX = mmToPx(TableCellPaddingXMm);
 
-    auto drawTableLine = [&](qreal widthMm, const QColor &color) {
+    auto drawTableLine = [&](qreal widthPt) {
         if (ctx.dryRun || !ctx.painter) {
             return;
         }
 
-        QPen pen(color);
-        pen.setWidthF(mmToPx(widthMm));
+        QPen pen(Qt::black);
+        pen.setWidthF(ptToPx(widthPt));
         pen.setCapStyle(Qt::FlatCap);
 
         ctx.painter->save();
@@ -413,13 +444,13 @@ bool drawTable(
     };
 
     auto drawTableTopLine = [&]() {
-        drawTableLine(TableLineMm, QColor(QStringLiteral("#222222")));
+        drawTableLine(TableRulePt);
     };
     auto drawTableHeaderLine = [&]() {
-        drawTableLine(TableLineMm, QColor(QStringLiteral("#222222")));
+        drawTableLine(TableRulePt);
     };
     auto drawTableBottomLine = [&]() {
-        drawTableLine(TableLineMm, QColor(QStringLiteral("#222222")));
+        drawTableLine(TableRulePt);
     };
 
     auto measureRowHeight = [&](const QString &c1,
@@ -484,7 +515,7 @@ bool drawTable(
             );
 
             painter.setFont(tableFont);
-            painter.setPen(QColor(QStringLiteral("#222222")));
+            painter.setPen(Qt::black);
             const int flags =
                 Qt::TextWordWrap
                 | Qt::TextWrapAnywhere
@@ -506,8 +537,7 @@ bool drawTable(
         true
     );
 
-    qreal tableTotalHeight =
-        captionH + mmToPx(1.5) + headerRowH;
+    qreal tableTotalHeight = captionH + headerRowH;
     for (const SimulationReportRow &row : table.rows) {
         tableTotalHeight += measureRowHeight(
             row.name,
@@ -516,7 +546,7 @@ bool drawTable(
             false
         );
     }
-    tableTotalHeight += mmToPx(3.0);
+    tableTotalHeight += mmToPx(TableAfterGapMm);
 
     const qreal maxTableHeight =
         ctx.geom.pageH - ctx.geom.top - ctx.geom.bottom;
@@ -534,14 +564,14 @@ bool drawTable(
 
     if (!ctx.dryRun && ctx.painter) {
         ctx.painter->setFont(captionFont);
-        ctx.painter->setPen(QColor(QStringLiteral("#222222")));
+        ctx.painter->setPen(Qt::black);
         ctx.painter->drawText(
             QRectF(ctx.geom.left, y, ctx.geom.contentW, captionH),
             Qt::AlignHCenter | Qt::AlignVCenter,
             caption
         );
     }
-    y += captionH + mmToPx(1.5);
+    y += captionH;
 
     drawTableTopLine();
     if (!drawRow(
@@ -560,7 +590,7 @@ bool drawTable(
     }
 
     drawTableBottomLine();
-    y += mmToPx(3.0);
+    y += mmToPx(TableAfterGapMm);
     return true;
 }
 
@@ -583,14 +613,14 @@ bool layoutReport(
             ctx,
             y,
             model.reportTitle,
-            makeFont(QStringLiteral("SimHei"), CoverTitlePt, true),
+            makeFont(QStringLiteral("SimSun"), CoverTitlePt, true),
             CoverAfterTitleMm
         );
         drawCenteredText(
             ctx,
             y,
             model.productName,
-            makeFont(QStringLiteral("SimHei"), CoverSubtitlePt, true),
+            makeFont(QStringLiteral("SimHei"), CoverSubtitlePt, false),
             CoverAfterSubtitleMm
         );
 
@@ -616,10 +646,10 @@ bool layoutReport(
             y,
             QStringLiteral("软件版本：%1").arg(model.appVersion),
             infoFont,
-            CoverBeforeDateMm
+            0.0
         );
 
-        y = ctx.geom.pageH - mmToPx(60.0);
+        y = ctx.geom.pageH - mmToPx(CoverDateBottomMm);
         drawCenteredText(
             ctx,
             y,
@@ -637,14 +667,7 @@ bool layoutReport(
     }
     {
         qreal y = ctx.geom.top;
-        drawLeftText(
-            ctx,
-            y,
-            QStringLiteral("1 仿真概况"),
-            makeFont(QStringLiteral("SimHei"), Heading1Pt, true),
-            1.0,
-            6.0
-        );
+        drawHeading1(ctx, y, QStringLiteral("1 仿真概况"));
         SimulationReportTable overview;
         overview.rows = model.overviewRows;
         if (!drawTable(
@@ -664,14 +687,7 @@ bool layoutReport(
     }
     {
         qreal y = ctx.geom.top;
-        drawLeftText(
-            ctx,
-            y,
-            QStringLiteral("2 输入参数"),
-            makeFont(QStringLiteral("SimHei"), Heading1Pt, true),
-            1.0,
-            6.0
-        );
+        drawHeading1(ctx, y, QStringLiteral("2 输入参数"));
 
         for (int i = 0; i < model.parameterTables.size(); ++i) {
             const SimulationReportTable &table =
@@ -711,15 +727,12 @@ bool layoutReport(
             }
 
             qreal y = ctx.geom.top;
-            drawLeftText(
+            drawHeading1(
                 ctx,
                 y,
                 QStringLiteral("%1 %2")
                     .arg(sectionNumber)
-                    .arg(section.title),
-                makeFont(QStringLiteral("SimHei"), Heading1Pt, true),
-                1.0,
-                8.0
+                    .arg(section.title)
             );
 
             const qreal maxW = mmToPx(FigureMaxWidthMm);
@@ -773,14 +786,7 @@ bool layoutReport(
     }
     {
         qreal y = ctx.geom.top;
-        drawLeftText(
-            ctx,
-            y,
-            QStringLiteral("6 结果文件说明"),
-            makeFont(QStringLiteral("SimHei"), Heading1Pt, true),
-            1.0,
-            6.0
-        );
+        drawHeading1(ctx, y, QStringLiteral("6 结果文件说明"));
         for (const QString &note : model.notes) {
             drawBodyParagraph(ctx, y, note);
         }
@@ -793,14 +799,7 @@ bool layoutReport(
     }
     {
         qreal y = ctx.geom.top;
-        drawLeftText(
-            ctx,
-            y,
-            QStringLiteral("7 报告追溯信息"),
-            makeFont(QStringLiteral("SimHei"), Heading1Pt, true),
-            1.0,
-            6.0
-        );
+        drawHeading1(ctx, y, QStringLiteral("7 报告追溯信息"));
         SimulationReportTable trace;
         trace.rows = model.traceRows;
         if (!drawTable(
@@ -826,6 +825,7 @@ bool SimulationReportPdfWriter::write(
 {
     PdfDrawContext countCtx;
     countCtx.geom = makeGeom();
+    countCtx.reportTitle = model.reportTitle;
     countCtx.dryRun = true;
     countCtx.bodyPageIndex = 1;
     countCtx.bodyTotalPages = 1;
@@ -859,6 +859,7 @@ bool SimulationReportPdfWriter::write(
     drawCtx.painter = &painter;
     drawCtx.writer = &writer;
     drawCtx.geom = makeGeom();
+    drawCtx.reportTitle = model.reportTitle;
     drawCtx.dryRun = false;
     drawCtx.bodyPageIndex = 1;
     drawCtx.bodyTotalPages = bodyTotalPages;

@@ -381,7 +381,7 @@ QString captionParagraph(
         false,
         QStringLiteral("center"),
         false,
-        false,
+        true,
         0,
         0,
         keepNext
@@ -392,27 +392,45 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
 {
     QString xml;
     xml += captionParagraph(caption, true);
+
+    const int tableWidthTwips = mmToTwips(
+        (PageWidthMm - MarginLeftMm - MarginRightMm)
+        * TableWidthPct
+    );
+    const int col1Twips =
+        qRound(tableWidthTwips * TableColumn1Pct);
+    const int col2Twips =
+        qRound(tableWidthTwips * TableColumn2Pct);
+    const int col3Twips =
+        tableWidthTwips - col1Twips - col2Twips;
+    const int tableBorderSize =
+        qRound(TableRulePt * 8.0);
+
     xml += QStringLiteral(
         "<w:tbl>"
         "<w:tblPr>"
-        "<w:tblW w:w=\"%1\" w:type=\"pct\"/>"
+        "<w:tblW w:w=\"%1\" w:type=\"dxa\"/>"
         "<w:jc w:val=\"center\"/>"
         "<w:tblLayout w:type=\"fixed\"/>"
         "<w:tblBorders>"
-        "<w:top w:val=\"single\" w:sz=\"12\" w:space=\"0\" w:color=\"222222\"/>"
+        "<w:top w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
         "<w:left w:val=\"nil\"/>"
-        "<w:bottom w:val=\"single\" w:sz=\"12\" w:space=\"0\" w:color=\"222222\"/>"
+        "<w:bottom w:val=\"single\" w:sz=\"%2\" w:space=\"0\" w:color=\"000000\"/>"
         "<w:right w:val=\"nil\"/>"
         "<w:insideH w:val=\"nil\"/>"
         "<w:insideV w:val=\"nil\"/>"
         "</w:tblBorders>"
         "</w:tblPr>"
         "<w:tblGrid>"
-        "<w:gridCol w:w=\"2500\"/>"
-        "<w:gridCol w:w=\"3200\"/>"
-        "<w:gridCol w:w=\"1800\"/>"
+        "<w:gridCol w:w=\"%3\"/>"
+        "<w:gridCol w:w=\"%4\"/>"
+        "<w:gridCol w:w=\"%5\"/>"
         "</w:tblGrid>"
-    ).arg(qRound(TableWidthPct * 5000.0));
+    ).arg(tableWidthTwips)
+        .arg(tableBorderSize)
+        .arg(col1Twips)
+        .arg(col2Twips)
+        .arg(col3Twips);
 
     const int tableHalfPts = ptToHalfPoints(TablePt);
 
@@ -424,10 +442,10 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
         const QString headerBottom = header
             ? QStringLiteral(
                 "<w:tcBorders>"
-                "<w:bottom w:val=\"single\" w:sz=\"12\" "
-                "w:space=\"0\" w:color=\"222222\"/>"
+                "<w:bottom w:val=\"single\" w:sz=\"%1\" "
+                "w:space=\"0\" w:color=\"000000\"/>"
                 "</w:tcBorders>"
-            )
+            ).arg(tableBorderSize)
             : QString();
         const QString keepNextXml = keepWithNext
             ? QStringLiteral("<w:keepNext/>")
@@ -436,11 +454,11 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
             (header ? TableHeaderRowMinPt : TableRowMinPt) * 20.0
         );
 
-        auto cell = [&](const QString &text) {
+        auto cell = [&](const QString &text, int widthTwips) {
             return QStringLiteral(
                 "<w:tc>"
                 "<w:tcPr>"
-                "<w:tcW w:w=\"0\" w:type=\"auto\"/>"
+                "<w:tcW w:w=\"%1\" w:type=\"dxa\"/>"
                 "<w:vAlign w:val=\"center\"/>"
                 "<w:tcMar>"
                 "<w:top w:w=\"0\" w:type=\"dxa\"/>"
@@ -448,29 +466,28 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
                 "<w:bottom w:w=\"0\" w:type=\"dxa\"/>"
                 "<w:right w:w=\"108\" w:type=\"dxa\"/>"
                 "</w:tcMar>"
-                "%1"
+                "%2"
                 "</w:tcPr>"
                 "<w:p>"
                 "<w:pPr>"
                 "<w:jc w:val=\"center\"/>"
                 "<w:spacing w:line=\"360\" w:lineRule=\"auto\" "
                 "w:before=\"120\" w:after=\"120\"/>"
-                "%2"
+                "%3"
                 "</w:pPr>"
                 "<w:r>"
-                "<w:rPr>%3"
-                "<w:sz w:val=\"%4\"/><w:szCs w:val=\"%4\"/></w:rPr>"
-                "<w:t xml:space=\"preserve\">%5</w:t>"
+                "<w:rPr>%4"
+                "<w:sz w:val=\"%5\"/><w:szCs w:val=\"%5\"/></w:rPr>"
+                "<w:t xml:space=\"preserve\">%6</w:t>"
                 "</w:r>"
                 "</w:p>"
                 "</w:tc>"
-            ).arg(
-                headerBottom,
-                keepNextXml,
-                bodyFonts(),
-                QString::number(tableHalfPts),
-                xmlEscape(text)
-            );
+            ).arg(widthTwips)
+                .arg(headerBottom)
+                .arg(keepNextXml)
+                .arg(bodyFonts())
+                .arg(tableHalfPts)
+                .arg(xmlEscape(text));
         };
 
         xml += QStringLiteral(
@@ -480,9 +497,9 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
             "<w:trHeight w:val=\"%1\" w:hRule=\"atLeast\"/>"
             "</w:trPr>"
         ).arg(rowHeightTwips);
-        xml += cell(c1);
-        xml += cell(c2);
-        xml += cell(c3);
+        xml += cell(c1, col1Twips);
+        xml += cell(c2, col2Twips);
+        xml += cell(c3, col3Twips);
         xml += QStringLiteral("</w:tr>");
     };
 
@@ -512,7 +529,7 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
         "<w:spacing w:before=\"0\" w:after=\"%1\" w:line=\"20\" w:lineRule=\"exact\"/>"
         "</w:pPr>"
         "</w:p>"
-    ).arg(mmToTwips(3.0));
+    ).arg(mmToTwips(TableAfterGapMm));
     return xml;
 }
 
@@ -649,7 +666,7 @@ bool SimulationReportDocxWriter::write(
     body += paragraphStyled(
         model.reportTitle,
         QStringLiteral("Title"),
-        headingFonts(),
+        bodyFonts(),
         ptToHalfPoints(CoverTitlePt),
         true,
         QStringLiteral("center"),
@@ -663,7 +680,7 @@ bool SimulationReportDocxWriter::write(
         QString(),
         headingFonts(),
         ptToHalfPoints(CoverSubtitlePt),
-        true,
+        false,
         QStringLiteral("center"),
         false,
         false,
@@ -909,7 +926,7 @@ bool SimulationReportDocxWriter::write(
             "<w:spacing w:before=\"240\" w:after=\"240\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(BodyPt))
-        + headingFontXml
+        + bodyFontXml
         + QStringLiteral(
             "<w:b/><w:bCs/>"
             "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"
@@ -967,20 +984,21 @@ bool SimulationReportDocxWriter::write(
         "<w:pPr>"
         "<w:jc w:val=\"center\"/>"
         "<w:pBdr>"
-        "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"333333\"/>"
+        "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"000000\"/>"
         "</w:pBdr>"
         "</w:pPr>"
         "<w:r>"
         "<w:rPr>%1"
         "<w:spacing w:val=\"20\"/>"
         "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\">浇注PBX固化仿真分析报告</w:t>"
+        "<w:t xml:space=\"preserve\">%3</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:hdr>"
     ).arg(
         headingFonts(),
-        QString::number(ptToHalfPoints(HeaderPt))
+        QString::number(ptToHalfPoints(HeaderPt)),
+        xmlEscape(model.reportTitle)
     );
 
     const QString footerFontXml = bodyFonts();
@@ -1009,7 +1027,19 @@ bool SimulationReportDocxWriter::write(
         "<w:r>"
         "<w:rPr>__RF__"
         "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\"> 页 共 __PAGES__ 页</w:t>"
+        "<w:t xml:space=\"preserve\"> 页 共 </w:t>"
+        "</w:r>"
+        "<w:fldSimple w:instr=\" SECTIONPAGES \" w:dirty=\"true\">"
+        "<w:r>"
+        "<w:rPr>__RF__"
+        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
+        "<w:t>__PAGES__</w:t>"
+        "</w:r>"
+        "</w:fldSimple>"
+        "<w:r>"
+        "<w:rPr>__RF__"
+        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
+        "<w:t xml:space=\"preserve\"> 页</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:ftr>"

@@ -35,10 +35,26 @@ constexpr double FigureMaxHeightMm = 180.0;
 
 constexpr double TableWidthPct = 0.86;
 
-// ~1.5 pt three-line table rules.
-constexpr double TableLineMm = 0.53;
-constexpr double TableRowMinPt = 38.0;
-constexpr double TableHeaderRowMinPt = 38.5;
+constexpr double TableColumn1Pct = 0.34;
+constexpr double TableColumn2Pct = 0.42;
+constexpr double TableColumn3Pct = 0.24;
+
+constexpr double TableRulePt = 1.5;
+
+constexpr double TableRowMinPt = 38.10;
+constexpr double TableHeaderRowMinPt = 38.65;
+
+constexpr double TableCellPaddingXMm = 1.9;
+constexpr double TableAfterGapMm = 3.0;
+
+constexpr double HeadingLineSpacingFactor = 1.5;
+constexpr double Heading1BeforePt = 2.5;
+constexpr double Heading1AfterPt = 2.5;
+
+constexpr double HeaderLetterSpacingPt = 1.0;
+constexpr double HeaderRulePt = 0.75;
+
+constexpr double CoverDateBottomMm = 60.0;
 
 // Cover: page top margin + this spacer ≈ PDF title at 70 mm.
 constexpr double CoverTopSpacerMm = 40.0;

@@ -521,6 +521,23 @@ bool writeReportManifest(
     return true;
 }
 
+int expectedBodyPageCount(
+    const SimulationReportModel &model)
+{
+    int figurePages = 0;
+    for (const SimulationReportResultSection &section
+         : model.resultSections) {
+        figurePages += section.figures.size();
+    }
+
+    // 1 overview
+    // 2 parameter pages
+    // N figure pages
+    // 1 notes page
+    // 1 trace page
+    return figurePages + 5;
+}
+
 bool validatePdfFile(const QString &path)
 {
     QFile file(path);
@@ -749,6 +766,19 @@ bool SimulationReportGenerator::generate(
         if (QFile::exists(tempPdfPath)) {
             QFile::remove(tempPdfPath);
         }
+        return false;
+    }
+
+    const int expectedPages = expectedBodyPageCount(model);
+    if (bodyTotalPages != expectedPages) {
+        QFile::remove(tempPdfPath);
+        errorMessage =
+            QStringLiteral(
+                "报告分页与预期不一致："
+                "实际 %1 页，预期 %2 页。"
+            )
+                .arg(bodyTotalPages)
+                .arg(expectedPages);
         return false;
     }
 
