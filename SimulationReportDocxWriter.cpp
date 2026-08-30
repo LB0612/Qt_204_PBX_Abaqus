@@ -387,6 +387,14 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
         "<w:tblW w:w=\"%1\" w:type=\"pct\"/>"
         "<w:jc w:val=\"center\"/>"
         "<w:tblLayout w:type=\"fixed\"/>"
+        "<w:tblBorders>"
+        "<w:top w:val=\"single\" w:sz=\"12\" w:space=\"0\" w:color=\"222222\"/>"
+        "<w:left w:val=\"nil\"/>"
+        "<w:bottom w:val=\"single\" w:sz=\"12\" w:space=\"0\" w:color=\"222222\"/>"
+        "<w:right w:val=\"nil\"/>"
+        "<w:insideH w:val=\"nil\"/>"
+        "<w:insideV w:val=\"nil\"/>"
+        "</w:tblBorders>"
         "</w:tblPr>"
         "<w:tblGrid>"
         "<w:gridCol w:w=\"2500\"/>"
@@ -404,20 +412,40 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
         const QString bold = header
             ? QStringLiteral("<w:b/><w:bCs/>")
             : QString();
+        const QString headerBottom = header
+            ? QStringLiteral(
+                "<w:tcBorders>"
+                "<w:bottom w:val=\"single\" w:sz=\"6\" "
+                "w:space=\"0\" w:color=\"555555\"/>"
+                "</w:tcBorders>"
+            )
+            : QString();
+
         auto cell = [&](const QString &text) {
             return QStringLiteral(
                 "<w:tc>"
-                "<w:tcPr><w:tcW w:w=\"0\" w:type=\"auto\"/></w:tcPr>"
+                "<w:tcPr>"
+                "<w:tcW w:w=\"0\" w:type=\"auto\"/>"
+                "<w:vAlign w:val=\"center\"/>"
+                "<w:tcMar>"
+                "<w:top w:w=\"80\" w:type=\"dxa\"/>"
+                "<w:left w:w=\"100\" w:type=\"dxa\"/>"
+                "<w:bottom w:w=\"80\" w:type=\"dxa\"/>"
+                "<w:right w:w=\"100\" w:type=\"dxa\"/>"
+                "</w:tcMar>"
+                "%1"
+                "</w:tcPr>"
                 "<w:p>"
                 "<w:pPr><w:jc w:val=\"center\"/></w:pPr>"
                 "<w:r>"
-                "<w:rPr>%1%2"
-                "<w:sz w:val=\"%3\"/><w:szCs w:val=\"%3\"/></w:rPr>"
-                "<w:t xml:space=\"preserve\">%4</w:t>"
+                "<w:rPr>%2%3"
+                "<w:sz w:val=\"%4\"/><w:szCs w:val=\"%4\"/></w:rPr>"
+                "<w:t xml:space=\"preserve\">%5</w:t>"
                 "</w:r>"
                 "</w:p>"
                 "</w:tc>"
             ).arg(
+                headerBottom,
                 bodyFonts(),
                 bold,
                 QString::number(tableHalfPts),
@@ -936,19 +964,7 @@ bool SimulationReportDocxWriter::write(
         "<w:r>"
         "<w:rPr>__RF__"
         "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\"> 页 共 </w:t>"
-        "</w:r>"
-        "<w:fldSimple w:instr=\" SECTIONPAGES \" w:dirty=\"true\">"
-        "<w:r>"
-        "<w:rPr>__RF__"
-        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
-        "<w:t>__PAGES__</w:t>"
-        "</w:r>"
-        "</w:fldSimple>"
-        "<w:r>"
-        "<w:rPr>__RF__"
-        "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
-        "<w:t xml:space=\"preserve\"> 页</w:t>"
+        "<w:t xml:space=\"preserve\"> 页 共 __PAGES__ 页</w:t>"
         "</w:r>"
         "</w:p>"
         "</w:ftr>"

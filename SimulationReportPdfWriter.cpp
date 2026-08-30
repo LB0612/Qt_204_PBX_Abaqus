@@ -395,6 +395,34 @@ bool drawTable(
         return true;
     };
 
+    auto drawTableLine = [&](qreal widthMm, const QColor &color) {
+        if (ctx.dryRun || !ctx.painter) {
+            return;
+        }
+
+        QPen pen(color);
+        pen.setWidthF(mmToPx(widthMm));
+        pen.setCapStyle(Qt::FlatCap);
+
+        ctx.painter->save();
+        ctx.painter->setPen(pen);
+        ctx.painter->drawLine(
+            QPointF(tableLeft, y),
+            QPointF(tableLeft + tableW, y)
+        );
+        ctx.painter->restore();
+    };
+
+    auto drawTableTopLine = [&]() {
+        drawTableLine(0.35, QColor(QStringLiteral("#222222")));
+    };
+    auto drawTableHeaderLine = [&]() {
+        drawTableLine(0.18, QColor(QStringLiteral("#555555")));
+    };
+    auto drawTableBottomLine = [&]() {
+        drawTableLine(0.35, QColor(QStringLiteral("#222222")));
+    };
+
     auto measureRowHeight = [&](const QString &c1,
                                 const QString &c2,
                                 const QString &c3,
@@ -402,20 +430,22 @@ bool drawTable(
         QFont rowFont = tableFont;
         rowFont.setBold(header);
         const QFontMetricsF metrics = metricsFor(ctx, rowFont);
+        const int wrapFlags =
+            Qt::TextWordWrap | Qt::TextWrapAnywhere;
 
         const qreal h1 = metrics.boundingRect(
             QRectF(0, 0, col1 - cellPadX * 2.0, ctx.geom.contentH),
-            Qt::TextWordWrap | Qt::TextWrapAnywhere,
+            wrapFlags,
             c1
         ).height();
         const qreal h2 = metrics.boundingRect(
             QRectF(0, 0, col2 - cellPadX * 2.0, ctx.geom.contentH),
-            Qt::TextWordWrap | Qt::TextWrapAnywhere,
+            wrapFlags,
             c2
         ).height();
         const qreal h3 = metrics.boundingRect(
             QRectF(0, 0, col3 - cellPadX * 2.0, ctx.geom.contentH),
-            Qt::TextWordWrap | Qt::TextWrapAnywhere,
+            wrapFlags,
             c3
         ).height();
 
@@ -427,7 +457,7 @@ bool drawTable(
                        const QString &c3,
                        bool header) -> bool {
         const qreal rowH = measureRowHeight(c1, c2, c3, header);
-        if (!ensureSpace(rowH)) {
+        if (y + rowH > ctx.geom.pageH - ctx.geom.bottom) {
             return false;
         }
 
@@ -477,26 +507,41 @@ bool drawTable(
         true
     );
 
-    if (!ensureSpace(captionH + headerRowH * 2.0)) {
-        return false;
-    }
+    auto beginTableBlock = [&](bool continuation) -> bool {
+        const qreal need =
+            captionH + mmToPx(2.0) + headerRowH + mmToPx(1.0);
+        if (!ensureSpace(need)) {
+            return false;
+        }
 
-    if (!ctx.dryRun && ctx.painter) {
-        ctx.painter->setFont(captionFont);
-        ctx.painter->setPen(QColor(QStringLiteral("#222222")));
-        ctx.painter->drawText(
-            QRectF(ctx.geom.left, y, ctx.geom.contentW, captionH),
-            Qt::AlignHCenter | Qt::AlignVCenter,
-            caption
-        );
-    }
-    y += captionH + mmToPx(2.0);
+        const QString title = continuation
+            ? caption + QStringLiteral("（续）")
+            : caption;
 
-    if (!drawRow(
-            QStringLiteral("参数"),
-            QStringLiteral("数值"),
-            QStringLiteral("单位"),
-            true)) {
+        if (!ctx.dryRun && ctx.painter) {
+            ctx.painter->setFont(captionFont);
+            ctx.painter->setPen(QColor(QStringLiteral("#222222")));
+            ctx.painter->drawText(
+                QRectF(ctx.geom.left, y, ctx.geom.contentW, captionH),
+                Qt::AlignHCenter | Qt::AlignVCenter,
+                title
+            );
+        }
+        y += captionH + mmToPx(2.0);
+
+        drawTableTopLine();
+        if (!drawRow(
+                QStringLiteral("参数"),
+                QStringLiteral("数值"),
+                QStringLiteral("单位"),
+                true)) {
+            return false;
+        }
+        drawTableHeaderLine();
+        return true;
+    };
+
+    if (!beginTableBlock(false)) {
         return false;
     }
 
@@ -509,30 +554,12 @@ bool drawTable(
         );
 
         if (y + rowH > ctx.geom.pageH - ctx.geom.bottom) {
+            drawTableBottomLine();
             if (!beginBodyPage(ctx)) {
                 return false;
             }
             y = ctx.geom.top;
-            if (!ctx.dryRun && ctx.painter) {
-                ctx.painter->setFont(captionFont);
-                ctx.painter->setPen(QColor(QStringLiteral("#222222")));
-                ctx.painter->drawText(
-                    QRectF(
-                        ctx.geom.left,
-                        y,
-                        ctx.geom.contentW,
-                        captionH
-                    ),
-                    Qt::AlignHCenter | Qt::AlignVCenter,
-                    caption + QStringLiteral("（续）")
-                );
-            }
-            y += captionH + mmToPx(2.0);
-            if (!drawRow(
-                    QStringLiteral("参数"),
-                    QStringLiteral("数值"),
-                    QStringLiteral("单位"),
-                    true)) {
+            if (!beginTableBlock(true)) {
                 return false;
             }
         }
@@ -542,6 +569,7 @@ bool drawTable(
         }
     }
 
+    drawTableBottomLine();
     y += mmToPx(3.0);
     return true;
 }

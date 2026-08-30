@@ -41,7 +41,7 @@ constexpr double CoverAfterTitleMm = 14.0;
 constexpr double CoverAfterSubtitleMm = 18.0;
 constexpr double CoverBeforeInfoMm = 10.0;
 constexpr double CoverInfoGapMm = 6.0;
-constexpr double CoverBeforeDateMm = 45.0;
+constexpr double CoverBeforeDateMm = 18.0;
 
 } // namespace SimulationReportStyle
 
