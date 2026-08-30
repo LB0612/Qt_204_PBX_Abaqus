@@ -36,7 +36,7 @@ struct SimulationReportResultSection
 
 struct SimulationReportModel
 {
-    int reportFormatVersion = 3;
+    int reportFormatVersion = 4;
 
     QString reportTitle;
     QString productName;

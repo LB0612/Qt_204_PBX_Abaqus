@@ -176,13 +176,6 @@ QString SimulationResultService::reportDirectoryPath(
         .filePath(QStringLiteral("report"));
 }
 
-QString SimulationResultService::reportPdfPath(
-    const QString &projectPath)
-{
-    return QDir(reportDirectoryPath(projectPath))
-        .filePath(QStringLiteral("simulation_report.pdf"));
-}
-
 QString SimulationResultService::reportDocxPath(
     const QString &projectPath)
 {
@@ -241,7 +234,7 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
 
     const QJsonObject json = document.object();
 
-    if (json.value(QStringLiteral("version")).toInt() != 3) {
+    if (json.value(QStringLiteral("version")).toInt() != 4) {
         return false;
     }
 
@@ -249,20 +242,12 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
         json.value(QStringLiteral("postSha256")).toString();
     const QString storedT2Stamp =
         json.value(QStringLiteral("t2CompletedAt")).toString();
-    const QString storedPdfName =
-        json.value(QStringLiteral("pdf")).toString();
     const QString storedDocxName =
         json.value(QStringLiteral("docx")).toString();
-    const qint64 storedPdfBytes =
-        static_cast<qint64>(
-            json.value(QStringLiteral("pdfBytes")).toDouble(-1)
-        );
     const qint64 storedDocxBytes =
         static_cast<qint64>(
             json.value(QStringLiteral("docxBytes")).toDouble(-1)
         );
-    const QString storedPdfSha =
-        json.value(QStringLiteral("pdfSha256")).toString();
     const QString storedDocxSha =
         json.value(QStringLiteral("docxSha256")).toString();
 
@@ -272,42 +257,31 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
         return false;
     }
 
-    const QString pdfPath = reportPdfPath(projectPath);
     const QString docxPath = reportDocxPath(projectPath);
 
-    if (storedPdfName != QFileInfo(pdfPath).fileName()
-        || storedDocxName != QFileInfo(docxPath).fileName()) {
+    if (storedDocxName != QFileInfo(docxPath).fileName()) {
         return false;
     }
 
-    const QFileInfo pdfInfo(pdfPath);
     const QFileInfo docxInfo(docxPath);
 
-    if (!pdfInfo.exists()
-        || !pdfInfo.isFile()
-        || pdfInfo.size() <= 0
-        || !docxInfo.exists()
+    if (!docxInfo.exists()
         || !docxInfo.isFile()
         || docxInfo.size() <= 0) {
         return false;
     }
 
-    if (pdfInfo.size() != storedPdfBytes
-        || docxInfo.size() != storedDocxBytes) {
+    if (docxInfo.size() != storedDocxBytes) {
         return false;
     }
 
-    if (storedPdfSha.isEmpty() || storedDocxSha.isEmpty()) {
+    if (storedDocxSha.isEmpty()) {
         return false;
     }
 
-    const QString actualPdfSha =
-        SimulationArtifactStateService::fileSha256(pdfPath);
     const QString actualDocxSha =
         SimulationArtifactStateService::fileSha256(docxPath);
 
-    return !actualPdfSha.isEmpty()
-        && !actualDocxSha.isEmpty()
-        && actualPdfSha == storedPdfSha
+    return !actualDocxSha.isEmpty()
         && actualDocxSha == storedDocxSha;
 }

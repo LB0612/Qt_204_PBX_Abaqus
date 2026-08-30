@@ -1,4 +1,4 @@
-QT += core gui widgets printsupport
+QT += core gui widgets
 
 CONFIG += c++17
 
@@ -36,7 +36,6 @@ SOURCES += \
     SimulationArtifactStateService.cpp \
     SimulationResultService.cpp \
     SimulationReportGenerator.cpp \
-    SimulationReportPdfWriter.cpp \
     SimulationReportDocxWriter.cpp \
     AbaqusFileGenerator.cpp
 
@@ -77,7 +76,6 @@ HEADERS += \
     SimulationReportModel.h \
     SimulationReportStyle.h \
     SimulationReportGenerator.h \
-    SimulationReportPdfWriter.h \
     SimulationReportDocxWriter.h \
     AbaqusFileGenerator.h
 

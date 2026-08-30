@@ -609,14 +609,8 @@ QString imageParagraph(
 bool SimulationReportDocxWriter::write(
     const SimulationReportModel &model,
     const QString &outputPath,
-    QString &errorMessage,
-    int bodyTotalPages,
-    const QVector<int> &figurePageStarts)
+    QString &errorMessage)
 {
-    if (bodyTotalPages < 1) {
-        errorMessage = QStringLiteral("报告页数无效。");
-        return false;
-    }
     struct MediaItem
     {
         QString partName;
@@ -679,7 +673,7 @@ bool SimulationReportDocxWriter::write(
 
     QString body;
 
-    // Cover — top spacer aligns title with PDF (~70 mm from page top).
+    // Cover — top spacer aligns title near 70 mm from page top.
     body += paragraphStyled(
         model.reportTitle,
         QStringLiteral("Title"),
@@ -805,10 +799,9 @@ bool SimulationReportDocxWriter::write(
         );
     }
 
-    // 3/4/5 figures — follow PDF figure-block page plan
+    // 3/4/5 figures — keepNext figure blocks; Word pages naturally
     int sectionNumber = 3;
     int drawingId = 1;
-    int globalFigureIndex = 0;
     for (const SimulationReportResultSection &section
          : model.resultSections) {
         if (section.figures.isEmpty()) {
@@ -820,8 +813,6 @@ bool SimulationReportDocxWriter::write(
             const SimulationReportFigure &figure =
                 section.figures.at(i);
             const int figureIndex = i + 1;
-            const bool startNewPage =
-                figurePageStarts.contains(globalFigureIndex);
 
             if (figureIndex == 1) {
                 body += paragraphStyled(
@@ -838,7 +829,7 @@ bool SimulationReportDocxWriter::write(
                     0,
                     0,
                     true,
-                    startNewPage
+                    true
                 );
             }
 
@@ -857,7 +848,7 @@ bool SimulationReportDocxWriter::write(
                 0,
                 mmToTwips(FigureHeadingAfterMm),
                 true,
-                figureIndex > 1 && startNewPage
+                false
             );
 
             MediaItem item;
@@ -884,7 +875,6 @@ bool SimulationReportDocxWriter::write(
                 false,
                 mmToTwips(FigureBlockAfterMm)
             );
-            ++globalFigureIndex;
         }
         ++sectionNumber;
     }
@@ -1064,8 +1054,6 @@ bool SimulationReportDocxWriter::write(
     const QString footerFontXml = bodyFonts();
     const QString footerSizeXml =
         QString::number(ptToHalfPoints(FooterPt));
-    const QString footerPagesXml =
-        QString::number(bodyTotalPages);
     QString footerXml = QStringLiteral(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
         "<w:ftr "
@@ -1093,7 +1081,7 @@ bool SimulationReportDocxWriter::write(
         "<w:r>"
         "<w:rPr>__RF__"
         "<w:sz w:val=\"__SZ__\"/><w:szCs w:val=\"__SZ__\"/></w:rPr>"
-        "<w:t>__PAGES__</w:t>"
+        "<w:t>1</w:t>"
         "</w:r>"
         "</w:fldSimple>"
         "<w:r>"
@@ -1106,7 +1094,6 @@ bool SimulationReportDocxWriter::write(
     );
     footerXml.replace(QStringLiteral("__RF__"), footerFontXml);
     footerXml.replace(QStringLiteral("__SZ__"), footerSizeXml);
-    footerXml.replace(QStringLiteral("__PAGES__"), footerPagesXml);
 
     const QString created =
         QDateTime::currentDateTimeUtc().toString(Qt::ISODate);

@@ -7,7 +7,6 @@
 #include "SimulationArtifactStateService.h"
 #include "SimulationReportDocxWriter.h"
 #include "SimulationReportModel.h"
-#include "SimulationReportPdfWriter.h"
 #include "SimulationResultService.h"
 
 #include <QCoreApplication>
@@ -473,31 +472,22 @@ bool buildReportModel(
 bool writeReportManifest(
     const QString &projectPath,
     const SimulationReportModel &model,
-    const QString &pdfPath,
     const QString &docxPath,
-    const QString &pdfSha256,
     const QString &docxSha256,
     QString &errorMessage)
 {
-    const QFileInfo pdfInfo(pdfPath);
     const QFileInfo docxInfo(docxPath);
 
     const QJsonObject json = {
-        {QStringLiteral("version"), 3},
+        {QStringLiteral("version"), 4},
         {QStringLiteral("postSha256"), model.postSha256},
         {QStringLiteral("t2CompletedAt"), model.t2CompletedAt},
         {QStringLiteral("generatedAt"), model.generatedAt},
-        {QStringLiteral("pdf"), pdfInfo.fileName()},
         {QStringLiteral("docx"), docxInfo.fileName()},
-        {
-            QStringLiteral("pdfBytes"),
-            static_cast<double>(pdfInfo.size())
-        },
         {
             QStringLiteral("docxBytes"),
             static_cast<double>(docxInfo.size())
         },
-        {QStringLiteral("pdfSha256"), pdfSha256},
         {QStringLiteral("docxSha256"), docxSha256}
     };
 
@@ -519,28 +509,6 @@ bool writeReportManifest(
     }
 
     return true;
-}
-
-int expectedBodyPageCount(
-    const QVector<int> &figurePageStarts)
-{
-    // 1 overview
-    // 2 parameter pages
-    // N result pages
-    // 1 notes
-    // 1 trace
-    return figurePageStarts.size() + 5;
-}
-
-bool validatePdfFile(const QString &path)
-{
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return false;
-    }
-
-    return file.size() > 0
-        && file.read(5) == QByteArray("%PDF-");
 }
 
 bool validateDocxFile(const QString &path)
@@ -581,8 +549,6 @@ void cleanupBackup(const QString &backupPath, bool hadBackup)
 
 bool reportFinalsMatchManifest(const QString &projectPath)
 {
-    const QString pdfPath =
-        SimulationResultService::reportPdfPath(projectPath);
     const QString docxPath =
         SimulationResultService::reportDocxPath(projectPath);
 
@@ -602,96 +568,84 @@ bool reportFinalsMatchManifest(const QString &projectPath)
     }
 
     const QJsonObject json = document.object();
-    if (json.value(QStringLiteral("version")).toInt() != 3) {
+    if (json.value(QStringLiteral("version")).toInt() != 4) {
         return false;
     }
 
-    const QString storedPdfName =
-        json.value(QStringLiteral("pdf")).toString();
     const QString storedDocxName =
         json.value(QStringLiteral("docx")).toString();
-    const qint64 storedPdfBytes =
-        static_cast<qint64>(
-            json.value(QStringLiteral("pdfBytes")).toDouble(-1)
-        );
     const qint64 storedDocxBytes =
         static_cast<qint64>(
             json.value(QStringLiteral("docxBytes")).toDouble(-1)
         );
-    const QString storedPdfSha =
-        json.value(QStringLiteral("pdfSha256")).toString();
     const QString storedDocxSha =
         json.value(QStringLiteral("docxSha256")).toString();
 
-    if (storedPdfName != QFileInfo(pdfPath).fileName()
-        || storedDocxName != QFileInfo(docxPath).fileName()
-        || storedPdfSha.isEmpty()
+    if (storedDocxName != QFileInfo(docxPath).fileName()
         || storedDocxSha.isEmpty()) {
         return false;
     }
 
-    const QFileInfo pdfInfo(pdfPath);
     const QFileInfo docxInfo(docxPath);
-    if (!pdfInfo.exists()
-        || !pdfInfo.isFile()
-        || pdfInfo.size() <= 0
-        || !docxInfo.exists()
+    if (!docxInfo.exists()
         || !docxInfo.isFile()
         || docxInfo.size() <= 0
-        || pdfInfo.size() != storedPdfBytes
         || docxInfo.size() != storedDocxBytes) {
         return false;
     }
 
-    const QString actualPdfSha =
-        SimulationArtifactStateService::fileSha256(pdfPath);
     const QString actualDocxSha =
         SimulationArtifactStateService::fileSha256(docxPath);
 
-    return !actualPdfSha.isEmpty()
-        && !actualDocxSha.isEmpty()
-        && actualPdfSha == storedPdfSha
+    return !actualDocxSha.isEmpty()
         && actualDocxSha == storedDocxSha;
 }
 
 void recoverInterruptedReportCommit(
-    const QString &pdfPath,
     const QString &docxPath,
-    const QString &backupPdfPath,
     const QString &backupDocxPath,
     const QString &projectPath)
 {
-    const bool hasPdfBak = QFile::exists(backupPdfPath);
-    const bool hasDocxBak = QFile::exists(backupDocxPath);
-    if (!hasPdfBak && !hasDocxBak) {
+    if (!QFile::exists(backupDocxPath)) {
         return;
     }
 
     if (reportFinalsMatchManifest(projectPath)) {
-        // Manifest already committed; only leftover .bak cleanup.
-        if (hasPdfBak) {
-            QFile::remove(backupPdfPath);
-        }
-        if (hasDocxBak) {
-            QFile::remove(backupDocxPath);
-        }
+        QFile::remove(backupDocxPath);
         return;
     }
 
-    // Crash between promoting finals and writing manifest:
-    // drop residual new finals and restore the last known-good pair.
-    if (hasPdfBak) {
-        if (QFile::exists(pdfPath)) {
-            QFile::remove(pdfPath);
-        }
-        QFile::rename(backupPdfPath, pdfPath);
+    if (QFile::exists(docxPath)) {
+        QFile::remove(docxPath);
     }
-    if (hasDocxBak) {
-        if (QFile::exists(docxPath)) {
-            QFile::remove(docxPath);
+    QFile::rename(backupDocxPath, docxPath);
+}
+
+bool removeLegacyPdfReportFiles(
+    const QString &reportDir,
+    QString &errorMessage)
+{
+    const QStringList legacyNames = {
+        QStringLiteral("simulation_report.pdf"),
+        QStringLiteral("simulation_report.pdf.tmp"),
+        QStringLiteral("simulation_report.pdf.bak")
+    };
+
+    for (const QString &name : legacyNames) {
+        const QString path = QDir(reportDir).filePath(name);
+        if (!QFile::exists(path)) {
+            continue;
         }
-        QFile::rename(backupDocxPath, docxPath);
+        if (!QFile::remove(path)) {
+            errorMessage = QStringLiteral(
+                "旧 PDF 报告正在被占用，"
+                "请关闭后重新生成 Word 报告。\n%1"
+            ).arg(path);
+            return false;
+        }
     }
+
+    return true;
 }
 
 } // namespace
@@ -723,130 +677,58 @@ bool SimulationReportGenerator::generate(
         return false;
     }
 
-    const QString pdfPath =
-        SimulationResultService::reportPdfPath(projectPath);
+    if (!removeLegacyPdfReportFiles(reportDir, errorMessage)) {
+        return false;
+    }
+
     const QString docxPath =
         SimulationResultService::reportDocxPath(projectPath);
-    const QString tempPdfPath =
-        pdfPath + QStringLiteral(".tmp");
     const QString tempDocxPath =
         docxPath + QStringLiteral(".tmp");
-    const QString backupPdfPath =
-        pdfPath + QStringLiteral(".bak");
     const QString backupDocxPath =
         docxPath + QStringLiteral(".bak");
 
     recoverInterruptedReportCommit(
-        pdfPath,
         docxPath,
-        backupPdfPath,
         backupDocxPath,
         projectPath
     );
 
-    if (QFile::exists(tempPdfPath)) {
-        QFile::remove(tempPdfPath);
-    }
     if (QFile::exists(tempDocxPath)) {
         QFile::remove(tempDocxPath);
-    }
-
-    int bodyTotalPages = 0;
-    QVector<int> figurePageStarts;
-    if (!SimulationReportPdfWriter::write(
-            model,
-            tempPdfPath,
-            errorMessage,
-            &bodyTotalPages,
-            &figurePageStarts)) {
-        if (QFile::exists(tempPdfPath)) {
-            QFile::remove(tempPdfPath);
-        }
-        return false;
-    }
-
-    const int expectedPages =
-        expectedBodyPageCount(figurePageStarts);
-    if (bodyTotalPages != expectedPages) {
-        QFile::remove(tempPdfPath);
-        errorMessage =
-            QStringLiteral(
-                "报告分页与预期不一致："
-                "实际 %1 页，预期 %2 页。"
-            )
-                .arg(bodyTotalPages)
-                .arg(expectedPages);
-        return false;
     }
 
     if (!SimulationReportDocxWriter::write(
             model,
             tempDocxPath,
-            errorMessage,
-            bodyTotalPages,
-            figurePageStarts)) {
-        if (QFile::exists(tempPdfPath)) {
-            QFile::remove(tempPdfPath);
-        }
+            errorMessage)) {
         if (QFile::exists(tempDocxPath)) {
             QFile::remove(tempDocxPath);
         }
         return false;
     }
 
-    if (!validatePdfFile(tempPdfPath)) {
-        QFile::remove(tempPdfPath);
-        QFile::remove(tempDocxPath);
-        errorMessage = QStringLiteral("PDF 报告校验失败。");
-        return false;
-    }
-
     if (!validateDocxFile(tempDocxPath)) {
-        QFile::remove(tempPdfPath);
         QFile::remove(tempDocxPath);
         errorMessage = QStringLiteral("Word 报告校验失败。");
         return false;
     }
 
-    const QString pdfSha256 =
-        SimulationArtifactStateService::fileSha256(tempPdfPath);
     const QString docxSha256 =
         SimulationArtifactStateService::fileSha256(tempDocxPath);
 
-    if (pdfSha256.isEmpty() || docxSha256.isEmpty()) {
-        QFile::remove(tempPdfPath);
+    if (docxSha256.isEmpty()) {
         QFile::remove(tempDocxPath);
         errorMessage =
             QStringLiteral("无法计算报告文件校验值。");
         return false;
     }
 
-    bool oldPdfBackedUp = false;
     bool oldDocxBackedUp = false;
-
-    if (QFile::exists(pdfPath)) {
-        if (!QFile::rename(pdfPath, backupPdfPath)) {
-            QFile::remove(tempPdfPath);
-            QFile::remove(tempDocxPath);
-            errorMessage =
-                QStringLiteral(
-                    "无法暂存旧 PDF 报告，"
-                    "文件可能正在被占用：\n%1"
-                ).arg(pdfPath);
-            return false;
-        }
-        oldPdfBackedUp = true;
-    }
 
     if (QFile::exists(docxPath)) {
         if (!QFile::rename(docxPath, backupDocxPath)) {
-            QFile::remove(tempPdfPath);
             QFile::remove(tempDocxPath);
-            restoreFromBackup(
-                pdfPath,
-                backupPdfPath,
-                oldPdfBackedUp
-            );
             errorMessage =
                 QStringLiteral(
                     "无法暂存旧 Word 报告，"
@@ -857,24 +739,8 @@ bool SimulationReportGenerator::generate(
         oldDocxBackedUp = true;
     }
 
-    if (!QFile::rename(tempPdfPath, pdfPath)) {
-        QFile::remove(tempPdfPath);
-        QFile::remove(tempDocxPath);
-        restoreFromBackup(pdfPath, backupPdfPath, oldPdfBackedUp);
-        restoreFromBackup(
-            docxPath,
-            backupDocxPath,
-            oldDocxBackedUp
-        );
-        errorMessage =
-            QStringLiteral("无法提交正式 PDF 报告文件。");
-        return false;
-    }
-
     if (!QFile::rename(tempDocxPath, docxPath)) {
         QFile::remove(tempDocxPath);
-        // Critical: never leave new PDF + old DOCX.
-        restoreFromBackup(pdfPath, backupPdfPath, oldPdfBackedUp);
         restoreFromBackup(
             docxPath,
             backupDocxPath,
@@ -888,12 +754,9 @@ bool SimulationReportGenerator::generate(
     if (!writeReportManifest(
             projectPath,
             model,
-            pdfPath,
             docxPath,
-            pdfSha256,
             docxSha256,
             errorMessage)) {
-        restoreFromBackup(pdfPath, backupPdfPath, oldPdfBackedUp);
         restoreFromBackup(
             docxPath,
             backupDocxPath,
@@ -902,7 +765,6 @@ bool SimulationReportGenerator::generate(
         return false;
     }
 
-    cleanupBackup(backupPdfPath, oldPdfBackedUp);
     cleanupBackup(backupDocxPath, oldDocxBackedUp);
     return true;
 }

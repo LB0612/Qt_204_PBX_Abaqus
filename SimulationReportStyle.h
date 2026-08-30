@@ -60,7 +60,7 @@ constexpr double HeaderRulePt = 0.75;
 
 constexpr double CoverDateBottomMm = 60.0;
 
-// Cover: page top margin + this spacer ≈ PDF title at 70 mm.
+// Cover: page top margin + this spacer ≈ title at 70 mm.
 constexpr double CoverTopSpacerMm = 40.0;
 constexpr double CoverAfterTitleMm = 14.0;
 constexpr double CoverAfterSubtitleMm = 18.0;
