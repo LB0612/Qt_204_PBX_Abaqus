@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include "AppInfo.h"
 #include "NewProjectDialog.h"
 #include "OpenProjectDialog.h"
 #include "SettingsDialog.h"
@@ -10,12 +11,14 @@
 #include "SimulationConfigManager.h"
 #include "AbaqusFileGenerator.h"
 #include "ProjectInputHash.h"
+#include "ProjectParameterService.h"
 #include "SimulationReportGenerator.h"
 #include "SimulationResultService.h"
 
 #include <QBrush>
 #include <QCloseEvent>
 #include <QColor>
+#include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
@@ -37,12 +40,9 @@
 namespace {
 
 // ===== 首页标题配置 =====
-const QString kHomeTitleLine1 =
-    QStringLiteral("浇注XX固化监测与三维参数重构");
-const QString kHomeTitleLine2 =
-    QStringLiteral("分析软件");
-const QString kApplicationTitle =
-    kHomeTitleLine1 + kHomeTitleLine2;
+const QString &kHomeTitleLine1 = AppInfo::HomeTitleLine1;
+const QString &kHomeTitleLine2 = AppInfo::HomeTitleLine2;
+const QString &kApplicationTitle = AppInfo::ProductName;
 const QString kHomeTitleText =
     kHomeTitleLine1
     + QStringLiteral("\n")
@@ -70,6 +70,26 @@ constexpr int kHomeTitleShadowOffsetY = 1;
 constexpr int kHomeTitleResizeDelayMs = 120;
 
 const QColor kHomeTitleShadowColor(18, 32, 50, 32);
+
+// ===== 工程树 / 工具栏导航图标 =====
+const QString kIconProjectInfo =
+    QStringLiteral(":/toolbar/information.png");
+const QString kIconExplosive =
+    QStringLiteral(":/toolbar/cailiaocanshu.png");
+const QString kIconStructure =
+    QStringLiteral(":/toolbar/jiegoucanshu.png");
+const QString kIconMold =
+    QStringLiteral(":/toolbar/jiegoucanshu.png");
+const QString kIconBoundary =
+    QStringLiteral(":/toolbar/fangzhenshezhi.png");
+const QString kIconSimulation =
+    QStringLiteral(":/toolbar/fangzhenshezhi.png");
+const QString kIconParamCheck =
+    QStringLiteral(":/toolbar/check.png");
+const QString kIconStartSimulation =
+    QStringLiteral(":/toolbar/start.png");
+const QString kIconSimulationResult =
+    QStringLiteral(":/toolbar/result.png");
 
 QFont makeHomeTitleFont(int pixelSize)
 {
@@ -544,36 +564,36 @@ void MainWindow::createPureStyleToolBar()
 
     toolBar->addSeparator();
 
-    addBtn(QStringLiteral("工程信息"), QStringLiteral(":/toolbar/information.png"), &MainWindow::projectInfo);
+    addBtn(QStringLiteral("工程信息"), kIconProjectInfo, &MainWindow::projectInfo);
     addBtn(
         QStringLiteral("炸药参数"),
-        QStringLiteral(":/toolbar/cailiaocanshu.png"),
+        kIconExplosive,
         &MainWindow::explosiveParams
     );
     addBtn(
         QStringLiteral("结构参数"),
-        QStringLiteral(":/toolbar/jiegoucanshu.png"),
+        kIconStructure,
         &MainWindow::structureParams
     );
     addBtn(
         QStringLiteral("模具参数"),
-        QStringLiteral(":/toolbar/jiegoucanshu.png"),
+        kIconMold,
         &MainWindow::moldParams
     );
     addBtn(
         QStringLiteral("边界条件"),
-        QStringLiteral(":/toolbar/fangzhenshezhi.png"),
+        kIconBoundary,
         &MainWindow::boundaryParams
     );
     addBtn(
         QStringLiteral("仿真设置"),
-        QStringLiteral(":/toolbar/fangzhenshezhi.png"),
+        kIconSimulation,
         &MainWindow::simulationParams
     );
 
     toolBar->addSeparator();
 
-    addBtn(QStringLiteral("参数检查"), QStringLiteral(":/toolbar/check.png"), &MainWindow::checkParams);
+    addBtn(QStringLiteral("参数检查"), kIconParamCheck, &MainWindow::checkParams);
     QAction *generateAction =
         addBtn(
             QStringLiteral("生成文件"),
@@ -581,7 +601,7 @@ void MainWindow::createPureStyleToolBar()
             &MainWindow::generateFiles
         );
     simulationLockedActions << generateAction;
-    addBtn(QStringLiteral("开始仿真"), QStringLiteral(":/toolbar/start.png"), &MainWindow::showSimulationPreparePage);
+    addBtn(QStringLiteral("开始仿真"), kIconStartSimulation, &MainWindow::showSimulationPreparePage);
 
     stopSimulationAction = new QAction(
         QIcon(QStringLiteral(":/toolbar/close.png")),
@@ -600,7 +620,7 @@ void MainWindow::createPureStyleToolBar()
     QAction *resultAction =
         addBtn(
             QStringLiteral("仿真结果"),
-            QStringLiteral(":/toolbar/result.png"),
+            kIconSimulationResult,
             &MainWindow::showSimulationResults
         );
     simulationLockedActions << resultAction;
@@ -687,7 +707,7 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     infoItem->setText(0, QStringLiteral("工程信息"));
     infoItem->setData(0, Qt::UserRole, path);
     infoItem->setData(0, ROLE_NODE_TYPE, NODE_PROJECT_INFO);
-    infoItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/information.png")));
+    infoItem->setIcon(0, QIcon(kIconProjectInfo));
 
     QFont childFont = infoItem->font(0);
     childFont.setPointSize(13);
@@ -698,56 +718,56 @@ void MainWindow::updateTreeStructure(const QString &name, const QString &path)
     explosiveItem->setText(0, QStringLiteral("炸药参数"));
     explosiveItem->setData(0, Qt::UserRole, path);
     explosiveItem->setData(0, ROLE_NODE_TYPE, NODE_EXPLOSIVE);
-    explosiveItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/cailiaocanshu.png")));
+    explosiveItem->setIcon(0, QIcon(kIconExplosive));
     explosiveItem->setFont(0, childFont);
 
     QTreeWidgetItem *structureItem = new QTreeWidgetItem(projectItem);
     structureItem->setText(0, QStringLiteral("结构参数"));
     structureItem->setData(0, Qt::UserRole, path);
     structureItem->setData(0, ROLE_NODE_TYPE, NODE_STRUCTURE);
-    structureItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/jiegoucanshu.png")));
+    structureItem->setIcon(0, QIcon(kIconStructure));
     structureItem->setFont(0, childFont);
 
     QTreeWidgetItem *moldItem = new QTreeWidgetItem(projectItem);
     moldItem->setText(0, QStringLiteral("模具参数"));
     moldItem->setData(0, Qt::UserRole, path);
     moldItem->setData(0, ROLE_NODE_TYPE, NODE_MOLD);
-    moldItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/jiegoucanshu.png")));
+    moldItem->setIcon(0, QIcon(kIconMold));
     moldItem->setFont(0, childFont);
 
     QTreeWidgetItem *boundaryItem = new QTreeWidgetItem(projectItem);
     boundaryItem->setText(0, QStringLiteral("边界条件"));
     boundaryItem->setData(0, Qt::UserRole, path);
     boundaryItem->setData(0, ROLE_NODE_TYPE, NODE_BOUNDARY);
-    boundaryItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/fangzhenshezhi.png")));
+    boundaryItem->setIcon(0, QIcon(kIconBoundary));
     boundaryItem->setFont(0, childFont);
 
     QTreeWidgetItem *simulationItem = new QTreeWidgetItem(projectItem);
     simulationItem->setText(0, QStringLiteral("仿真设置"));
     simulationItem->setData(0, Qt::UserRole, path);
     simulationItem->setData(0, ROLE_NODE_TYPE, NODE_SIMULATION);
-    simulationItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/fangzhenshezhi.png")));
+    simulationItem->setIcon(0, QIcon(kIconSimulation));
     simulationItem->setFont(0, childFont);
 
     QTreeWidgetItem *checkItem = new QTreeWidgetItem(projectItem);
     checkItem->setText(0, QStringLiteral("参数检查"));
     checkItem->setData(0, Qt::UserRole, path);
     checkItem->setData(0, ROLE_NODE_TYPE, NODE_PARAMETER_CHECK);
-    checkItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/check.png")));
+    checkItem->setIcon(0, QIcon(kIconParamCheck));
     checkItem->setFont(0, childFont);
 
     QTreeWidgetItem *startItem = new QTreeWidgetItem(projectItem);
     startItem->setText(0, QStringLiteral("开始仿真"));
     startItem->setData(0, Qt::UserRole, path);
     startItem->setData(0, ROLE_NODE_TYPE, NODE_START_SIMULATION);
-    startItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/start.png")));
+    startItem->setIcon(0, QIcon(kIconStartSimulation));
     startItem->setFont(0, childFont);
 
     QTreeWidgetItem *resultItem = new QTreeWidgetItem(projectItem);
     resultItem->setText(0, QStringLiteral("仿真结果"));
     resultItem->setData(0, Qt::UserRole, path);
     resultItem->setData(0, ROLE_NODE_TYPE, NODE_SIMULATION_RESULT);
-    resultItem->setIcon(0, QIcon(QStringLiteral(":/toolbar/check.png")));
+    resultItem->setIcon(0, QIcon(kIconSimulationResult));
     resultItem->setFont(0, childFont);
 
     treeWidget->setCurrentItem(infoItem);
@@ -1734,57 +1754,17 @@ void MainWindow::generateFiles()
         return;
     }
 
-    StructureConfig structure;
-    if (!StructureConfigManager::load(currentProject.projectPath, structure)) {
+    ProjectParameters parameters;
+    QString loadError;
+    if (!ProjectParameterService::loadAll(
+            currentProject.projectPath,
+            parameters,
+            loadError)) {
         showCenteredMessageBox(
             this,
             QMessageBox::Warning,
             QStringLiteral("无法生成"),
-            QStringLiteral("请先填写并保存结构参数。")
-        );
-        return;
-    }
-
-    ExplosiveConfig explosive;
-    if (!ExplosiveConfigManager::load(currentProject.projectPath, explosive)) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("无法生成"),
-            QStringLiteral("请先填写并保存炸药参数。")
-        );
-        return;
-    }
-
-    MoldConfig mold;
-    if (!MoldConfigManager::load(currentProject.projectPath, mold)) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("无法生成"),
-            QStringLiteral("请先填写并保存模具参数。")
-        );
-        return;
-    }
-
-    BoundaryConfig boundary;
-    if (!BoundaryConfigManager::load(currentProject.projectPath, boundary)) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("无法生成"),
-            QStringLiteral("请先填写并保存边界条件。")
-        );
-        return;
-    }
-
-    SimulationConfig simulation;
-    if (!SimulationConfigManager::load(currentProject.projectPath, simulation)) {
-        showCenteredMessageBox(
-            this,
-            QMessageBox::Warning,
-            QStringLiteral("无法生成"),
-            QStringLiteral("请先填写并保存仿真设置。")
+            loadError
         );
         return;
     }
@@ -1792,11 +1772,11 @@ void MainWindow::generateFiles()
     QString error;
     if (!AbaqusFileGenerator::generate(
             currentProject.projectPath,
-            structure,
-            explosive,
-            mold,
-            boundary,
-            simulation,
+            parameters.structure,
+            parameters.explosive,
+            parameters.mold,
+            parameters.boundary,
+            parameters.simulation,
             error)) {
         showCenteredMessageBox(
             this,
@@ -2258,75 +2238,19 @@ bool MainWindow::reloadParameterPagesFromSavedConfig(QString &errorMessage)
         return false;
     }
 
-    const QDir projectDir(currentProject.projectPath);
-
-    StructureConfig structure;
-    ExplosiveConfig explosive;
-    MoldConfig mold;
-    BoundaryConfig boundary;
-    SimulationConfig simulation;
-
-    const QString structurePath =
-        projectDir.filePath(QStringLiteral("config/structure.json"));
-    const QString explosivePath =
-        projectDir.filePath(QStringLiteral("config/explosive.json"));
-    const QString moldPath =
-        projectDir.filePath(QStringLiteral("config/mold.json"));
-    const QString boundaryPath =
-        projectDir.filePath(QStringLiteral("config/boundary.json"));
-    const QString simulationPath =
-        projectDir.filePath(QStringLiteral("config/simulation.json"));
-
-    if (QFileInfo::exists(structurePath)
-        && !StructureConfigManager::load(
+    ProjectParameters parameters;
+    if (!ProjectParameterService::loadAvailable(
             currentProject.projectPath,
-            structure)) {
-        errorMessage =
-            QStringLiteral("结构参数配置文件无效或无法读取。");
+            parameters,
+            errorMessage)) {
         return false;
     }
 
-    if (QFileInfo::exists(explosivePath)
-        && !ExplosiveConfigManager::load(
-            currentProject.projectPath,
-            explosive)) {
-        errorMessage =
-            QStringLiteral("炸药参数配置文件无效或无法读取。");
-        return false;
-    }
-
-    if (QFileInfo::exists(moldPath)
-        && !MoldConfigManager::load(
-            currentProject.projectPath,
-            mold)) {
-        errorMessage =
-            QStringLiteral("模具参数配置文件无效或无法读取。");
-        return false;
-    }
-
-    if (QFileInfo::exists(boundaryPath)
-        && !BoundaryConfigManager::load(
-            currentProject.projectPath,
-            boundary)) {
-        errorMessage =
-            QStringLiteral("边界条件配置文件无效或无法读取。");
-        return false;
-    }
-
-    if (QFileInfo::exists(simulationPath)
-        && !SimulationConfigManager::load(
-            currentProject.projectPath,
-            simulation)) {
-        errorMessage =
-            QStringLiteral("仿真设置配置文件无效或无法读取。");
-        return false;
-    }
-
-    structureWidget->setConfig(structure);
-    explosiveWidget->setConfig(explosive);
-    moldWidget->setConfig(mold);
-    boundaryWidget->setConfig(boundary);
-    simulationWidget->setConfig(simulation);
+    structureWidget->setConfig(parameters.structure);
+    explosiveWidget->setConfig(parameters.explosive);
+    moldWidget->setConfig(parameters.mold);
+    boundaryWidget->setConfig(parameters.boundary);
+    simulationWidget->setConfig(parameters.simulation);
 
     errorMessage.clear();
     return true;
@@ -2595,8 +2519,9 @@ void MainWindow::help()
         this,
         QMessageBox::Information,
         QStringLiteral("关于"),
-        kApplicationTitle
-            + QStringLiteral("\n\n版本 1.0")
+        AppInfo::ProductName
+            + QStringLiteral("\n\n版本 ")
+            + QCoreApplication::applicationVersion()
     );
 }
 

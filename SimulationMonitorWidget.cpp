@@ -2,7 +2,6 @@
 
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QPalette>
 #include <QProgressBar>
 #include <QScrollArea>
 #include <QPlainTextEdit>
@@ -10,47 +9,16 @@
 
 namespace {
 
-const char *kUiFontFamily =
-    "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
-
-const char *kSectionTitleStyle =
-    "font-family: 'Microsoft YaHei UI', 'Microsoft YaHei';"
-    "font-size: 16px;"
-    "font-weight: bold;"
-    "color: #333333;"
-    "border: none;"
-    "background: transparent;";
-
-void applyOpaqueWhitePage(QWidget *widget)
+QString sectionTitleStyle()
 {
-    widget->setAttribute(Qt::WA_StyledBackground, true);
-    widget->setAutoFillBackground(true);
-
-    QPalette palette = widget->palette();
-    palette.setColor(QPalette::Window, Qt::white);
-    widget->setPalette(palette);
-
-    widget->setStyleSheet(
-        QStringLiteral("background-color: #ffffff;")
-    );
-}
-
-void applyOpaqueWhiteScrollArea(QScrollArea *scrollArea)
-{
-    scrollArea->setStyleSheet(
-        QStringLiteral(
-            "QScrollArea {"
-            " background-color: #ffffff;"
-            " border: none;"
-            "}"
-            "QScrollArea > QWidget > QWidget {"
-            " background-color: #ffffff;"
-            "}"
-        )
-    );
-    scrollArea->viewport()->setStyleSheet(
-        QStringLiteral("background-color: #ffffff;")
-    );
+    return QStringLiteral(
+        "font-family: %1;"
+        "font-size: 16px;"
+        "font-weight: bold;"
+        "color: #333333;"
+        "border: none;"
+        "background: transparent;"
+    ).arg(BaseParamWidget::uiFontFamily());
 }
 
 } // namespace
@@ -58,7 +26,7 @@ void applyOpaqueWhiteScrollArea(QScrollArea *scrollArea)
 SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
-    applyOpaqueWhitePage(this);
+    applyOpaqueWhitePage();
     applyCommonStyles();
 
     QVBoxLayout *mainLayout = createMainLayout(this);
@@ -84,7 +52,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
             "color: #222222;"
             "border: none;"
             "background: transparent;"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+        ).arg(uiFontFamily())
     );
 
     statusValueLabel = new QLabel(
@@ -99,14 +67,14 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
             "color: #000000;"
             "border: none;"
             "background: transparent;"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+        ).arg(uiFontFamily())
     );
 
     QLabel *progressTitle = new QLabel(
         QStringLiteral("仿真进度"),
         content
     );
-    progressTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
+    progressTitle->setStyleSheet(sectionTitleStyle());
 
     progressValueLabel = new QLabel(QStringLiteral("0%"), content);
     progressValueLabel->setStyleSheet(
@@ -117,7 +85,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
             "color: #000000;"
             "border: none;"
             "background: transparent;"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+        ).arg(uiFontFamily())
     );
     progressValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
@@ -151,7 +119,7 @@ SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
         QStringLiteral("Abaqus日志"),
         content
     );
-    logTitle->setStyleSheet(QString::fromUtf8(kSectionTitleStyle));
+    logTitle->setStyleSheet(sectionTitleStyle());
 
     logEdit = new QPlainTextEdit(content);
     logEdit->setReadOnly(true);

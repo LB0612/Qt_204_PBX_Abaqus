@@ -1,3 +1,4 @@
+#include "AppInfo.h"
 #include "mainwindow.h"
 
 #include <QApplication>
@@ -11,6 +12,9 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication a(argc, argv);
+    a.setOrganizationName(AppInfo::OrganizationName);
+    a.setApplicationName(AppInfo::ProductName);
+    a.setApplicationVersion(QStringLiteral(APP_VERSION));
 
     a.setStyleSheet(QStringLiteral(R"(
 QScrollBar:vertical {

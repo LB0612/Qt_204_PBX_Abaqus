@@ -4,7 +4,6 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QPalette>
 #include <QPixmap>
 #include <QPushButton>
 #include <QSizePolicy>
@@ -13,23 +12,6 @@
 #include <QVBoxLayout>
 
 namespace {
-
-const char *kUiFontFamily =
-    "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
-
-void applyOpaqueWhitePage(QWidget *widget)
-{
-    widget->setAttribute(Qt::WA_StyledBackground, true);
-    widget->setAutoFillBackground(true);
-
-    QPalette palette = widget->palette();
-    palette.setColor(QPalette::Window, Qt::white);
-    widget->setPalette(palette);
-
-    widget->setStyleSheet(
-        QStringLiteral("background-color: #ffffff;")
-    );
-}
 
 const char *kCardStyle =
     "QFrame {"
@@ -100,7 +82,7 @@ const char *kPrimaryButtonStyle =
 ResultViewerWidget::ResultViewerWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
-    applyOpaqueWhitePage(this);
+    applyOpaqueWhitePage();
     applyCommonStyles();
 
     playTimer = new QTimer(this);
@@ -164,7 +146,7 @@ void ResultViewerWidget::buildUi()
             "color: #262626;"
             "border: none;"
             "background: transparent;"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+        ).arg(uiFontFamily())
     );
 
     emptyStateMessageLabel = new QLabel(emptyStateCard);
@@ -178,7 +160,7 @@ void ResultViewerWidget::buildUi()
             "color: #454545;"
             "border: none;"
             "background: transparent;"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+        ).arg(uiFontFamily())
     );
 
     continueButton = new QPushButton(emptyStateCard);
@@ -314,7 +296,7 @@ void ResultViewerWidget::buildUi()
                 "font-family: %1;"
                 "font-size: 16px;"
                 "color: #555555;"
-            ).arg(QString::fromUtf8(kUiFontFamily))
+            ).arg(uiFontFamily())
         );
     }
 

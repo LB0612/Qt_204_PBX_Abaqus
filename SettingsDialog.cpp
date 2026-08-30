@@ -1,5 +1,7 @@
 #include "SettingsDialog.h"
 
+#include "AppInfo.h"
+
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -130,7 +132,10 @@ void SettingsDialog::loadSettings()
 
 QString SettingsDialog::getAbaqusPath()
 {
-    QSettings settings(QStringLiteral("PBXSimulationSoftware"), QStringLiteral("Settings"));
+    QSettings settings(
+        AppInfo::OrganizationName,
+        QStringLiteral("Settings")
+    );
     settings.beginGroup(CONFIG_GROUP);
     const QString path = settings.value(KEY_ABAQUS_PATH).toString();
     settings.endGroup();
@@ -180,7 +185,10 @@ void SettingsDialog::onSave()
         return;
     }
 
-    QSettings settings(QStringLiteral("PBXSimulationSoftware"), QStringLiteral("Settings"));
+    QSettings settings(
+        AppInfo::OrganizationName,
+        QStringLiteral("Settings")
+    );
     settings.beginGroup(CONFIG_GROUP);
     settings.setValue(KEY_ABAQUS_PATH, path);
     settings.endGroup();

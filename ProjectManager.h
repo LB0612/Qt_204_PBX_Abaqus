@@ -1,6 +1,8 @@
 #ifndef PROJECTMANAGER_H
 #define PROJECTMANAGER_H
 
+#include "AppInfo.h"
+
 #include <QString>
 
 struct ProjectConfig
@@ -8,7 +10,7 @@ struct ProjectConfig
     QString projectName;
     QString projectPath;
 
-    QString projectType = QStringLiteral("PBX_CASTING_CURING");
+    QString projectType = AppInfo::ProjectTypeId;
 
     QString createdDate;
 

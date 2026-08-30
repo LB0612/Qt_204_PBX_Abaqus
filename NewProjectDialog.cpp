@@ -1,5 +1,6 @@
 #include "NewProjectDialog.h"
 
+#include "AppInfo.h"
 #include "ProjectManager.h"
 
 #include <QDir>
@@ -23,7 +24,10 @@ NewProjectDialog::NewProjectDialog(QWidget *parent)
 
 void NewProjectDialog::accept()
 {
-    QSettings settings(QStringLiteral("PBXSimulationSoftware"), QStringLiteral("NewProjectDialog"));
+    QSettings settings(
+        AppInfo::OrganizationName,
+        QStringLiteral("NewProjectDialog")
+    );
     settings.setValue(QStringLiteral("lastProjectPath"), pathEdit->text().trimmed());
     QDialog::accept();
 }
@@ -34,7 +38,7 @@ void NewProjectDialog::setupUi()
     mainLayout->setContentsMargins(30, 30, 30, 30);
     mainLayout->setSpacing(20);
 
-    titleLabel = new QLabel(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
+    titleLabel = new QLabel(AppInfo::ProductName);
     titleLabel->setObjectName(QStringLiteral("HeaderLabel"));
     titleLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(titleLabel);
@@ -54,7 +58,10 @@ void NewProjectDialog::setupUi()
     pathEdit = new QLineEdit();
     pathEdit->setPlaceholderText(QStringLiteral("选择工程保存的文件夹..."));
 
-    QSettings settings(QStringLiteral("PBXSimulationSoftware"), QStringLiteral("NewProjectDialog"));
+    QSettings settings(
+        AppInfo::OrganizationName,
+        QStringLiteral("NewProjectDialog")
+    );
     const QString lastPath = settings.value(QStringLiteral("lastProjectPath"), QDir::homePath()).toString();
     pathEdit->setText(lastPath);
 

@@ -5,6 +5,7 @@ CONFIG += c++17
 TARGET = QT_PBX_204_ABAQUS
 TEMPLATE = app
 VERSION = 1.0.0
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 SOURCES += \
     main.cpp \
@@ -12,6 +13,7 @@ SOURCES += \
     BaseParamWidget.cpp \
     ProjectManager.cpp \
     ProjectInfoWidget.cpp \
+    ProjectParameterService.cpp \
     SimulationManager.cpp \
     ProjectInputHash.cpp \
     NewProjectDialog.cpp \
@@ -31,20 +33,24 @@ SOURCES += \
     SimulationMonitorWidget.cpp \
     SimulationPrepareWidget.cpp \
     ResultViewerWidget.cpp \
+    SimulationArtifactStateService.cpp \
     SimulationResultService.cpp \
     SimulationReportGenerator.cpp \
     AbaqusFileGenerator.cpp
 
 HEADERS += \
+    AppInfo.h \
     mainwindow.h \
     BaseParamWidget.h \
     ProjectManager.h \
     ProjectInfoWidget.h \
+    ProjectParameterService.h \
     SimulationManager.h \
     ProjectInputHash.h \
     NewProjectDialog.h \
     OpenProjectDialog.h \
     SettingsDialog.h \
+    SimulationArtifactStateService.h \
     StructureConfig.h \
     StructureConfigManager.h \
     StructureParamWidget.h \

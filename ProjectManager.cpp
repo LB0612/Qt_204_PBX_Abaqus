@@ -11,7 +11,6 @@
 
 namespace {
 const QString FILE_PROJECT = QStringLiteral("project.json");
-const QString PROJECT_TYPE_PBX = QStringLiteral("PBX_CASTING_CURING");
 }
 
 bool ProjectManager::isValidProjectName(
@@ -81,7 +80,7 @@ bool ProjectManager::createProject(
 
     config.projectName = name;
     config.projectPath = projectPath;
-    config.projectType = PROJECT_TYPE_PBX;
+    config.projectType = AppInfo::ProjectTypeId;
     config.createdDate = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
     config.schemaVersion = 1;
 
@@ -139,7 +138,8 @@ bool ProjectManager::loadProject(
     }
 
     const QJsonObject jsonObj = document.object();
-    if (jsonObj.value(QStringLiteral("projectType")).toString() != PROJECT_TYPE_PBX) {
+    if (jsonObj.value(QStringLiteral("projectType")).toString()
+        != AppInfo::ProjectTypeId) {
         return false;
     }
 
@@ -150,7 +150,8 @@ bool ProjectManager::loadProject(
 
     config.projectName = dir.dirName();
     config.projectPath = folderPath;
-    config.projectType = jsonObj.value(QStringLiteral("projectType")).toString(PROJECT_TYPE_PBX);
+    config.projectType = jsonObj.value(QStringLiteral("projectType"))
+        .toString(AppInfo::ProjectTypeId);
     config.createdDate = jsonObj.value(QStringLiteral("createdDate")).toString();
     config.schemaVersion = schemaVersion;
     return true;

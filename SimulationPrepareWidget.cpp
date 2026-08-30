@@ -2,47 +2,11 @@
 
 #include <QFrame>
 #include <QLabel>
-#include <QPalette>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
 
 namespace {
-
-const char *kUiFontFamily =
-    "\"Microsoft YaHei UI\", \"Microsoft YaHei\"";
-
-void applyOpaqueWhitePage(QWidget *widget)
-{
-    widget->setAttribute(Qt::WA_StyledBackground, true);
-    widget->setAutoFillBackground(true);
-
-    QPalette palette = widget->palette();
-    palette.setColor(QPalette::Window, Qt::white);
-    widget->setPalette(palette);
-
-    widget->setStyleSheet(
-        QStringLiteral("background-color: #ffffff;")
-    );
-}
-
-void applyOpaqueWhiteScrollArea(QScrollArea *scrollArea)
-{
-    scrollArea->setStyleSheet(
-        QStringLiteral(
-            "QScrollArea {"
-            " background-color: #ffffff;"
-            " border: none;"
-            "}"
-            "QScrollArea > QWidget > QWidget {"
-            " background-color: #ffffff;"
-            "}"
-        )
-    );
-    scrollArea->viewport()->setStyleSheet(
-        QStringLiteral("background-color: #ffffff;")
-    );
-}
 
 QString sectionTitleStyle()
 {
@@ -53,7 +17,7 @@ QString sectionTitleStyle()
         "color: #333333;"
         "background: transparent;"
         "border: none;"
-    ).arg(QString::fromUtf8(kUiFontFamily));
+    ).arg(BaseParamWidget::uiFontFamily());
 }
 
 QString checkItemStyle()
@@ -65,7 +29,7 @@ QString checkItemStyle()
         "color: #000000;"
         "background: transparent;"
         "border: none;"
-    ).arg(QString::fromUtf8(kUiFontFamily));
+    ).arg(BaseParamWidget::uiFontFamily());
 }
 
 QString hintStyle()
@@ -77,7 +41,7 @@ QString hintStyle()
         "color: #000000;"
         "background: transparent;"
         "border: none;"
-    ).arg(QString::fromUtf8(kUiFontFamily));
+    ).arg(BaseParamWidget::uiFontFamily());
 }
 
 QString errorStatusStyle()
@@ -89,7 +53,7 @@ QString errorStatusStyle()
         "color: #000000;"
         "background: transparent;"
         "border: none;"
-    ).arg(QString::fromUtf8(kUiFontFamily));
+    ).arg(BaseParamWidget::uiFontFamily());
 }
 
 QString reasonBodyStyle()
@@ -101,7 +65,7 @@ QString reasonBodyStyle()
         "color: #000000;"
         "background: transparent;"
         "border: none;"
-    ).arg(QString::fromUtf8(kUiFontFamily));
+    ).arg(BaseParamWidget::uiFontFamily());
 }
 
 } // namespace
@@ -109,7 +73,7 @@ QString reasonBodyStyle()
 SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
-    applyOpaqueWhitePage(this);
+    applyOpaqueWhitePage();
     applyCommonStyles();
 
     QVBoxLayout *mainLayout = createMainLayout(this);
@@ -207,7 +171,7 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
             "  background-color: #bfbfbf;"
             "  border-color: #bfbfbf;"
             "}"
-        ).arg(QString::fromUtf8(kUiFontFamily))
+        ).arg(uiFontFamily())
     );
 
     contentLayout->addWidget(statusTitleLabel);

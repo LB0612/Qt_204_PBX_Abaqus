@@ -4,6 +4,7 @@
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
 #include "ProjectManager.h"
+#include "ProjectParameterService.h"
 #include "SimulationConfigManager.h"
 #include "StructureConfigManager.h"
 
@@ -196,8 +197,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
         ExplosiveConfig config;
         const QString filePath =
-            QDir(project.projectPath)
-                .filePath(QStringLiteral("config/explosive.json"));
+            ProjectParameterService::explosiveConfigPath(project.projectPath);
         const bool exists = QFileInfo::exists(filePath);
         const bool valid =
             exists && ExplosiveConfigManager::load(project.projectPath, config);
@@ -230,8 +230,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
         StructureConfig config;
         const QString filePath =
-            QDir(project.projectPath)
-                .filePath(QStringLiteral("config/structure.json"));
+            ProjectParameterService::structureConfigPath(project.projectPath);
         const bool exists = QFileInfo::exists(filePath);
         const bool valid =
             exists && StructureConfigManager::load(project.projectPath, config);
@@ -258,8 +257,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
         MoldConfig config;
         const QString filePath =
-            QDir(project.projectPath)
-                .filePath(QStringLiteral("config/mold.json"));
+            ProjectParameterService::moldConfigPath(project.projectPath);
         const bool exists = QFileInfo::exists(filePath);
         const bool valid =
             exists && MoldConfigManager::load(project.projectPath, config);
@@ -288,8 +286,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
         BoundaryConfig config;
         const QString filePath =
-            QDir(project.projectPath)
-                .filePath(QStringLiteral("config/boundary.json"));
+            ProjectParameterService::boundaryConfigPath(project.projectPath);
         const bool exists = QFileInfo::exists(filePath);
         const bool valid =
             exists && BoundaryConfigManager::load(project.projectPath, config);
@@ -319,8 +316,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
         SimulationConfig config;
         const QString filePath =
-            QDir(project.projectPath)
-                .filePath(QStringLiteral("config/simulation.json"));
+            ProjectParameterService::simulationConfigPath(project.projectPath);
         const bool exists = QFileInfo::exists(filePath);
         const bool valid =
             exists && SimulationConfigManager::load(project.projectPath, config);

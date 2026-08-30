@@ -19,6 +19,7 @@ public:
     virtual ~BaseParamWidget();
 
     void setReadOnlyMode(bool readOnly);
+    static QString uiFontFamily();
 
 protected:
     void addParamRow(QBoxLayout* layout, const QString& name, QLineEdit* edit, const QString& unit = "");
@@ -35,6 +36,8 @@ protected:
     QLineEdit* createSciEdit(const QString &text = "");
     QLineEdit* createReadOnlyEdit();
     void applyCommonStyles();
+    void applyOpaqueWhitePage();
+    void applyOpaqueWhiteScrollArea(QScrollArea *scrollArea);
 
     QList<QLineEdit *> m_paramEdits;
     QList<QPushButton *> m_saveButtons;

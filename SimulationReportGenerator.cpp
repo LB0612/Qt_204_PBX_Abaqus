@@ -1,13 +1,9 @@
 #include "SimulationReportGenerator.h"
 
-#include "BoundaryConfigManager.h"
-#include "ExplosiveConfigManager.h"
-#include "MoldConfigManager.h"
 #include "ProjectInputHash.h"
 #include "ProjectManager.h"
-#include "SimulationConfigManager.h"
+#include "ProjectParameterService.h"
 #include "SimulationResultService.h"
-#include "StructureConfigManager.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -46,17 +42,19 @@ QString formatSimulationTime(double value)
 
 QString buildParameterSectionHtml(const QString &projectPath)
 {
-    StructureConfig structure;
-    ExplosiveConfig explosive;
-    MoldConfig mold;
-    BoundaryConfig boundary;
-    SimulationConfig simulation;
+    ProjectParameters parameters;
+    QString loadError;
+    ProjectParameterService::loadAvailable(
+        projectPath,
+        parameters,
+        loadError
+    );
 
-    StructureConfigManager::load(projectPath, structure);
-    ExplosiveConfigManager::load(projectPath, explosive);
-    MoldConfigManager::load(projectPath, mold);
-    BoundaryConfigManager::load(projectPath, boundary);
-    SimulationConfigManager::load(projectPath, simulation);
+    const StructureConfig &structure = parameters.structure;
+    const ExplosiveConfig &explosive = parameters.explosive;
+    const MoldConfig &mold = parameters.mold;
+    const BoundaryConfig &boundary = parameters.boundary;
+    const SimulationConfig &simulation = parameters.simulation;
 
     QString html;
     html += QStringLiteral("<h2>输入参数</h2>");

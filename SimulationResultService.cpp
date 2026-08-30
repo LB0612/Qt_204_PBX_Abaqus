@@ -1,5 +1,7 @@
 #include "SimulationResultService.h"
 
+#include "SimulationArtifactStateService.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -8,43 +10,6 @@
 #include <QJsonObject>
 
 namespace {
-
-bool readFlagSuccess(const QString &flagPath)
-{
-    QFile flagFile(flagPath);
-    if (!flagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    const QString content =
-        QString::fromUtf8(flagFile.readAll()).trimmed();
-    return content == QStringLiteral("success");
-}
-
-bool isNonEmptyRegularFile(const QString &path)
-{
-    const QFileInfo info(path);
-    return info.exists() && info.isFile() && info.size() > 0;
-}
-
-bool fingerprintMatches(
-    const QString &path,
-    const QString &expected)
-{
-    if (expected.isEmpty()) {
-        return false;
-    }
-
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    const QString stored =
-        QString::fromLatin1(file.readAll()).trimmed();
-
-    return !stored.isEmpty() && stored == expected;
-}
 
 QString t2CompletionStamp(const QString &projectPath)
 {
@@ -74,46 +39,13 @@ ResultValidationResult SimulationResultService::validate(
         return result;
     }
 
-    const bool t1Finished =
-        readFlagSuccess(
-            ProjectInputHash::t1FinishedFlagPath(projectPath)
-        );
-
-    const bool odbValid =
-        isNonEmptyRegularFile(
-            ProjectInputHash::solverOdbPath(projectPath)
-        );
-
-    const bool jobUnlocked =
-        !QFile::exists(
-            ProjectInputHash::currentJobLockPath(projectPath)
-        );
-
-    const QString currentSolverSha =
-        ProjectInputHash::hashSolverInput(projectPath);
-
-    const bool solverFingerprintMatches =
-        fingerprintMatches(
-            ProjectInputHash::lastSuccessInputFingerprintPath(
-                projectPath
-            ),
-            currentSolverSha
-        )
-        || fingerprintMatches(
-            ProjectInputHash::runningInputFingerprintPath(
-                projectPath
-            ),
-            currentSolverSha
-        );
-
     const bool solverResultValid =
-        t1Finished
-        && odbValid
-        && jobUnlocked
-        && solverFingerprintMatches;
+        SimulationArtifactStateService::hasValidSolverResult(
+            projectPath
+        );
 
     const bool t2Finished =
-        readFlagSuccess(
+        SimulationArtifactStateService::readSuccessFlag(
             ProjectInputHash::t2FinishedFlagPath(projectPath)
         );
 
@@ -150,7 +82,9 @@ ResultValidationResult SimulationResultService::validate(
     }
 
     result.manifest =
-        ProjectInputHash::readPostProcessManifest(projectPath);
+        SimulationArtifactStateService::postProcessManifest(
+            projectPath
+        );
     if (!result.manifest.valid) {
         result.state = ResultValidationState::ManifestInvalid;
         result.message =
@@ -285,13 +219,15 @@ QString SimulationResultService::reportManifestPath(
 
 bool SimulationResultService::readSuccessFlag(const QString &flagPath)
 {
-    return readFlagSuccess(flagPath);
+    return SimulationArtifactStateService::readSuccessFlag(flagPath);
 }
 
 bool SimulationResultService::isReportCurrent(const QString &projectPath)
 {
     const ProjectInputHash::PostProcessManifest postManifest =
-        ProjectInputHash::readPostProcessManifest(projectPath);
+        SimulationArtifactStateService::postProcessManifest(
+            projectPath
+        );
 
     if (!postManifest.valid) {
         return false;

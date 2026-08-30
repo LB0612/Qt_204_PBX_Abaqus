@@ -1,11 +1,54 @@
-#include "BaseParamWidget.h" 
-#include <QHBoxLayout> 
-#include <QPushButton> 
-#include <QScrollArea> 
-#include <QDoubleValidator>
+#include "BaseParamWidget.h"
 
-BaseParamWidget::BaseParamWidget(QWidget *parent) : QWidget(parent) {} 
-BaseParamWidget::~BaseParamWidget() {} 
+#include <QDoubleValidator>
+#include <QHBoxLayout>
+#include <QPalette>
+#include <QPushButton>
+#include <QScrollArea>
+
+BaseParamWidget::BaseParamWidget(QWidget *parent) : QWidget(parent) {}
+BaseParamWidget::~BaseParamWidget() {}
+
+QString BaseParamWidget::uiFontFamily()
+{
+    return QStringLiteral(
+        "\"Microsoft YaHei UI\", \"Microsoft YaHei\""
+    );
+}
+
+void BaseParamWidget::applyOpaqueWhitePage()
+{
+    setAttribute(Qt::WA_StyledBackground, true);
+    setAutoFillBackground(true);
+
+    QPalette pagePalette = palette();
+    pagePalette.setColor(QPalette::Window, Qt::white);
+    setPalette(pagePalette);
+
+    setStyleSheet(QStringLiteral("background-color: #ffffff;"));
+}
+
+void BaseParamWidget::applyOpaqueWhiteScrollArea(QScrollArea *scrollArea)
+{
+    if (!scrollArea) {
+        return;
+    }
+
+    scrollArea->setStyleSheet(
+        QStringLiteral(
+            "QScrollArea {"
+            " background-color: #ffffff;"
+            " border: none;"
+            "}"
+            "QScrollArea > QWidget > QWidget {"
+            " background-color: #ffffff;"
+            "}"
+        )
+    );
+    scrollArea->viewport()->setStyleSheet(
+        QStringLiteral("background-color: #ffffff;")
+    );
+} 
 
 // ================================================================= 
 // 1. 添加参数行 (高度增加至 40px，更舒展) 

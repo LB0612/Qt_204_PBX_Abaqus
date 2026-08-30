@@ -2,13 +2,10 @@
 
 #include "SimulationManager.h"
 
-#include "BoundaryConfigManager.h"
-#include "ExplosiveConfigManager.h"
-#include "MoldConfigManager.h"
 #include "ProjectInputHash.h"
 #include "ProjectManager.h"
-#include "SimulationConfigManager.h"
-#include "StructureConfigManager.h"
+#include "ProjectParameterService.h"
+#include "SimulationArtifactStateService.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -23,8 +20,7 @@ namespace {
 
 bool isNonEmptyRegularFile(const QString &path)
 {
-    const QFileInfo info(path);
-    return info.exists() && info.isFile() && info.size() > 0;
+    return SimulationArtifactStateService::isNonEmptyRegularFile(path);
 }
 
 } // namespace
@@ -180,43 +176,19 @@ bool SimulationManager::hasValidPreviousResult(QString &message)
 
 bool SimulationManager::readSuccessFlag(const QString &flagPath) const
 {
-    QFile flagFile(flagPath);
-    if (!flagFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    const QString flagContent =
-        QString::fromUtf8(flagFile.readAll()).trimmed();
-    flagFile.close();
-
-    return flagContent == QStringLiteral("success");
+    return SimulationArtifactStateService::readSuccessFlag(flagPath);
 }
 
 bool SimulationManager::hasValidSolverResult() const
 {
-    if (m_projectPath.isEmpty()) {
+    if (!SimulationArtifactStateService::hasValidSolverResult(m_projectPath)) {
         return false;
     }
 
-    const QString projectDir = m_projectPath;
-
-    if (!readSuccessFlag(ProjectInputHash::t1FinishedFlagPath(projectDir))) {
-        return false;
-    }
-
-    if (!isNonEmptyRegularFile(ProjectInputHash::solverOdbPath(projectDir))) {
-        return false;
-    }
-
-    if (QFile::exists(ProjectInputHash::currentJobLockPath(projectDir))) {
-        return false;
-    }
-
+    // Opportunistically promote a matching running fingerprint to last-success.
     if (!fingerprintsMatch()) {
-        if (!const_cast<SimulationManager *>(this)
-                ->recoverSuccessFingerprintIfPossible()) {
-            return false;
-        }
+        const_cast<SimulationManager *>(this)
+            ->recoverSuccessFingerprintIfPossible();
     }
 
     return true;
@@ -224,45 +196,14 @@ bool SimulationManager::hasValidSolverResult() const
 
 bool SimulationManager::hasCompletePostProcess() const
 {
-    if (m_projectPath.isEmpty()) {
-        return false;
-    }
-
-    if (!hasValidSolverResult()) {
-        return false;
-    }
-
-    const QString projectDir = m_projectPath;
-
-    if (!readSuccessFlag(ProjectInputHash::t2FinishedFlagPath(projectDir))) {
+    if (!SimulationArtifactStateService::hasCompletePostProcess(
+            m_projectPath)) {
         return false;
     }
 
     if (!postFingerprintsMatch()) {
-        if (!const_cast<SimulationManager *>(this)
-                ->recoverSuccessPostFingerprintIfPossible()) {
-            return false;
-        }
-    }
-
-    const ProjectInputHash::PostProcessManifest manifest =
-        ProjectInputHash::readPostProcessManifest(projectDir);
-
-    if (!manifest.valid) {
-        return false;
-    }
-
-    const QString currentPost = calculatePostFingerprint();
-    if (currentPost.isEmpty()
-        || manifest.postSha256 != currentPost) {
-        return false;
-    }
-
-    QString outputError;
-    if (!ProjectInputHash::validatePostProcessOutputs(
-            projectDir,
-            outputError)) {
-        return false;
+        const_cast<SimulationManager *>(this)
+            ->recoverSuccessPostFingerprintIfPossible();
     }
 
     return true;
@@ -300,22 +241,14 @@ bool SimulationManager::fingerprintMatchesStored(
     const QString &storedPath,
     const QString &currentFingerprint) const
 {
-    if (m_projectPath.isEmpty()
-        || storedPath.isEmpty()
-        || currentFingerprint.isEmpty()) {
+    if (m_projectPath.isEmpty()) {
         return false;
     }
 
-    QFile file(storedPath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return false;
-    }
-
-    const QString stored =
-        QString::fromLatin1(file.readAll()).trimmed();
-    file.close();
-
-    return !stored.isEmpty() && stored == currentFingerprint;
+    return SimulationArtifactStateService::fingerprintFileMatches(
+        storedPath,
+        currentFingerprint
+    );
 }
 
 bool SimulationManager::fingerprintsMatch() const
@@ -556,33 +489,11 @@ bool SimulationManager::checkReady(QString &errorMessage) const
         return false;
     }
 
-    StructureConfig structure;
-    if (!StructureConfigManager::load(projectDir, structure)) {
-        errorMessage = QStringLiteral("请先填写并保存结构参数。");
-        return false;
-    }
-
-    ExplosiveConfig explosive;
-    if (!ExplosiveConfigManager::load(projectDir, explosive)) {
-        errorMessage = QStringLiteral("请先填写并保存炸药参数。");
-        return false;
-    }
-
-    MoldConfig mold;
-    if (!MoldConfigManager::load(projectDir, mold)) {
-        errorMessage = QStringLiteral("请先填写并保存模具参数。");
-        return false;
-    }
-
-    BoundaryConfig boundary;
-    if (!BoundaryConfigManager::load(projectDir, boundary)) {
-        errorMessage = QStringLiteral("请先填写并保存边界条件。");
-        return false;
-    }
-
-    SimulationConfig simulation;
-    if (!SimulationConfigManager::load(projectDir, simulation)) {
-        errorMessage = QStringLiteral("请先填写并保存仿真设置。");
+    ProjectParameters parameters;
+    if (!ProjectParameterService::loadAll(
+            projectDir,
+            parameters,
+            errorMessage)) {
         return false;
     }
 
