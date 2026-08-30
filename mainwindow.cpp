@@ -36,10 +36,87 @@
 
 namespace {
 
+// ===== 首页标题配置 =====
+const QString kHomeTitleLine1 =
+    QStringLiteral("浇注XX固化监测与三维参数重构");
+const QString kHomeTitleLine2 =
+    QStringLiteral("分析软件");
+const QString kApplicationTitle =
+    kHomeTitleLine1 + kHomeTitleLine2;
+const QString kHomeTitleText =
+    kHomeTitleLine1
+    + QStringLiteral("\n")
+    + kHomeTitleLine2;
+
+const QString kHomeTitleFontFamily =
+    QStringLiteral("Microsoft YaHei UI");
+const QString kHomeTitleColor =
+    QStringLiteral("#1d2a3d");
+
 constexpr int kHomeTitleMaxFontPx = 136;
 constexpr int kHomeTitleMinFontPx = 64;
 constexpr qreal kHomeTitleLetterSpacing = 96.5;
 constexpr qreal kHomeTitleWidthRatio = 0.82;
+constexpr QFont::Weight kHomeTitleFontWeight = QFont::Medium;
+
+constexpr int kHomeTitleMarginLeft = 60;
+constexpr int kHomeTitleMarginTop = 20;
+constexpr int kHomeTitleMarginRight = 220;
+constexpr int kHomeTitleMarginBottom = 20;
+
+constexpr int kHomeTitleShadowBlur = 6;
+constexpr int kHomeTitleShadowOffsetY = 1;
+constexpr int kHomeTitleResizeDelayMs = 120;
+
+const QColor kHomeTitleShadowColor(18, 32, 50, 32);
+
+QFont makeHomeTitleFont(int pixelSize)
+{
+    QFont font(kHomeTitleFontFamily);
+    font.setPixelSize(pixelSize);
+    font.setWeight(kHomeTitleFontWeight);
+    font.setLetterSpacing(
+        QFont::PercentageSpacing,
+        kHomeTitleLetterSpacing
+    );
+    return font;
+}
+
+void configureHomeTitleLabel(QLabel *label)
+{
+    if (!label) {
+        return;
+    }
+
+    label->setAlignment(Qt::AlignCenter);
+    label->setWordWrap(false);
+    label->setSizePolicy(
+        QSizePolicy::Expanding,
+        QSizePolicy::Expanding
+    );
+    label->setMinimumSize(0, 0);
+    label->setContentsMargins(
+        kHomeTitleMarginLeft,
+        kHomeTitleMarginTop,
+        kHomeTitleMarginRight,
+        kHomeTitleMarginBottom
+    );
+    label->setFont(makeHomeTitleFont(kHomeTitleMaxFontPx));
+    label->setStyleSheet(
+        QStringLiteral(
+            "color: %1;"
+            "background: transparent;"
+            "padding: 20px;"
+        ).arg(kHomeTitleColor)
+    );
+
+    QGraphicsDropShadowEffect *shadow =
+        new QGraphicsDropShadowEffect(label);
+    shadow->setBlurRadius(kHomeTitleShadowBlur);
+    shadow->setOffset(0, kHomeTitleShadowOffsetY);
+    shadow->setColor(kHomeTitleShadowColor);
+    label->setGraphicsEffect(shadow);
+}
 
 const int ROLE_NODE_TYPE = Qt::UserRole + 1;
 
@@ -185,14 +262,14 @@ PostProcessResumeAction promptPostProcessResume(
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
+    setWindowTitle(kApplicationTitle);
     setMinimumSize(1300, 800);
     resize(1300, 800);
     setupUi();
 
     homeTitleResizeTimer = new QTimer(this);
     homeTitleResizeTimer->setSingleShot(true);
-    homeTitleResizeTimer->setInterval(120);
+    homeTitleResizeTimer->setInterval(kHomeTitleResizeDelayMs);
     connect(
         homeTitleResizeTimer,
         &QTimer::timeout,
@@ -261,46 +338,8 @@ void MainWindow::setupUi()
     stackedWidget = new QStackedWidget(rightWidget);
     stackedWidget->setAttribute(Qt::WA_TranslucentBackground);
 
-    titleLabel = new QLabel(
-        QStringLiteral(
-            "浇注XX固化监测与三维参数重构\n"
-            "分析软件"
-        ),
-        stackedWidget
-    );
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setWordWrap(false);
-    titleLabel->setSizePolicy(
-        QSizePolicy::Expanding,
-        QSizePolicy::Expanding
-    );
-    titleLabel->setMinimumSize(0, 0);
-    titleLabel->setContentsMargins(60, 20, 220, 20);
-
-    QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
-    titleFont.setPixelSize(kHomeTitleMaxFontPx);
-    titleFont.setWeight(QFont::Medium);
-    titleFont.setLetterSpacing(
-        QFont::PercentageSpacing,
-        kHomeTitleLetterSpacing
-    );
-    titleLabel->setFont(titleFont);
-
-    titleLabel->setStyleSheet(
-        QStringLiteral(
-            "color: #1d2a3d;"
-            "background: transparent;"
-            "padding: 20px;"
-        )
-    );
-
-    QGraphicsDropShadowEffect *titleShadow =
-        new QGraphicsDropShadowEffect(titleLabel);
-    titleShadow->setBlurRadius(6);
-    titleShadow->setOffset(0, 1);
-    titleShadow->setColor(QColor(18, 32, 50, 32));
-    titleLabel->setGraphicsEffect(titleShadow);
-
+    titleLabel = new QLabel(kHomeTitleText, stackedWidget);
+    configureHomeTitleLabel(titleLabel);
     stackedWidget->addWidget(titleLabel);
 
     infoWidget = new ProjectInfoWidget(stackedWidget);
@@ -758,11 +797,6 @@ void MainWindow::updateHomeTitleFont()
         return;
     }
 
-    const QString firstLine =
-        QStringLiteral("浇注XX固化监测与三维参数重构");
-    const QString secondLine =
-        QStringLiteral("分析软件");
-
     const int contentWidth =
         qMax(1, titleLabel->contentsRect().width());
 
@@ -776,25 +810,18 @@ void MainWindow::updateHomeTitleFont()
         return;
     }
 
-    QFont font(QStringLiteral("Microsoft YaHei UI"));
-    font.setWeight(QFont::Medium);
-    font.setLetterSpacing(
-        QFont::PercentageSpacing,
-        kHomeTitleLetterSpacing
-    );
-
     int targetFontPx = kHomeTitleMinFontPx;
 
     for (int fontPx = kHomeTitleMaxFontPx;
          fontPx >= kHomeTitleMinFontPx;
          --fontPx) {
-        font.setPixelSize(fontPx);
-
+        const QFont font = makeHomeTitleFont(fontPx);
         const QFontMetrics metrics(font);
+
         const int firstWidth =
-            metrics.horizontalAdvance(firstLine);
+            metrics.horizontalAdvance(kHomeTitleLine1);
         const int secondWidth =
-            metrics.horizontalAdvance(secondLine);
+            metrics.horizontalAdvance(kHomeTitleLine2);
 
         if (qMax(firstWidth, secondWidth) <= availableWidth) {
             targetFontPx = fontPx;
@@ -802,10 +829,9 @@ void MainWindow::updateHomeTitleFont()
         }
     }
 
-    font.setPixelSize(targetFontPx);
-
-    if (titleLabel->font().pixelSize() != targetFontPx) {
-        titleLabel->setFont(font);
+    const QFont targetFont = makeHomeTitleFont(targetFontPx);
+    if (titleLabel->font() != targetFont) {
+        titleLabel->setFont(targetFont);
     }
 }
 
@@ -1092,7 +1118,7 @@ void MainWindow::loadProjectToUi()
             );
         }
     }
-    setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件 - %1").arg(currentProject.projectName));
+    setWindowTitle(kApplicationTitle + QStringLiteral(" - %1").arg(currentProject.projectName));
     selectTreeItem(QStringLiteral("工程信息"));
     stackedWidget->setCurrentWidget(infoWidget);
     updateUIStates();
@@ -1216,7 +1242,7 @@ void MainWindow::exitProject()
         isProjectLoaded = false;
         currentProject = ProjectConfig();
         stackedWidget->setCurrentIndex(0);
-        setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
+        setWindowTitle(kApplicationTitle);
         treeWidget->clearSelection();
     } else if (root && root->childCount() > 0) {
         QTreeWidgetItem *nextProject = root->child(0);
@@ -1873,11 +1899,7 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
 
             stackedWidget->setCurrentIndex(0);
 
-            setWindowTitle(
-                QStringLiteral(
-                    "浇注XX固化监测与三维参数重构分析软件"
-                )
-            );
+            setWindowTitle(kApplicationTitle);
 
             treeWidget->clearSelection();
 
@@ -2570,10 +2592,8 @@ void MainWindow::help()
         this,
         QMessageBox::Information,
         QStringLiteral("关于"),
-        QStringLiteral(
-            "浇注XX固化监测与三维参数重构分析软件\n\n"
-            "版本 1.0"
-        )
+        kApplicationTitle
+            + QStringLiteral("\n\n版本 1.0")
     );
 }
 
@@ -2746,9 +2766,8 @@ void MainWindow::onTreeItemClicked(
 
     // 更新窗口标题
     setWindowTitle(
-        QStringLiteral(
-            "浇注XX固化监测与三维参数重构分析软件 - %1"
-        ).arg(currentProject.projectName)
+        kApplicationTitle
+            + QStringLiteral(" - %1").arg(currentProject.projectName)
     );
 
     if (nodeType == NODE_STRUCTURE) {
@@ -2889,7 +2908,7 @@ void MainWindow::onProjectDirectoryChanged()
         isProjectLoaded = false;
         currentProject = ProjectConfig();
         stackedWidget->setCurrentIndex(0);
-        setWindowTitle(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"));
+        setWindowTitle(kApplicationTitle);
         updateUIStates();
         startWatchingProject();
     }
