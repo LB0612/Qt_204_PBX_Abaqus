@@ -63,6 +63,7 @@ constexpr int kHomeTitleMarginLeft = 60;
 constexpr int kHomeTitleMarginTop = 20;
 constexpr int kHomeTitleMarginRight = 220;
 constexpr int kHomeTitleMarginBottom = 20;
+constexpr int kHomeTitlePadding = 20;
 
 constexpr int kHomeTitleShadowBlur = 6;
 constexpr int kHomeTitleShadowOffsetY = 1;
@@ -106,8 +107,10 @@ void configureHomeTitleLabel(QLabel *label)
         QStringLiteral(
             "color: %1;"
             "background: transparent;"
-            "padding: 20px;"
-        ).arg(kHomeTitleColor)
+            "padding: %2px;"
+        )
+            .arg(kHomeTitleColor)
+            .arg(kHomeTitlePadding)
     );
 
     QGraphicsDropShadowEffect *shadow =
