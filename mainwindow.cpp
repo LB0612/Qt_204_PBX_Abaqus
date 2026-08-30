@@ -735,14 +735,14 @@ void MainWindow::updateHomeTitleFont()
     }
 
     const int availableWidth =
-        qMax(1, titleLabel->width() - 60);
+        qMax(1, titleLabel->width() - 40);
 
     if (availableWidth <= 1) {
         return;
     }
 
     constexpr int maxFontPx = 70;
-    constexpr int minFontPx = 46;
+    constexpr int minFontPx = 60;
 
     QFont font(QStringLiteral("Microsoft YaHei UI"));
     font.setWeight(QFont::DemiBold);
