@@ -44,7 +44,7 @@ private:
     QString projectPath;
     ResultValidationResult validation;
 
-    ResultType currentType = ResultType::Cure;
+    ResultType currentType = ResultType::Temperature;
     int currentFrame = 0;
     int totalFrames = 0;
     int fps = 5;

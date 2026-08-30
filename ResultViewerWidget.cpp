@@ -223,9 +223,9 @@ void ResultViewerWidget::buildUi()
     typeButtonGroup->setExclusive(true);
 
     for (QPushButton *button : {
-             cureButton,
              temperatureButton,
-             stressButton}) {
+             stressButton,
+             cureButton}) {
         button->setCheckable(true);
         button->setMinimumHeight(36);
         button->setStyleSheet(QString::fromUtf8(kTypeButtonStyle));
@@ -407,7 +407,7 @@ void ResultViewerWidget::refreshResults()
         : 5;
 
     frameSlider->setMaximum(qMax(0, totalFrames - 1));
-    switchResultType(ResultType::Cure);
+    switchResultType(ResultType::Temperature);
 }
 
 void ResultViewerWidget::stopPlayback()
