@@ -1119,22 +1119,8 @@ bool SimulationReportDocxWriter::write(
             "<w:b/><w:bCs/>"
             "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"
             "</w:style>"
-            "<w:style w:type=\"paragraph\" w:styleId=\"Heading3\">"
-            "<w:name w:val=\"heading 3\"/>"
-            "<w:basedOn w:val=\"Normal\"/>"
-            "<w:qFormat/>"
-            "<w:pPr>"
-            "<w:spacing w:line=\"%2\" w:lineRule=\"auto\"/>"
-            "<w:jc w:val=\"left\"/></w:pPr>"
-            "<w:rPr>"
-        ).arg(ptToHalfPoints(Heading2Pt))
-            .arg(headingLineTwips)
-        + headingFontXml
-        + QStringLiteral(
-            "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"
-            "</w:style>"
             "</w:styles>"
-        ).arg(ptToHalfPoints(Heading3Pt));
+        ).arg(ptToHalfPoints(Heading2Pt));
 
     const QString headerXml = QStringLiteral(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"

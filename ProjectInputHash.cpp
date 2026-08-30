@@ -68,6 +68,33 @@ QString framePngPath(
     );
 }
 
+bool isValidPngFile(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    if (file.size() < 64) {
+        return false;
+    }
+
+    const QByteArray header = file.read(8);
+    if (header
+        != QByteArray::fromRawData(
+            "\x89PNG\r\n\x1a\n",
+            8)) {
+        return false;
+    }
+
+    if (!file.seek(file.size() - 12)) {
+        return false;
+    }
+
+    const QByteArray tail = file.read(12);
+    return tail.contains("IEND");
+}
+
 } // namespace
 
 QString hashConfigFiles(const QString &projectPath)
@@ -314,33 +341,6 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
 QString resultsDirectory(const QString &projectPath)
 {
     return ProjectPaths::resultsDirectoryPath(projectPath);
-}
-
-bool isValidPngFile(const QString &path)
-{
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return false;
-    }
-
-    if (file.size() < 64) {
-        return false;
-    }
-
-    const QByteArray header = file.read(8);
-    if (header
-        != QByteArray::fromRawData(
-            "\x89PNG\r\n\x1a\n",
-            8)) {
-        return false;
-    }
-
-    if (!file.seek(file.size() - 12)) {
-        return false;
-    }
-
-    const QByteArray tail = file.read(12);
-    return tail.contains("IEND");
 }
 
 bool validatePostProcessOutputs(

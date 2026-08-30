@@ -54,7 +54,6 @@ bool writeGenerationManifest(
 
 PostProcessManifest readPostProcessManifest(const QString &projectPath);
 
-bool isValidPngFile(const QString &path);
 bool validatePostProcessOutputs(const QString &projectPath, QString &errorMessage);
 
 bool clearPostProcessOutputs(const QString &projectPath, QString &errorMessage);

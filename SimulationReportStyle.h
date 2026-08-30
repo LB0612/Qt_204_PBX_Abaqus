@@ -22,7 +22,6 @@ constexpr double CoverDatePt = 18.0;
 
 constexpr double Heading1Pt = 15.0;
 constexpr double Heading2Pt = 12.0;
-constexpr double Heading3Pt = 12.0;
 
 constexpr double BodyPt = 12.0;
 constexpr double TablePt = 10.5;

@@ -2435,9 +2435,6 @@ void MainWindow::showPreviousSimulationLogs()
 
     const QString projectDir = currentProject.projectPath;
 
-    const QString logsDir =
-        ProjectPaths::logsDirectoryPath(projectDir);
-
     QStringList logSections;
 
     auto loadLog =
@@ -2464,11 +2461,11 @@ void MainWindow::showPreviousSimulationLogs()
 
     loadLog(
         QStringLiteral("T0 LOG"),
-        QDir(logsDir).filePath(QStringLiteral("t0.log"))
+        ProjectPaths::t0LogPath(projectDir)
     );
     loadLog(
         QStringLiteral("T1 LOG"),
-        QDir(logsDir).filePath(QStringLiteral("t1.log"))
+        ProjectPaths::t1LogPath(projectDir)
     );
     loadLog(
         QStringLiteral("ABAQUS MSG"),
@@ -2480,7 +2477,7 @@ void MainWindow::showPreviousSimulationLogs()
     );
     loadLog(
         QStringLiteral("T2 LOG"),
-        QDir(logsDir).filePath(QStringLiteral("t2.log"))
+        ProjectPaths::t2LogPath(projectDir)
     );
 
     simulationMonitorWidget->clearLog();

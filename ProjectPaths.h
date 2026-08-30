@@ -123,6 +123,24 @@ inline QString logsDirectoryPath(const QString &projectPath)
     return QDir(projectPath).filePath(logsDirName());
 }
 
+inline QString t0LogPath(const QString &projectPath)
+{
+    return QDir(logsDirectoryPath(projectPath))
+        .filePath(QStringLiteral("t0.log"));
+}
+
+inline QString t1LogPath(const QString &projectPath)
+{
+    return QDir(logsDirectoryPath(projectPath))
+        .filePath(QStringLiteral("t1.log"));
+}
+
+inline QString t2LogPath(const QString &projectPath)
+{
+    return QDir(logsDirectoryPath(projectPath))
+        .filePath(QStringLiteral("t2.log"));
+}
+
 inline QString structureConfigPath(const QString &projectPath)
 {
     return QDir(projectPath).filePath(structureConfigRelativePath());

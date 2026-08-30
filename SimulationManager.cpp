@@ -517,9 +517,9 @@ void SimulationManager::prepareRunContext()
         ProjectPaths::logsDirectoryPath(projectDir);
     QDir().mkpath(logsDir);
 
-    t0LogPath = QDir(logsDir).filePath(QStringLiteral("t0.log"));
-    t1LogPath = QDir(logsDir).filePath(QStringLiteral("t1.log"));
-    t2LogPath = QDir(logsDir).filePath(QStringLiteral("t2.log"));
+    t0LogPath = ProjectPaths::t0LogPath(projectDir);
+    t1LogPath = ProjectPaths::t1LogPath(projectDir);
+    t2LogPath = ProjectPaths::t2LogPath(projectDir);
 
     currentJobName = ProjectInputHash::currentJobName(projectDir);
 
