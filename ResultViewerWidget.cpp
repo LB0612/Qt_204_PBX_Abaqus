@@ -407,7 +407,20 @@ void ResultViewerWidget::refreshResults()
         : 5;
 
     frameSlider->setMaximum(qMax(0, totalFrames - 1));
-    switchResultType(ResultType::Temperature);
+
+    QTimer::singleShot(
+        0,
+        this,
+        [this]() {
+            if (!isVisible()
+                || !validation.isValid()
+                || totalFrames <= 0) {
+                return;
+            }
+
+            switchResultType(ResultType::Temperature);
+        }
+    );
 }
 
 void ResultViewerWidget::stopPlayback()
