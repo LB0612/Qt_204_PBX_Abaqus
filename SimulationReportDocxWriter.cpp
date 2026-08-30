@@ -1052,6 +1052,8 @@ bool SimulationReportDocxWriter::write(
 
     const QString bodyFontXml = bodyFonts();
     const QString headingFontXml = headingFonts();
+    const int headingLineTwips =
+        qRound(240.0 * HeadingLineSpacingFactor);
     const QString stylesXml =
         QStringLiteral(
             "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
@@ -1089,11 +1091,12 @@ bool SimulationReportDocxWriter::write(
             "<w:basedOn w:val=\"Normal\"/>"
             "<w:qFormat/>"
             "<w:pPr>"
-            "<w:spacing w:line=\"360\" w:lineRule=\"auto\" "
-            "w:before=\"%2\" w:after=\"%3\"/>"
+            "<w:spacing w:line=\"%2\" w:lineRule=\"auto\" "
+            "w:before=\"%3\" w:after=\"%4\"/>"
             "<w:jc w:val=\"left\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(CoverTitlePt))
+            .arg(headingLineTwips)
             .arg(ptToTwips(Heading1BeforePt))
             .arg(ptToTwips(Heading1AfterPt))
         + headingFontXml
@@ -1106,10 +1109,11 @@ bool SimulationReportDocxWriter::write(
             "<w:basedOn w:val=\"Normal\"/>"
             "<w:qFormat/>"
             "<w:pPr>"
-            "<w:spacing w:line=\"360\" w:lineRule=\"auto\"/>"
+            "<w:spacing w:line=\"%2\" w:lineRule=\"auto\"/>"
             "<w:jc w:val=\"left\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(Heading1Pt))
+            .arg(headingLineTwips)
         + headingFontXml
         + QStringLiteral(
             "<w:b/><w:bCs/>"
@@ -1120,10 +1124,11 @@ bool SimulationReportDocxWriter::write(
             "<w:basedOn w:val=\"Normal\"/>"
             "<w:qFormat/>"
             "<w:pPr>"
-            "<w:spacing w:line=\"360\" w:lineRule=\"auto\"/>"
+            "<w:spacing w:line=\"%2\" w:lineRule=\"auto\"/>"
             "<w:jc w:val=\"left\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(Heading2Pt))
+            .arg(headingLineTwips)
         + headingFontXml
         + QStringLiteral(
             "<w:sz w:val=\"%1\"/><w:szCs w:val=\"%1\"/></w:rPr>"

@@ -59,8 +59,6 @@ constexpr double Heading1AfterPt = 2.5;
 constexpr double HeaderLetterSpacingPt = 1.0;
 constexpr double HeaderRulePt = 0.75;
 
-constexpr double CoverDateBottomMm = 60.0;
-
 // Cover: page top margin + this spacer ≈ title at 70 mm.
 constexpr double CoverTopSpacerMm = 40.0;
 constexpr double CoverAfterTitleMm = 14.0;
