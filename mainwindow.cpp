@@ -12,6 +12,7 @@
 #include "AbaqusFileGenerator.h"
 #include "ProjectInputHash.h"
 #include "ProjectParameterService.h"
+#include "ProjectPaths.h"
 #include "SimulationReportGenerator.h"
 #include "SimulationResultService.h"
 
@@ -2434,14 +2435,8 @@ void MainWindow::showPreviousSimulationLogs()
 
     const QString projectDir = currentProject.projectPath;
 
-    const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
-
     const QString logsDir =
-        QDir(projectDir).filePath(QStringLiteral("logs"));
-
-    const QString jobName =
-        ProjectInputHash::currentJobName(projectDir);
+        ProjectPaths::logsDirectoryPath(projectDir);
 
     QStringList logSections;
 
@@ -2477,11 +2472,11 @@ void MainWindow::showPreviousSimulationLogs()
     );
     loadLog(
         QStringLiteral("ABAQUS MSG"),
-        QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg"))
+        ProjectPaths::currentJobMsgPath(projectDir)
     );
     loadLog(
         QStringLiteral("ABAQUS STA"),
-        QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta"))
+        ProjectPaths::currentJobStaPath(projectDir)
     );
     loadLog(
         QStringLiteral("T2 LOG"),

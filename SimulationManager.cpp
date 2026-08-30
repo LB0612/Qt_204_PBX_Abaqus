@@ -5,6 +5,7 @@
 #include "ProjectInputHash.h"
 #include "ProjectManager.h"
 #include "ProjectParameterService.h"
+#include "ProjectPaths.h"
 #include "SimulationArtifactStateService.h"
 #include "SimulationConfigManager.h"
 
@@ -516,7 +517,7 @@ void SimulationManager::prepareRunContext()
     runningAbaqusPath = m_abaqusPath;
 
     const QString logsDir =
-        QDir(projectDir).filePath(QStringLiteral("logs"));
+        ProjectPaths::logsDirectoryPath(projectDir);
     QDir().mkpath(logsDir);
 
     t0LogPath = QDir(logsDir).filePath(QStringLiteral("t0.log"));
@@ -575,15 +576,14 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
         return true;
     };
 
-    const QString jobName = ProjectInputHash::currentJobName(projectDir);
     const QStringList removePaths = {
-        QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag")),
+        ProjectPaths::t0FinishedFlagPath(projectDir),
         ProjectInputHash::t1FinishedFlagPath(projectDir),
         ProjectInputHash::t2FinishedFlagPath(projectDir),
         QDir(abaqusDir).filePath(QStringLiteral("stop.flag")),
-        QDir(abaqusDir).filePath(jobName + QStringLiteral(".msg")),
-        QDir(abaqusDir).filePath(jobName + QStringLiteral(".sta")),
-        QDir(abaqusDir).filePath(jobName + QStringLiteral(".dat")),
+        ProjectPaths::currentJobMsgPath(projectDir),
+        ProjectPaths::currentJobStaPath(projectDir),
+        ProjectPaths::currentJobDatPath(projectDir),
         ProjectInputHash::runningInputFingerprintPath(projectDir),
         ProjectInputHash::runningPostFingerprintPath(projectDir),
         ProjectInputHash::lastSuccessPostFingerprintPath(projectDir),
@@ -933,7 +933,7 @@ void SimulationManager::handleT0Finished(
     }
 
     const QString flagPath =
-        QDir(abaqusDir).filePath(QStringLiteral("t0_finished.flag"));
+        ProjectPaths::t0FinishedFlagPath(projectDir);
     if (!readSuccessFlag(flagPath)) {
         failSolverStage(
             QStringLiteral("t0执行失败"),
@@ -967,11 +967,11 @@ void SimulationManager::startT1Stage()
     currentJobName = ProjectInputHash::currentJobName(projectDir);
 
     simulationMsgPath =
-        QDir(abaqusDir).filePath(currentJobName + QStringLiteral(".msg"));
+        ProjectPaths::currentJobMsgPath(projectDir);
     simulationStaPath =
-        QDir(abaqusDir).filePath(currentJobName + QStringLiteral(".sta"));
+        ProjectPaths::currentJobStaPath(projectDir);
     simulationDatPath =
-        QDir(abaqusDir).filePath(currentJobName + QStringLiteral(".dat"));
+        ProjectPaths::currentJobDatPath(projectDir);
     simulationTotalTime = loadSimulationTotalTime();
     simulationMsgReadOffset = 0;
     simulationStaReadOffset = 0;
