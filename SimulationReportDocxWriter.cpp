@@ -305,12 +305,17 @@ QString paragraphStyled(
     bool bodyLineSpacing = false,
     int spaceBeforeTwips = 0,
     int spaceAfterTwips = 0,
-    bool keepNext = false)
+    bool keepNext = false,
+    bool pageBreakBefore = false)
 {
     QString pPr;
     if (!styleId.isEmpty()) {
         pPr += QStringLiteral("<w:pStyle w:val=\"%1\"/>")
             .arg(styleId);
+    }
+
+    if (pageBreakBefore) {
+        pPr += QStringLiteral("<w:pageBreakBefore/>");
     }
 
     QString spacingAttrs;
@@ -362,17 +367,11 @@ QString paragraphStyled(
     );
 }
 
-QString pageBreakParagraph()
-{
-    return QStringLiteral(
-        "<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>"
-    );
-}
-
 QString captionParagraph(
     const QString &text,
     bool keepNext = false,
-    int spaceAfterTwips = 0)
+    int spaceAfterTwips = 0,
+    bool pageBreakBefore = false)
 {
     return paragraphStyled(
         text,
@@ -385,14 +384,18 @@ QString captionParagraph(
         true,
         0,
         spaceAfterTwips,
-        keepNext
+        keepNext,
+        pageBreakBefore
     );
 }
 
-QString tableXml(const QString &caption, const SimulationReportTable &table)
+QString tableXml(
+    const QString &caption,
+    const SimulationReportTable &table,
+    bool pageBreakBefore = false)
 {
     QString xml;
-    xml += captionParagraph(caption, true);
+    xml += captionParagraph(caption, true, 0, pageBreakBefore);
 
     const int tableWidthTwips = mmToTwips(
         (PageWidthMm - MarginLeftMm - MarginRightMm)
@@ -775,8 +778,6 @@ bool SimulationReportDocxWriter::write(
         );
     }
 
-    body += pageBreakParagraph();
-
     // 2 Parameters
     body += paragraphStyled(
         QStringLiteral("2 输入参数"),
@@ -784,7 +785,13 @@ bool SimulationReportDocxWriter::write(
         headingFonts(),
         ptToHalfPoints(Heading1Pt),
         true,
-        QStringLiteral("left")
+        QStringLiteral("left"),
+        false,
+        false,
+        0,
+        0,
+        false,
+        true
     );
     for (int i = 0; i < model.parameterTables.size(); ++i) {
         const SimulationReportTable &table =
@@ -793,20 +800,15 @@ bool SimulationReportDocxWriter::write(
             QStringLiteral("表 2.%1 %2")
                 .arg(i + 1)
                 .arg(table.title),
-            table
+            table,
+            i == 2
         );
-
-        if (i == 1
-            && i + 1 < model.parameterTables.size()) {
-            body += pageBreakParagraph();
-        }
     }
 
     // 3/4/5 figures — follow PDF figure-block page plan
     int sectionNumber = 3;
     int drawingId = 1;
     int globalFigureIndex = 0;
-    bool hasResultFigures = false;
     for (const SimulationReportResultSection &section
          : model.resultSections) {
         if (section.figures.isEmpty()) {
@@ -818,11 +820,8 @@ bool SimulationReportDocxWriter::write(
             const SimulationReportFigure &figure =
                 section.figures.at(i);
             const int figureIndex = i + 1;
-            hasResultFigures = true;
-
-            if (figurePageStarts.contains(globalFigureIndex)) {
-                body += pageBreakParagraph();
-            }
+            const bool startNewPage =
+                figurePageStarts.contains(globalFigureIndex);
 
             if (figureIndex == 1) {
                 body += paragraphStyled(
@@ -838,7 +837,8 @@ bool SimulationReportDocxWriter::write(
                     true,
                     0,
                     0,
-                    true
+                    true,
+                    startNewPage
                 );
             }
 
@@ -856,7 +856,8 @@ bool SimulationReportDocxWriter::write(
                 true,
                 0,
                 mmToTwips(FigureHeadingAfterMm),
-                true
+                true,
+                figureIndex > 1 && startNewPage
             );
 
             MediaItem item;
@@ -888,17 +889,19 @@ bool SimulationReportDocxWriter::write(
         ++sectionNumber;
     }
 
-    if (hasResultFigures) {
-        body += pageBreakParagraph();
-    }
-
     body += paragraphStyled(
         QStringLiteral("6 结果文件说明"),
         QStringLiteral("Heading1"),
         headingFonts(),
         ptToHalfPoints(Heading1Pt),
         true,
-        QStringLiteral("left")
+        QStringLiteral("left"),
+        false,
+        false,
+        0,
+        0,
+        false,
+        true
     );
     for (const QString &note : model.notes) {
         body += paragraphStyled(
@@ -913,14 +916,19 @@ bool SimulationReportDocxWriter::write(
         );
     }
 
-    body += pageBreakParagraph();
     body += paragraphStyled(
         QStringLiteral("7 报告追溯信息"),
         QStringLiteral("Heading1"),
         headingFonts(),
         ptToHalfPoints(Heading1Pt),
         true,
-        QStringLiteral("left")
+        QStringLiteral("left"),
+        false,
+        false,
+        0,
+        0,
+        false,
+        true
     );
     {
         SimulationReportTable trace;

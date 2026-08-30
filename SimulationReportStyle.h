@@ -16,7 +16,7 @@ constexpr double HeaderMm = 25.0;
 constexpr double FooterMm = 18.0;
 
 constexpr double CoverTitlePt = 32.0;
-constexpr double CoverSubtitlePt = 26.0;
+constexpr double CoverSubtitlePt = 24.0;
 constexpr double CoverInfoPt = 16.0;
 constexpr double CoverDatePt = 18.0;
 
@@ -66,7 +66,7 @@ constexpr double CoverAfterTitleMm = 14.0;
 constexpr double CoverAfterSubtitleMm = 18.0;
 constexpr double CoverBeforeInfoMm = 10.0;
 constexpr double CoverInfoGapMm = 6.0;
-constexpr double CoverBeforeDateMm = 18.0;
+constexpr double CoverBeforeDateMm = 8.0;
 
 } // namespace SimulationReportStyle
 
