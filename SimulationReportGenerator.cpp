@@ -172,11 +172,12 @@ bool buildReportModel(
     model.postSha256 = validation.manifest.postSha256;
 
     QString actualTimeRange = QStringLiteral("未记录");
+    QString actualTimeUnit;
     if (validation.manifest.odbFrames > 0
         && validation.manifest.frameTimes.size()
             == validation.manifest.odbFrames) {
         actualTimeRange =
-            QStringLiteral("%1 ～ %2 s")
+            QStringLiteral("%1 ～ %2")
                 .arg(
                     QString::number(
                         validation.manifest.frameTimes.first(),
@@ -191,6 +192,7 @@ bool buildReportModel(
                         2
                     )
                 );
+        actualTimeUnit = QStringLiteral("s");
     }
 
     model.overviewRows = {
@@ -200,7 +202,7 @@ bool buildReportModel(
             QString()
         },
         {
-            QStringLiteral("Abaqus Job"),
+            QStringLiteral("Abaqus Job 名称"),
             model.jobName,
             QString()
         },
@@ -212,7 +214,7 @@ bool buildReportModel(
         {
             QStringLiteral("实际结果时间范围"),
             actualTimeRange,
-            QString()
+            actualTimeUnit
         },
         {
             QStringLiteral("ODB总帧数"),
@@ -287,7 +289,7 @@ bool buildReportModel(
                 formatNumber(
                     parameters.explosive.initialPoissonRatio
                 ),
-                QStringLiteral("-")
+                QStringLiteral("—")
             },
             {
                 QStringLiteral("最终杨氏模量"),
@@ -301,7 +303,7 @@ bool buildReportModel(
                 formatNumber(
                     parameters.explosive.finalPoissonRatio
                 ),
-                QStringLiteral("-")
+                QStringLiteral("—")
             },
             {
                 QStringLiteral("热导率"),
@@ -348,7 +350,7 @@ bool buildReportModel(
             {
                 QStringLiteral("泊松比"),
                 formatNumber(parameters.mold.poissonRatio),
-                QStringLiteral("-")
+                QStringLiteral("—")
             },
             {
                 QStringLiteral("热导率"),

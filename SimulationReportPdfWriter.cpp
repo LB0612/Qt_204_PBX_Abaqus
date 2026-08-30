@@ -374,26 +374,15 @@ bool drawTable(
     const QFontMetricsF captionMetrics =
         metricsFor(ctx, captionFont);
 
-    const qreal captionH = captionMetrics.height() + mmToPx(2.0);
-    const qreal cellPadY = mmToPx(2.0);
+    const qreal captionH = captionMetrics.height() + mmToPx(1.5);
+    const qreal cellPadY = mmToPx(1.5);
     const qreal tableW = ctx.geom.contentW * TableWidthPct;
     const qreal tableLeft =
         ctx.geom.left + (ctx.geom.contentW - tableW) / 2.0;
     const qreal col1 = tableW * 0.34;
     const qreal col2 = tableW * 0.42;
     const qreal col3 = tableW * 0.24;
-    const qreal cellPadX = 4.0;
-
-    auto ensureSpace = [&](qreal need) -> bool {
-        if (y + need <= ctx.geom.pageH - ctx.geom.bottom) {
-            return true;
-        }
-        if (!beginBodyPage(ctx)) {
-            return false;
-        }
-        y = ctx.geom.top;
-        return true;
-    };
+    const qreal cellPadX = mmToPx(1.8);
 
     auto drawTableLine = [&](qreal widthMm, const QColor &color) {
         if (ctx.dryRun || !ctx.painter) {
@@ -507,63 +496,54 @@ bool drawTable(
         true
     );
 
-    auto beginTableBlock = [&](bool continuation) -> bool {
-        const qreal need =
-            captionH + mmToPx(2.0) + headerRowH + mmToPx(1.0);
-        if (!ensureSpace(need)) {
-            return false;
-        }
-
-        const QString title = continuation
-            ? caption + QStringLiteral("（续）")
-            : caption;
-
-        if (!ctx.dryRun && ctx.painter) {
-            ctx.painter->setFont(captionFont);
-            ctx.painter->setPen(QColor(QStringLiteral("#222222")));
-            ctx.painter->drawText(
-                QRectF(ctx.geom.left, y, ctx.geom.contentW, captionH),
-                Qt::AlignHCenter | Qt::AlignVCenter,
-                title
-            );
-        }
-        y += captionH + mmToPx(2.0);
-
-        drawTableTopLine();
-        if (!drawRow(
-                QStringLiteral("参数"),
-                QStringLiteral("数值"),
-                QStringLiteral("单位"),
-                true)) {
-            return false;
-        }
-        drawTableHeaderLine();
-        return true;
-    };
-
-    if (!beginTableBlock(false)) {
-        return false;
-    }
-
+    qreal tableTotalHeight =
+        captionH + mmToPx(1.5) + headerRowH;
     for (const SimulationReportRow &row : table.rows) {
-        const qreal rowH = measureRowHeight(
+        tableTotalHeight += measureRowHeight(
             row.name,
             row.value,
             row.unit,
             false
         );
+    }
+    tableTotalHeight += mmToPx(3.0);
 
-        if (y + rowH > ctx.geom.pageH - ctx.geom.bottom) {
-            drawTableBottomLine();
-            if (!beginBodyPage(ctx)) {
-                return false;
-            }
-            y = ctx.geom.top;
-            if (!beginTableBlock(true)) {
-                return false;
-            }
+    const qreal maxTableHeight =
+        ctx.geom.pageH - ctx.geom.top - ctx.geom.bottom;
+    if (tableTotalHeight > maxTableHeight) {
+        return false;
+    }
+
+    if (y + tableTotalHeight
+        > ctx.geom.pageH - ctx.geom.bottom) {
+        if (!beginBodyPage(ctx)) {
+            return false;
         }
+        y = ctx.geom.top;
+    }
 
+    if (!ctx.dryRun && ctx.painter) {
+        ctx.painter->setFont(captionFont);
+        ctx.painter->setPen(QColor(QStringLiteral("#222222")));
+        ctx.painter->drawText(
+            QRectF(ctx.geom.left, y, ctx.geom.contentW, captionH),
+            Qt::AlignHCenter | Qt::AlignVCenter,
+            caption
+        );
+    }
+    y += captionH + mmToPx(1.5);
+
+    drawTableTopLine();
+    if (!drawRow(
+            QStringLiteral("参数"),
+            QStringLiteral("数值"),
+            QStringLiteral("单位"),
+            true)) {
+        return false;
+    }
+    drawTableHeaderLine();
+
+    for (const SimulationReportRow &row : table.rows) {
         if (!drawRow(row.name, row.value, row.unit, false)) {
             return false;
         }

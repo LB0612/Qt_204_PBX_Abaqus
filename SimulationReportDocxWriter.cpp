@@ -304,7 +304,8 @@ QString paragraphStyled(
     bool firstLineIndent = false,
     bool bodyLineSpacing = false,
     int spaceBeforeTwips = 0,
-    int spaceAfterTwips = 0)
+    int spaceAfterTwips = 0,
+    bool keepNext = false)
 {
     QString pPr;
     if (!styleId.isEmpty()) {
@@ -332,6 +333,9 @@ QString paragraphStyled(
 
     if (firstLineIndent) {
         pPr += QStringLiteral("<w:ind w:firstLine=\"480\"/>");
+    }
+    if (keepNext) {
+        pPr += QStringLiteral("<w:keepNext/>");
     }
     if (!align.isEmpty()) {
         pPr += QStringLiteral("<w:jc w:val=\"%1\"/>").arg(align);
@@ -365,7 +369,9 @@ QString pageBreakParagraph()
     );
 }
 
-QString captionParagraph(const QString &text)
+QString captionParagraph(
+    const QString &text,
+    bool keepNext = false)
 {
     return paragraphStyled(
         text,
@@ -373,14 +379,19 @@ QString captionParagraph(const QString &text)
         bodyFonts(),
         ptToHalfPoints(CaptionPt),
         false,
-        QStringLiteral("center")
+        QStringLiteral("center"),
+        false,
+        false,
+        0,
+        0,
+        keepNext
     );
 }
 
 QString tableXml(const QString &caption, const SimulationReportTable &table)
 {
     QString xml;
-    xml += captionParagraph(caption);
+    xml += captionParagraph(caption, true);
     xml += QStringLiteral(
         "<w:tbl>"
         "<w:tblPr>"
@@ -408,7 +419,8 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
     auto addRow = [&](const QString &c1,
                       const QString &c2,
                       const QString &c3,
-                      bool header) {
+                      bool header,
+                      bool keepWithNext) {
         const QString bold = header
             ? QStringLiteral("<w:b/><w:bCs/>")
             : QString();
@@ -420,6 +432,9 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
                 "</w:tcBorders>"
             )
             : QString();
+        const QString keepNextXml = keepWithNext
+            ? QStringLiteral("<w:keepNext/>")
+            : QString();
 
         auto cell = [&](const QString &text) {
             return QStringLiteral(
@@ -428,24 +443,28 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
                 "<w:tcW w:w=\"0\" w:type=\"auto\"/>"
                 "<w:vAlign w:val=\"center\"/>"
                 "<w:tcMar>"
-                "<w:top w:w=\"80\" w:type=\"dxa\"/>"
+                "<w:top w:w=\"85\" w:type=\"dxa\"/>"
                 "<w:left w:w=\"100\" w:type=\"dxa\"/>"
-                "<w:bottom w:w=\"80\" w:type=\"dxa\"/>"
+                "<w:bottom w:w=\"85\" w:type=\"dxa\"/>"
                 "<w:right w:w=\"100\" w:type=\"dxa\"/>"
                 "</w:tcMar>"
                 "%1"
                 "</w:tcPr>"
                 "<w:p>"
-                "<w:pPr><w:jc w:val=\"center\"/></w:pPr>"
+                "<w:pPr>"
+                "<w:jc w:val=\"center\"/>"
+                "%2"
+                "</w:pPr>"
                 "<w:r>"
-                "<w:rPr>%2%3"
-                "<w:sz w:val=\"%4\"/><w:szCs w:val=\"%4\"/></w:rPr>"
-                "<w:t xml:space=\"preserve\">%5</w:t>"
+                "<w:rPr>%3%4"
+                "<w:sz w:val=\"%5\"/><w:szCs w:val=\"%5\"/></w:rPr>"
+                "<w:t xml:space=\"preserve\">%6</w:t>"
                 "</w:r>"
                 "</w:p>"
                 "</w:tc>"
             ).arg(
                 headerBottom,
+                keepNextXml,
                 bodyFonts(),
                 bold,
                 QString::number(tableHalfPts),
@@ -453,7 +472,10 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
             );
         };
 
-        xml += QStringLiteral("<w:tr>");
+        xml += QStringLiteral(
+            "<w:tr>"
+            "<w:trPr><w:cantSplit/></w:trPr>"
+        );
         xml += cell(c1);
         xml += cell(c2);
         xml += cell(c3);
@@ -464,10 +486,19 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
         QStringLiteral("参数"),
         QStringLiteral("数值"),
         QStringLiteral("单位"),
+        true,
         true
     );
-    for (const SimulationReportRow &row : table.rows) {
-        addRow(row.name, row.value, row.unit, false);
+    for (int i = 0; i < table.rows.size(); ++i) {
+        const SimulationReportRow &row = table.rows.at(i);
+        const bool keepWithNext = (i + 1 < table.rows.size());
+        addRow(
+            row.name,
+            row.value,
+            row.unit,
+            false,
+            keepWithNext
+        );
     }
 
     xml += QStringLiteral("</w:tbl>");
