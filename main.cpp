@@ -79,6 +79,6 @@ QScrollBar::sub-page:horizontal {
 )"));
 
     MainWindow w;
-    w.show();
+    w.showMaximized();
     return a.exec();
 }
