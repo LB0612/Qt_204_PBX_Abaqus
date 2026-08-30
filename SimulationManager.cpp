@@ -529,7 +529,6 @@ void SimulationManager::prepareRunContext()
 
     emit monitorResetRequested();
     emit progressUpdated(0);
-    emit jobChanged(currentJobName);
     emit statusChanged(
         QStringLiteral("正在启动 Abaqus...")
     );
@@ -750,9 +749,6 @@ void SimulationManager::startTaskInternal()
                 "[SYS] 检测到有效求解结果，跳过后处理恢复运行"
             )
         );
-        emit phaseChanged(
-            QStringLiteral("阶段: 后处理恢复(t2)")
-        );
 
         updateT2ResetRequestForPostProcessOnly();
 
@@ -821,9 +817,6 @@ void SimulationManager::startT0Stage()
 
     setSimulationState(SimulationState::T0Running);
     emit progressUpdated(5);
-    emit phaseChanged(
-        QStringLiteral("阶段: 模型建立(t0)")
-    );
 
     if (abaqusProcess) {
         abaqusProcess->deleteLater();

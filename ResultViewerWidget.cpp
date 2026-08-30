@@ -461,13 +461,12 @@ QString ResultViewerWidget::continueButtonText(
     switch (state) {
     case ResultValidationState::PostIncomplete:
     case ResultValidationState::OutputsInvalid:
-        return QStringLiteral("继续后处理");
-    case ResultValidationState::PostShaMismatch:
-        return QStringLiteral("重新进行仿真");
-    case ResultValidationState::NoResults:
-    case ResultValidationState::ProjectMissing:
     case ResultValidationState::ManifestInvalid:
+    case ResultValidationState::PostShaMismatch:
+        return QStringLiteral("继续处理");
+    case ResultValidationState::NoResults:
         return QStringLiteral("开始仿真");
+    case ResultValidationState::ProjectMissing:
     case ResultValidationState::Valid:
         break;
     }

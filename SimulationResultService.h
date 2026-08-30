@@ -3,7 +3,6 @@
 
 #include "ProjectInputHash.h"
 
-#include <QVector>
 #include <QString>
 
 enum class ResultType
@@ -49,7 +48,6 @@ class SimulationResultService
 public:
     static ResultValidationResult validate(const QString &projectPath);
 
-    static QVector<ResultTypeDescriptor> allResultTypes();
     static ResultTypeDescriptor descriptorFor(ResultType type);
 
     static QString frameDirectory(
@@ -67,7 +65,6 @@ public:
     static QString reportPdfPath(const QString &projectPath);
     static QString reportManifestPath(const QString &projectPath);
 
-    static bool readSuccessFlag(const QString &flagPath);
     static bool isReportCurrent(const QString &projectPath);
 };
 

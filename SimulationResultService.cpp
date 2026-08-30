@@ -120,15 +120,6 @@ ResultValidationResult SimulationResultService::validate(
     return result;
 }
 
-QVector<ResultTypeDescriptor> SimulationResultService::allResultTypes()
-{
-    return {
-        descriptorFor(ResultType::Cure),
-        descriptorFor(ResultType::Temperature),
-        descriptorFor(ResultType::Stress),
-    };
-}
-
 ResultTypeDescriptor SimulationResultService::descriptorFor(
     ResultType type)
 {
@@ -215,11 +206,6 @@ QString SimulationResultService::reportManifestPath(
 {
     return QDir(reportDirectoryPath(projectPath))
         .filePath(QStringLiteral("report_manifest.json"));
-}
-
-bool SimulationResultService::readSuccessFlag(const QString &flagPath)
-{
-    return SimulationArtifactStateService::readSuccessFlag(flagPath);
 }
 
 bool SimulationResultService::isReportCurrent(const QString &projectPath)

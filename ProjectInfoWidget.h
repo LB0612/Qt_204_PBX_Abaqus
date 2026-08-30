@@ -12,7 +12,6 @@ public:
     explicit ProjectInfoWidget(QWidget *parent = nullptr);
 
     void setProjectData(const ProjectConfig &config);
-    void getProjectData(ProjectConfig &config) const;
 
 private:
     void setupUi();

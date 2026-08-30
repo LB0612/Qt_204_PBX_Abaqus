@@ -67,8 +67,3 @@ void ProjectInfoWidget::setProjectData(const ProjectConfig &config)
     dateEdit->setText(config.createdDate);
     pathEdit->setText(config.projectPath);
 }
-
-void ProjectInfoWidget::getProjectData(ProjectConfig &config) const
-{
-    config.projectName = nameEdit->text();
-}
