@@ -244,8 +244,21 @@ void MainWindow::setupUi()
 
     titleLabel = new QLabel(QStringLiteral("浇注XX固化监测与三维参数重构分析软件"), stackedWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setWordWrap(true);
-    titleLabel->setStyleSheet(QStringLiteral("font-family: 'Microsoft YaHei'; font-size: 60px; color: #333; font-weight: bold; background: transparent; padding: 20px;"));
+    titleLabel->setWordWrap(false);
+
+    QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
+    titleFont.setPixelSize(50);
+    titleFont.setWeight(QFont::DemiBold);
+    titleFont.setLetterSpacing(QFont::PercentageSpacing, 102.0);
+    titleLabel->setFont(titleFont);
+
+    titleLabel->setStyleSheet(
+        QStringLiteral(
+            "color: #30343b;"
+            "background: transparent;"
+            "padding: 20px;"
+        )
+    );
     stackedWidget->addWidget(titleLabel);
 
     infoWidget = new ProjectInfoWidget(stackedWidget);
