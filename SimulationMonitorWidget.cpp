@@ -13,7 +13,7 @@ QString sectionTitleStyle()
 {
     return QStringLiteral(
         "font-family: %1;"
-        "font-size: 16px;"
+        "font-size: 18px;"
         "font-weight: bold;"
         "color: #333333;"
         "border: none;"
