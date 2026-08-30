@@ -33,6 +33,10 @@ constexpr double FooterPt = 10.5;
 constexpr double FigureMaxWidthMm = 150.0;
 constexpr double FigureMaxHeightMm = 180.0;
 
+constexpr double FigureHeadingAfterMm = 3.0;
+constexpr double FigureCaptionGapMm = 4.0;
+constexpr double FigureBlockAfterMm = 6.0;
+
 constexpr double TableWidthPct = 0.86;
 
 constexpr double TableColumn1Pct = 0.34;

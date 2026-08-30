@@ -522,20 +522,14 @@ bool writeReportManifest(
 }
 
 int expectedBodyPageCount(
-    const SimulationReportModel &model)
+    const QVector<int> &figurePageStarts)
 {
-    int figurePages = 0;
-    for (const SimulationReportResultSection &section
-         : model.resultSections) {
-        figurePages += section.figures.size();
-    }
-
     // 1 overview
     // 2 parameter pages
-    // N figure pages
-    // 1 notes page
-    // 1 trace page
-    return figurePages + 5;
+    // N result pages
+    // 1 notes
+    // 1 trace
+    return figurePageStarts.size() + 5;
 }
 
 bool validatePdfFile(const QString &path)
@@ -758,18 +752,21 @@ bool SimulationReportGenerator::generate(
     }
 
     int bodyTotalPages = 0;
+    QVector<int> figurePageStarts;
     if (!SimulationReportPdfWriter::write(
             model,
             tempPdfPath,
             errorMessage,
-            &bodyTotalPages)) {
+            &bodyTotalPages,
+            &figurePageStarts)) {
         if (QFile::exists(tempPdfPath)) {
             QFile::remove(tempPdfPath);
         }
         return false;
     }
 
-    const int expectedPages = expectedBodyPageCount(model);
+    const int expectedPages =
+        expectedBodyPageCount(figurePageStarts);
     if (bodyTotalPages != expectedPages) {
         QFile::remove(tempPdfPath);
         errorMessage =
@@ -786,7 +783,8 @@ bool SimulationReportGenerator::generate(
             model,
             tempDocxPath,
             errorMessage,
-            bodyTotalPages)) {
+            bodyTotalPages,
+            figurePageStarts)) {
         if (QFile::exists(tempPdfPath)) {
             QFile::remove(tempPdfPath);
         }

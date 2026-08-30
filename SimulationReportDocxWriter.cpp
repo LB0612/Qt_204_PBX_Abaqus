@@ -371,7 +371,8 @@ QString pageBreakParagraph()
 
 QString captionParagraph(
     const QString &text,
-    bool keepNext = false)
+    bool keepNext = false,
+    int spaceAfterTwips = 0)
 {
     return paragraphStyled(
         text,
@@ -383,7 +384,7 @@ QString captionParagraph(
         false,
         true,
         0,
-        0,
+        spaceAfterTwips,
         keepNext
     );
 }
@@ -538,11 +539,22 @@ QString imageParagraph(
     const QString &relId,
     qint64 cx,
     qint64 cy,
-    const QString &name)
+    const QString &name,
+    bool keepNext,
+    int spaceAfterTwips)
 {
+    QString pPr = QStringLiteral("<w:jc w:val=\"center\"/>");
+    if (keepNext) {
+        pPr += QStringLiteral("<w:keepNext/>");
+    }
+    if (spaceAfterTwips > 0) {
+        pPr += QStringLiteral("<w:spacing w:after=\"%1\"/>")
+            .arg(spaceAfterTwips);
+    }
+
     return QStringLiteral(
         "<w:p>"
-        "<w:pPr><w:jc w:val=\"center\"/></w:pPr>"
+        "<w:pPr>%6</w:pPr>"
         "<w:r>"
         "<w:drawing>"
         "<wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">"
@@ -585,7 +597,8 @@ QString imageParagraph(
         .arg(cy)
         .arg(drawingId)
         .arg(xmlEscape(name))
-        .arg(relId);
+        .arg(relId)
+        .arg(pPr);
 }
 
 } // namespace
@@ -594,7 +607,8 @@ bool SimulationReportDocxWriter::write(
     const SimulationReportModel &model,
     const QString &outputPath,
     QString &errorMessage,
-    int bodyTotalPages)
+    int bodyTotalPages,
+    const QVector<int> &figurePageStarts)
 {
     if (bodyTotalPages < 1) {
         errorMessage = QStringLiteral("报告页数无效。");
@@ -788,27 +802,61 @@ bool SimulationReportDocxWriter::write(
         }
     }
 
-    // 3/4/5 figures
+    // 3/4/5 figures — follow PDF figure-block page plan
     int sectionNumber = 3;
     int drawingId = 1;
-    bool firstResultFigure = true;
+    int globalFigureIndex = 0;
+    bool hasResultFigures = false;
     for (const SimulationReportResultSection &section
          : model.resultSections) {
-        int figureIndex = 1;
-        for (const SimulationReportFigure &figure
-             : section.figures) {
-            body += pageBreakParagraph();
-            firstResultFigure = false;
+        if (section.figures.isEmpty()) {
+            ++sectionNumber;
+            continue;
+        }
+
+        for (int i = 0; i < section.figures.size(); ++i) {
+            const SimulationReportFigure &figure =
+                section.figures.at(i);
+            const int figureIndex = i + 1;
+            hasResultFigures = true;
+
+            if (figurePageStarts.contains(globalFigureIndex)) {
+                body += pageBreakParagraph();
+            }
+
+            if (figureIndex == 1) {
+                body += paragraphStyled(
+                    QStringLiteral("%1 %2")
+                        .arg(sectionNumber)
+                        .arg(section.title),
+                    QStringLiteral("Heading1"),
+                    headingFonts(),
+                    ptToHalfPoints(Heading1Pt),
+                    true,
+                    QStringLiteral("left"),
+                    false,
+                    true,
+                    0,
+                    0,
+                    true
+                );
+            }
 
             body += paragraphStyled(
-                QStringLiteral("%1 %2")
+                QStringLiteral("%1.%2 %3")
                     .arg(sectionNumber)
-                    .arg(section.title),
-                QStringLiteral("Heading1"),
+                    .arg(figureIndex)
+                    .arg(figure.label),
+                QStringLiteral("Heading2"),
                 headingFonts(),
-                ptToHalfPoints(Heading1Pt),
+                ptToHalfPoints(Heading2Pt),
                 true,
-                QStringLiteral("left")
+                QStringLiteral("left"),
+                false,
+                true,
+                0,
+                mmToTwips(FigureHeadingAfterMm),
+                true
             );
 
             MediaItem item;
@@ -821,7 +869,9 @@ bool SimulationReportDocxWriter::write(
                 item.relId,
                 item.cx,
                 item.cy,
-                item.displayName
+                item.displayName,
+                true,
+                mmToTwips(FigureCaptionGapMm)
             );
             body += captionParagraph(
                 figureCaption(
@@ -829,14 +879,16 @@ bool SimulationReportDocxWriter::write(
                     figureIndex,
                     section.title,
                     figure
-                )
+                ),
+                false,
+                mmToTwips(FigureBlockAfterMm)
             );
-            ++figureIndex;
+            ++globalFigureIndex;
         }
         ++sectionNumber;
     }
 
-    if (!firstResultFigure) {
+    if (hasResultFigures) {
         body += pageBreakParagraph();
     }
 

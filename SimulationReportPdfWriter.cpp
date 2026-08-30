@@ -14,6 +14,7 @@
 #include <QPdfWriter>
 #include <QPen>
 #include <QStringList>
+#include <QVector>
 #include <QtGlobal>
 #include <QtMath>
 
@@ -166,6 +167,7 @@ struct PdfDrawContext
     bool coverDrawn = false;
     bool bodyStarted = false;
     bool dryRun = false;
+    QVector<int> *outFigurePageStarts = nullptr;
 };
 
 QFontMetricsF metricsFor(
@@ -355,6 +357,79 @@ void drawHeading1(
     }
 
     y += lineHeight + ptToPx(Heading1AfterPt);
+}
+
+void drawHeading2(
+    PdfDrawContext &ctx,
+    qreal &y,
+    const QString &text)
+{
+    const QFont font =
+        makeFont(QStringLiteral("SimHei"), Heading2Pt, true);
+    const QFontMetricsF metrics = metricsFor(ctx, font);
+
+    const qreal lineHeight =
+        metrics.height() * HeadingLineSpacingFactor;
+
+    if (!ctx.dryRun && ctx.painter) {
+        ctx.painter->setFont(font);
+        ctx.painter->setPen(Qt::black);
+        ctx.painter->drawText(
+            QRectF(
+                ctx.geom.left,
+                y,
+                ctx.geom.contentW,
+                lineHeight
+            ),
+            Qt::AlignLeft | Qt::AlignVCenter,
+            text
+        );
+    }
+
+    y += lineHeight + mmToPx(FigureHeadingAfterMm);
+}
+
+qreal measureFigureBlockHeight(
+    PdfDrawContext &ctx,
+    const SimulationReportFigure &figure,
+    const QString &caption)
+{
+    const QFont headingFont =
+        makeFont(QStringLiteral("SimHei"), Heading2Pt, true);
+    const QFont captionFont =
+        makeFont(QStringLiteral("SimSun"), CaptionPt);
+
+    const QFontMetricsF headingMetrics =
+        metricsFor(ctx, headingFont);
+    const QFontMetricsF captionMetrics =
+        metricsFor(ctx, captionFont);
+
+    const qreal headingH =
+        headingMetrics.height() * HeadingLineSpacingFactor;
+
+    const QSizeF fitted = fitImage(
+        figure.imagePixelSize,
+        mmToPx(FigureMaxWidthMm),
+        mmToPx(FigureMaxHeightMm)
+    );
+
+    const QRectF captionBound = captionMetrics.boundingRect(
+        QRectF(0, 0, ctx.geom.contentW, ctx.geom.contentH),
+        Qt::TextWordWrap,
+        caption
+    );
+
+    const qreal captionH = qMax(
+        captionMetrics.height() * 1.5,
+        captionBound.height()
+    );
+
+    return headingH
+        + mmToPx(FigureHeadingAfterMm)
+        + fitted.height()
+        + mmToPx(FigureCaptionGapMm)
+        + captionH
+        + mmToPx(FigureBlockAfterMm);
 }
 
 void drawBodyParagraph(
@@ -714,43 +789,93 @@ bool layoutReport(
         }
     }
 
-    // 3/4/5 figures
+    // 3/4/5 figures — one chapter per section; greedy figure-block packing
     int sectionNumber = 3;
+    int globalFigureIndex = 0;
     for (const SimulationReportResultSection &section
          : model.resultSections) {
-        int figureIndex = 1;
-        for (const SimulationReportFigure &figure
-             : section.figures) {
-            if (!beginBodyPage(ctx)) {
-                errorMessage = QStringLiteral("无法创建 PDF 新页。");
-                return false;
-            }
+        if (section.figures.isEmpty()) {
+            ++sectionNumber;
+            continue;
+        }
 
-            qreal y = ctx.geom.top;
-            drawHeading1(
-                ctx,
-                y,
-                QStringLiteral("%1 %2")
-                    .arg(sectionNumber)
-                    .arg(section.title)
-            );
+        if (!beginBodyPage(ctx)) {
+            errorMessage = QStringLiteral("无法创建 PDF 新页。");
+            return false;
+        }
 
-            const qreal maxW = mmToPx(FigureMaxWidthMm);
-            const qreal maxH = mmToPx(FigureMaxHeightMm);
-            const QSizeF fitted =
-                fitImage(figure.imagePixelSize, maxW, maxH);
-            if (!fitted.isValid()) {
-                errorMessage = QStringLiteral("报告图片尺寸无效。");
-                return false;
-            }
+        qreal y = ctx.geom.top;
+        drawHeading1(
+            ctx,
+            y,
+            QStringLiteral("%1 %2")
+                .arg(sectionNumber)
+                .arg(section.title)
+        );
 
-            const QFont captionFont =
-                makeFont(QStringLiteral("SimSun"), CaptionPt);
+        for (int i = 0; i < section.figures.size(); ++i) {
+            const SimulationReportFigure &figure =
+                section.figures.at(i);
+            const int figureIndex = i + 1;
             const QString caption = figureCaption(
                 sectionNumber,
                 figureIndex,
                 section.title,
                 figure
+            );
+
+            const qreal blockH = measureFigureBlockHeight(
+                ctx,
+                figure,
+                caption
+            );
+
+            const QSizeF fitted = fitImage(
+                figure.imagePixelSize,
+                mmToPx(FigureMaxWidthMm),
+                mmToPx(FigureMaxHeightMm)
+            );
+            if (!fitted.isValid()) {
+                errorMessage = QStringLiteral("报告图片尺寸无效。");
+                return false;
+            }
+
+            if (i == 0) {
+                if (y + blockH
+                    > ctx.geom.pageH - ctx.geom.bottom) {
+                    errorMessage = QStringLiteral(
+                        "结果图块高度超过单页可用区域。"
+                    );
+                    return false;
+                }
+                if (ctx.outFigurePageStarts) {
+                    ctx.outFigurePageStarts->append(
+                        globalFigureIndex
+                    );
+                }
+            } else if (
+                y + blockH
+                > ctx.geom.pageH - ctx.geom.bottom) {
+                if (!beginBodyPage(ctx)) {
+                    errorMessage =
+                        QStringLiteral("无法创建 PDF 新页。");
+                    return false;
+                }
+                y = ctx.geom.top;
+                if (ctx.outFigurePageStarts) {
+                    ctx.outFigurePageStarts->append(
+                        globalFigureIndex
+                    );
+                }
+            }
+
+            drawHeading2(
+                ctx,
+                y,
+                QStringLiteral("%1.%2 %3")
+                    .arg(sectionNumber)
+                    .arg(figureIndex)
+                    .arg(figure.label)
             );
 
             if (!ctx.dryRun) {
@@ -764,7 +889,8 @@ bool layoutReport(
 
                 const QRectF target(
                     ctx.geom.left
-                        + (ctx.geom.contentW - fitted.width()) / 2.0,
+                        + (ctx.geom.contentW - fitted.width())
+                            / 2.0,
                     y,
                     fitted.width(),
                     fitted.height()
@@ -772,10 +898,21 @@ bool layoutReport(
                 ctx.painter->drawImage(target, image);
             }
 
-            y += fitted.height() + mmToPx(4.0);
-            drawCenteredText(ctx, y, caption, captionFont, 0.0);
-            ++figureIndex;
+            y += fitted.height() + mmToPx(FigureCaptionGapMm);
+
+            const QFont captionFont =
+                makeFont(QStringLiteral("SimSun"), CaptionPt);
+            drawCenteredText(
+                ctx,
+                y,
+                caption,
+                captionFont,
+                FigureBlockAfterMm
+            );
+
+            ++globalFigureIndex;
         }
+
         ++sectionNumber;
     }
 
@@ -821,14 +958,18 @@ bool SimulationReportPdfWriter::write(
     const SimulationReportModel &model,
     const QString &outputPath,
     QString &errorMessage,
-    int *outBodyPageCount)
+    int *outBodyPageCount,
+    QVector<int> *outFigurePageStarts)
 {
+    QVector<int> figurePageStarts;
+
     PdfDrawContext countCtx;
     countCtx.geom = makeGeom();
     countCtx.reportTitle = model.reportTitle;
     countCtx.dryRun = true;
     countCtx.bodyPageIndex = 1;
     countCtx.bodyTotalPages = 1;
+    countCtx.outFigurePageStarts = &figurePageStarts;
 
     if (!layoutReport(countCtx, model, errorMessage)) {
         return false;
@@ -842,6 +983,9 @@ bool SimulationReportPdfWriter::write(
 
     if (outBodyPageCount) {
         *outBodyPageCount = bodyTotalPages;
+    }
+    if (outFigurePageStarts) {
+        *outFigurePageStarts = figurePageStarts;
     }
 
     QPdfWriter writer(outputPath);
@@ -863,6 +1007,7 @@ bool SimulationReportPdfWriter::write(
     drawCtx.dryRun = false;
     drawCtx.bodyPageIndex = 1;
     drawCtx.bodyTotalPages = bodyTotalPages;
+    drawCtx.outFigurePageStarts = nullptr;
 
     if (!layoutReport(drawCtx, model, errorMessage)) {
         return false;

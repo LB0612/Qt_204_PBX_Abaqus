@@ -4,6 +4,7 @@
 #include "SimulationReportModel.h"
 
 #include <QString>
+#include <QVector>
 
 class SimulationReportPdfWriter
 {
@@ -12,7 +13,8 @@ public:
         const SimulationReportModel &model,
         const QString &outputPath,
         QString &errorMessage,
-        int *outBodyPageCount = nullptr
+        int *outBodyPageCount = nullptr,
+        QVector<int> *outFigurePageStarts = nullptr
     );
 };
 
