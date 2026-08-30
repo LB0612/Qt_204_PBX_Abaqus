@@ -268,12 +268,12 @@ void MainWindow::setupUi()
     QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
     titleFont.setPixelSize(136);
     titleFont.setWeight(QFont::Medium);
-    titleFont.setLetterSpacing(QFont::PercentageSpacing, 98.0);
+    titleFont.setLetterSpacing(QFont::PercentageSpacing, 96.5);
     titleLabel->setFont(titleFont);
 
     titleLabel->setStyleSheet(
         QStringLiteral(
-            "color: #202b3c;"
+            "color: #1d2a3d;"
             "background: transparent;"
             "padding: 20px;"
         )
@@ -281,9 +281,9 @@ void MainWindow::setupUi()
 
     QGraphicsDropShadowEffect *titleShadow =
         new QGraphicsDropShadowEffect(titleLabel);
-    titleShadow->setBlurRadius(8);
-    titleShadow->setOffset(0, 2);
-    titleShadow->setColor(QColor(20, 35, 55, 45));
+    titleShadow->setBlurRadius(6);
+    titleShadow->setOffset(0, 1);
+    titleShadow->setColor(QColor(18, 32, 50, 32));
     titleLabel->setGraphicsEffect(titleShadow);
 
     stackedWidget->addWidget(titleLabel);
@@ -755,7 +755,7 @@ void MainWindow::updateHomeTitleFont()
 
     QFont font(QStringLiteral("Microsoft YaHei UI"));
     font.setWeight(QFont::Medium);
-    font.setLetterSpacing(QFont::PercentageSpacing, 98.0);
+    font.setLetterSpacing(QFont::PercentageSpacing, 96.5);
 
     int targetFontPx = minFontPx;
 
