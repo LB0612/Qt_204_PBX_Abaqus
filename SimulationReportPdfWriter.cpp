@@ -445,7 +445,8 @@ bool SimulationReportPdfWriter::write(
             }
 
             const QRectF target(
-                geom.left,
+                geom.left
+                    + (geom.contentW - fitted.width()) / 2.0,
                 y,
                 fitted.width(),
                 fitted.height()

@@ -566,6 +566,121 @@ void cleanupBackup(const QString &backupPath, bool hadBackup)
     }
 }
 
+bool reportFinalsMatchManifest(const QString &projectPath)
+{
+    const QString pdfPath =
+        SimulationResultService::reportPdfPath(projectPath);
+    const QString docxPath =
+        SimulationResultService::reportDocxPath(projectPath);
+
+    QFile file(
+        SimulationResultService::reportManifestPath(projectPath)
+    );
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument document =
+        QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError
+        || !document.isObject()) {
+        return false;
+    }
+
+    const QJsonObject json = document.object();
+    if (json.value(QStringLiteral("version")).toInt() != 3) {
+        return false;
+    }
+
+    const QString storedPdfName =
+        json.value(QStringLiteral("pdf")).toString();
+    const QString storedDocxName =
+        json.value(QStringLiteral("docx")).toString();
+    const qint64 storedPdfBytes =
+        static_cast<qint64>(
+            json.value(QStringLiteral("pdfBytes")).toDouble(-1)
+        );
+    const qint64 storedDocxBytes =
+        static_cast<qint64>(
+            json.value(QStringLiteral("docxBytes")).toDouble(-1)
+        );
+    const QString storedPdfSha =
+        json.value(QStringLiteral("pdfSha256")).toString();
+    const QString storedDocxSha =
+        json.value(QStringLiteral("docxSha256")).toString();
+
+    if (storedPdfName != QFileInfo(pdfPath).fileName()
+        || storedDocxName != QFileInfo(docxPath).fileName()
+        || storedPdfSha.isEmpty()
+        || storedDocxSha.isEmpty()) {
+        return false;
+    }
+
+    const QFileInfo pdfInfo(pdfPath);
+    const QFileInfo docxInfo(docxPath);
+    if (!pdfInfo.exists()
+        || !pdfInfo.isFile()
+        || pdfInfo.size() <= 0
+        || !docxInfo.exists()
+        || !docxInfo.isFile()
+        || docxInfo.size() <= 0
+        || pdfInfo.size() != storedPdfBytes
+        || docxInfo.size() != storedDocxBytes) {
+        return false;
+    }
+
+    const QString actualPdfSha =
+        SimulationArtifactStateService::fileSha256(pdfPath);
+    const QString actualDocxSha =
+        SimulationArtifactStateService::fileSha256(docxPath);
+
+    return !actualPdfSha.isEmpty()
+        && !actualDocxSha.isEmpty()
+        && actualPdfSha == storedPdfSha
+        && actualDocxSha == storedDocxSha;
+}
+
+void recoverInterruptedReportCommit(
+    const QString &pdfPath,
+    const QString &docxPath,
+    const QString &backupPdfPath,
+    const QString &backupDocxPath,
+    const QString &projectPath)
+{
+    const bool hasPdfBak = QFile::exists(backupPdfPath);
+    const bool hasDocxBak = QFile::exists(backupDocxPath);
+    if (!hasPdfBak && !hasDocxBak) {
+        return;
+    }
+
+    if (reportFinalsMatchManifest(projectPath)) {
+        // Manifest already committed; only leftover .bak cleanup.
+        if (hasPdfBak) {
+            QFile::remove(backupPdfPath);
+        }
+        if (hasDocxBak) {
+            QFile::remove(backupDocxPath);
+        }
+        return;
+    }
+
+    // Crash between promoting finals and writing manifest:
+    // drop residual new finals and restore the last known-good pair.
+    if (hasPdfBak) {
+        if (QFile::exists(pdfPath)) {
+            QFile::remove(pdfPath);
+        }
+        QFile::rename(backupPdfPath, pdfPath);
+    }
+    if (hasDocxBak) {
+        if (QFile::exists(docxPath)) {
+            QFile::remove(docxPath);
+        }
+        QFile::rename(backupDocxPath, docxPath);
+    }
+}
+
 } // namespace
 
 bool SimulationReportGenerator::generate(
@@ -608,21 +723,13 @@ bool SimulationReportGenerator::generate(
     const QString backupDocxPath =
         docxPath + QStringLiteral(".bak");
 
-    // Recover leftover backups if finals are missing.
-    if (QFile::exists(backupPdfPath)) {
-        if (!QFile::exists(pdfPath)) {
-            QFile::rename(backupPdfPath, pdfPath);
-        } else {
-            QFile::remove(backupPdfPath);
-        }
-    }
-    if (QFile::exists(backupDocxPath)) {
-        if (!QFile::exists(docxPath)) {
-            QFile::rename(backupDocxPath, docxPath);
-        } else {
-            QFile::remove(backupDocxPath);
-        }
-    }
+    recoverInterruptedReportCommit(
+        pdfPath,
+        docxPath,
+        backupPdfPath,
+        backupDocxPath,
+        projectPath
+    );
 
     if (QFile::exists(tempPdfPath)) {
         QFile::remove(tempPdfPath);
