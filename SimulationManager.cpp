@@ -424,14 +424,11 @@ bool SimulationManager::checkReady(QString &errorMessage) const
         return false;
     }
 
-    const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
-
     const QStringList files = {
-        QDir(abaqusDir).filePath(QStringLiteral("t0.py")),
-        QDir(abaqusDir).filePath(QStringLiteral("t1.py")),
-        QDir(abaqusDir).filePath(QStringLiteral("t2.py")),
-        QDir(abaqusDir).filePath(QStringLiteral("335K.for")),
+        ProjectPaths::t0ScriptPath(projectDir),
+        ProjectPaths::t1ScriptPath(projectDir),
+        ProjectPaths::t2ScriptPath(projectDir),
+        ProjectPaths::userSubroutinePath(projectDir),
     };
 
     for (const QString &filePath : files) {
@@ -541,8 +538,6 @@ void SimulationManager::prepareRunContext()
 bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
 {
     const QString projectDir = m_projectPath;
-    const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
 
     auto removeIfExists = [&errorMessage](const QString &path) {
         if (!QFileInfo::exists(path)) {
@@ -580,7 +575,7 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
         ProjectPaths::t0FinishedFlagPath(projectDir),
         ProjectInputHash::t1FinishedFlagPath(projectDir),
         ProjectInputHash::t2FinishedFlagPath(projectDir),
-        QDir(abaqusDir).filePath(QStringLiteral("stop.flag")),
+        ProjectPaths::stopFlagPath(projectDir),
         ProjectPaths::currentJobMsgPath(projectDir),
         ProjectPaths::currentJobStaPath(projectDir),
         ProjectPaths::currentJobDatPath(projectDir),
@@ -810,9 +805,9 @@ void SimulationManager::startT0Stage()
 {
     const QString projectDir = activeProjectPath();
     const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+        ProjectPaths::abaqusDirectoryPath(projectDir);
     const QString t0Path =
-        QDir(abaqusDir).filePath(QStringLiteral("t0.py"));
+        ProjectPaths::t0ScriptPath(projectDir);
     const QString abaqusPath = runningAbaqusPath;
 
     setSimulationState(SimulationState::T0Running);
@@ -918,11 +913,8 @@ void SimulationManager::handleT0Finished(
     }
 
     const QString projectDir = activeProjectPath();
-    const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
-
     const QString caePath =
-        QDir(abaqusDir).filePath(QStringLiteral("guhua.cae"));
+        ProjectPaths::caeModelPath(projectDir);
     if (!isNonEmptyRegularFile(caePath)) {
         failSolverStage(
             QStringLiteral("未生成 guhua.cae"),
@@ -954,9 +946,9 @@ void SimulationManager::startT1Stage()
 {
     const QString projectDir = activeProjectPath();
     const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+        ProjectPaths::abaqusDirectoryPath(projectDir);
     const QString t1Path =
-        QDir(abaqusDir).filePath(QStringLiteral("t1.py"));
+        ProjectPaths::t1ScriptPath(projectDir);
     const QString abaqusPath = runningAbaqusPath;
 
     setSimulationState(SimulationState::T1Running);
@@ -1228,9 +1220,9 @@ void SimulationManager::startT2Stage()
 {
     const QString projectDir = activeProjectPath();
     const QString abaqusDir =
-        QDir(projectDir).filePath(QStringLiteral("abaqus"));
+        ProjectPaths::abaqusDirectoryPath(projectDir);
     const QString t2Path =
-        QDir(abaqusDir).filePath(QStringLiteral("t2.py"));
+        ProjectPaths::t2ScriptPath(projectDir);
     const QString abaqusPath = runningAbaqusPath;
 
     setSimulationState(SimulationState::T2Running);
@@ -1734,7 +1726,7 @@ void SimulationManager::sendAbaqusTerminateCommand()
     }
 
     const QString abaqusDir =
-        QDir(projectPath).filePath(QStringLiteral("abaqus"));
+        ProjectPaths::abaqusDirectoryPath(projectPath);
     const QString jobName = currentJobName;
 
     emit logReceived(

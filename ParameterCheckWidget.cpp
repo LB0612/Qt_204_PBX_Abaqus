@@ -3,7 +3,9 @@
 #include "BoundaryConfigManager.h"
 #include "ExplosiveConfigManager.h"
 #include "MoldConfigManager.h"
+#include "ProjectManager.h"
 #include "ProjectParameterService.h"
+#include "ProjectPaths.h"
 #include "SimulationConfigManager.h"
 #include "StructureConfigManager.h"
 
@@ -152,7 +154,7 @@ void ParameterCheckWidget::refresh(const ProjectConfig &project)
 
         ProjectConfig loaded;
         const QString projectJsonPath =
-            QDir(project.projectPath).filePath(QStringLiteral("project.json"));
+            ProjectPaths::projectJsonPath(project.projectPath);
         const bool exists = QFileInfo::exists(projectJsonPath);
         const bool valid =
             exists
