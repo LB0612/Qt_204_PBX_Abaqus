@@ -312,7 +312,7 @@ void ResultViewerWidget::buildUi()
         label->setStyleSheet(
             QStringLiteral(
                 "font-family: %1;"
-                "font-size: 14px;"
+                "font-size: 16px;"
                 "color: #555555;"
             ).arg(QString::fromUtf8(kUiFontFamily))
         );
