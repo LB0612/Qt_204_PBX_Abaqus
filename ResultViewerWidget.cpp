@@ -42,9 +42,8 @@ const char *kTypeButtonStyle =
     "QPushButton {"
     "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
     "  font-size: 15px;"
-    "  padding: 6px 16px;"
     "  border: 1px solid #d9d9d9;"
-    "  border-radius: 6px;"
+    "  border-radius: 4px;"
     "  background: #ffffff;"
     "  color: #333333;"
     "}"
@@ -59,9 +58,8 @@ const char *kPlaybackButtonStyle =
     "QPushButton {"
     "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
     "  font-size: 14px;"
-    "  padding: 6px 12px;"
     "  border: 1px solid #d9d9d9;"
-    "  border-radius: 6px;"
+    "  border-radius: 4px;"
     "  background: #ffffff;"
     "  color: #333333;"
     "}"
@@ -70,34 +68,40 @@ const char *kPlaybackButtonStyle =
 const char *kSecondaryButtonStyle =
     "QPushButton {"
     "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
-    "  font-size: 14px;"
-    "  padding: 6px 16px;"
-    "  border: 1px solid #d9d9d9;"
-    "  border-radius: 6px;"
+    "  font-size: 16px;"
+    "  font-weight: bold;"
+    "  border: 1px solid #bfbfbf;"
+    "  border-radius: 4px;"
     "  background: #ffffff;"
     "  color: #333333;"
     "}"
-    "QPushButton:hover { background: #f5f5f5; }";
+    "QPushButton:hover {"
+    "  background: #f2f2f2;"
+    "  border-color: #888888;"
+    "}";
 
 const char *kPrimaryButtonStyle =
     "QPushButton {"
     "  font-family: \"Microsoft YaHei UI\", \"Microsoft YaHei\";"
-    "  font-size: 14px;"
-    "  font-weight: 600;"
-    "  padding: 6px 16px;"
+    "  font-size: 16px;"
+    "  font-weight: bold;"
     "  border: 1px solid #1890ff;"
-    "  border-radius: 6px;"
+    "  border-radius: 4px;"
     "  background: #1890ff;"
     "  color: #ffffff;"
     "}"
-    "QPushButton:hover { background: #40a9ff; border-color: #40a9ff; }";
+    "QPushButton:hover {"
+    "  background: #40a9ff;"
+    "  border-color: #40a9ff;"
+    "}";
 
 } // namespace
 
 ResultViewerWidget::ResultViewerWidget(QWidget *parent)
-    : QWidget(parent)
+    : BaseParamWidget(parent)
 {
     applyOpaqueWhitePage(this);
+    applyCommonStyles();
 
     playTimer = new QTimer(this);
     playTimer->setTimerType(Qt::CoarseTimer);
@@ -120,24 +124,8 @@ ResultViewerWidget::ResultViewerWidget(QWidget *parent)
 
 void ResultViewerWidget::buildUi()
 {
-    QVBoxLayout *rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(20, 16, 20, 16);
-    rootLayout->setSpacing(12);
-
-    titleLabel = new QLabel(QStringLiteral("仿真结果"), this);
-    titleLabel->setStyleSheet(
-        QStringLiteral(
-            "font-family: %1;"
-            "font-size: 24px;"
-            "font-weight: bold;"
-            "color: #333333;"
-        ).arg(QString::fromUtf8(kUiFontFamily))
-    );
-    rootLayout->addWidget(titleLabel);
-
-    QHBoxLayout *centerLayout = new QHBoxLayout();
-    centerLayout->setContentsMargins(0, 0, 0, 0);
-    centerLayout->setSpacing(0);
+    QVBoxLayout *mainLayout = createMainLayout(this);
+    setupHeader(QStringLiteral("仿真结果"), true);
 
     contentContainer = new QWidget(this);
     contentContainer->setSizePolicy(
@@ -147,8 +135,9 @@ void ResultViewerWidget::buildUi()
     contentContainer->setStyleSheet(
         QStringLiteral("background-color: #ffffff;")
     );
-    QVBoxLayout *contentLayout = new QVBoxLayout(contentContainer);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
+
+    QVBoxLayout *contentLayout =
+        createScrollContentLayout(contentContainer);
     contentLayout->setSpacing(12);
 
     emptyStatePanel = new QWidget(contentContainer);
@@ -193,23 +182,9 @@ void ResultViewerWidget::buildUi()
     );
 
     continueButton = new QPushButton(emptyStateCard);
-    continueButton->setMinimumHeight(36);
-    continueButton->setMinimumWidth(160);
-    continueButton->setStyleSheet(
-        QStringLiteral(
-            "QPushButton {"
-            "  font-family: %1;"
-            "  font-size: 15px;"
-            "  font-weight: 600;"
-            "  padding: 6px 20px;"
-            "  border: 1px solid #1890ff;"
-            "  border-radius: 6px;"
-            "  background: #1890ff;"
-            "  color: #ffffff;"
-            "}"
-            "QPushButton:hover { background: #40a9ff; border-color: #40a9ff; }"
-        ).arg(QString::fromUtf8(kUiFontFamily))
-    );
+    continueButton->setFixedSize(160, 42);
+    continueButton->setCursor(Qt::PointingHandCursor);
+    continueButton->setStyleSheet(QString::fromUtf8(kPrimaryButtonStyle));
 
     emptyCardLayout->addWidget(emptyStateTitleLabel);
     emptyCardLayout->addWidget(emptyStateMessageLabel);
@@ -247,7 +222,8 @@ void ResultViewerWidget::buildUi()
              stressButton,
              cureButton}) {
         button->setCheckable(true);
-        button->setMinimumHeight(36);
+        button->setFixedSize(110, 36);
+        button->setCursor(Qt::PointingHandCursor);
         button->setStyleSheet(QString::fromUtf8(kTypeButtonStyle));
         typeButtonGroup->addButton(button);
         typeLayout->addWidget(button);
@@ -297,7 +273,8 @@ void ResultViewerWidget::buildUi()
              prevButton,
              playButton,
              nextButton}) {
-        button->setMinimumHeight(34);
+        button->setFixedSize(100, 36);
+        button->setCursor(Qt::PointingHandCursor);
         button->setStyleSheet(QString::fromUtf8(kPlaybackButtonStyle));
     }
 
@@ -342,9 +319,13 @@ void ResultViewerWidget::buildUi()
     }
 
     QHBoxLayout *bottomLayout = new QHBoxLayout();
-    bottomLayout->setSpacing(18);
+    bottomLayout->setSpacing(12);
     openDirButton = new QPushButton(QStringLiteral("打开结果目录"), playerPanel);
     reportButton = new QPushButton(QStringLiteral("生成PDF报告"), playerPanel);
+    openDirButton->setFixedSize(140, 42);
+    reportButton->setFixedSize(160, 42);
+    openDirButton->setCursor(Qt::PointingHandCursor);
+    reportButton->setCursor(Qt::PointingHandCursor);
     openDirButton->setStyleSheet(QString::fromUtf8(kSecondaryButtonStyle));
     reportButton->setStyleSheet(QString::fromUtf8(kPrimaryButtonStyle));
     bottomLayout->addWidget(infoPrimaryLabel);
@@ -364,9 +345,8 @@ void ResultViewerWidget::buildUi()
         emit continueSimulationRequested();
     });
 
-    contentLayout->addWidget(playerPanel);
-    centerLayout->addWidget(contentContainer, 1);
-    rootLayout->addLayout(centerLayout, 1);
+    contentLayout->addWidget(playerPanel, 1);
+    mainLayout->addWidget(contentContainer, 1);
 
     setResultUiVisible(false);
     showEmptyState(ResultValidationResult());

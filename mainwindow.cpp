@@ -360,6 +360,14 @@ void MainWindow::setupUi()
         treeWidget->clearSelection();
     });
 
+    connect(resultViewerWidget, &BaseParamWidget::backClicked, this, [this]() {
+        if (resultViewerWidget) {
+            resultViewerWidget->stopPlayback();
+        }
+        stackedWidget->setCurrentIndex(0);
+        treeWidget->clearSelection();
+    });
+
     rightLayout->addWidget(stackedWidget, 0, 0, 1, 1);
 
     mainLayout->addWidget(leftWidget);

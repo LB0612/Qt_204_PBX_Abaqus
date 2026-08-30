@@ -79,12 +79,12 @@ void NewProjectDialog::setupUi()
     cancelBtn = new QPushButton(QStringLiteral("取消"));
     cancelBtn->setObjectName(QStringLiteral("CancelBtn"));
     cancelBtn->setCursor(Qt::PointingHandCursor);
-    cancelBtn->setFixedSize(90, 32);
+    cancelBtn->setFixedSize(100, 36);
 
     okBtn = new QPushButton(QStringLiteral("立即创建"));
     okBtn->setObjectName(QStringLiteral("OkBtn"));
     okBtn->setCursor(Qt::PointingHandCursor);
-    okBtn->setFixedSize(100, 32);
+    okBtn->setFixedSize(120, 36);
     okBtn->setEnabled(false);
 
     btnLayout->addWidget(cancelBtn);

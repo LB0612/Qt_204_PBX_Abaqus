@@ -82,8 +82,8 @@ void BaseParamWidget::setupHeader(
     header->setFixedHeight(60);
     header->setStyleSheet(
         QStringLiteral(
-            "background-color: #f8f9fa;"
-            "border-bottom: 1px solid #ddd;"
+            "background-color: #ffffff;"
+            "border-bottom: 1px solid #e5e5e5;"
         )
     );
 
@@ -112,16 +112,21 @@ void BaseParamWidget::setupHeader(
         btnBack->setStyleSheet(
             QStringLiteral(
                 "QPushButton {"
-                " background-color: #e6e6e6;"
-                " color: #333;"
-                " border: 1px solid #ccc;"
+                " background-color: #ffffff;"
+                " color: #333333;"
+                " border: 1px solid #bfbfbf;"
                 " border-radius: 4px;"
                 " font-family: 'Microsoft YaHei';"
                 " font-weight: bold;"
                 " font-size: 16px;"
                 "}"
-                "QPushButton:hover { background-color: #d4d4d4; }"
-                "QPushButton:pressed { background-color: #c0c0c0; }"
+                "QPushButton:hover {"
+                " background-color: #f2f2f2;"
+                " border-color: #888888;"
+                "}"
+                "QPushButton:pressed {"
+                " background-color: #e8e8e8;"
+                "}"
             )
         );
 
@@ -136,17 +141,30 @@ void BaseParamWidget::setupHeader(
     }
 
     this->layout()->addWidget(header);
-} 
+}
 
 void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, std::function<void()> onClick) {
     QPushButton* btn = new QPushButton(text);
-    btn->setFixedHeight(60);
+    btn->setFixedSize(160, 42);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setStyleSheet(
-        "QPushButton { background-color: #007bff; color: white; border-radius: 5px; font-family: 'Microsoft YaHei'; font-weight: bold; font-size: 18px; margin-top: 25px; } "
-        "QPushButton:hover { background-color: #0069d9; } "
+        "QPushButton {"
+        " background-color: #1890ff;"
+        " color: white;"
+        " border: 1px solid #1890ff;"
+        " border-radius: 4px;"
+        " font-family: 'Microsoft YaHei';"
+        " font-weight: bold;"
+        " font-size: 16px;"
+        " margin-top: 20px;"
+        "} "
+        "QPushButton:hover {"
+        " background-color: #40a9ff;"
+        " border-color: #40a9ff;"
+        "} "
         "QPushButton:disabled {"
         " background-color: #bfbfbf;"
+        " border-color: #bfbfbf;"
         " color: #f5f5f5;"
         "}"
     );
@@ -154,7 +172,7 @@ void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, st
 
     m_saveButtons.append(btn);
 
-    layout->addWidget(btn);
+    layout->addWidget(btn, 0, Qt::AlignRight);
 } 
 
 QLineEdit* BaseParamWidget::createSciEdit(const QString &text) { 

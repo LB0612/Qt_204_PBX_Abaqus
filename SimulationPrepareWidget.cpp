@@ -228,7 +228,7 @@ SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     contentLayout->addWidget(hintLabel);
 
     contentLayout->addSpacing(14);
-    contentLayout->addWidget(startButton, 0, Qt::AlignLeft);
+    contentLayout->addWidget(startButton, 0, Qt::AlignRight);
     contentLayout->addStretch();
 
     scrollArea->setWidget(content);

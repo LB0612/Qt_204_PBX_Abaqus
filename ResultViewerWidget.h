@@ -1,9 +1,8 @@
 #ifndef RESULTVIEWERWIDGET_H
 #define RESULTVIEWERWIDGET_H
 
+#include "BaseParamWidget.h"
 #include "SimulationResultService.h"
-
-#include <QWidget>
 
 class QLabel;
 class QPushButton;
@@ -12,7 +11,7 @@ class QTimer;
 class QButtonGroup;
 class QFrame;
 
-class ResultViewerWidget : public QWidget
+class ResultViewerWidget : public BaseParamWidget
 {
     Q_OBJECT
 
@@ -51,8 +50,6 @@ private:
 
     QTimer *playTimer = nullptr;
     QButtonGroup *typeButtonGroup = nullptr;
-
-    QLabel *titleLabel = nullptr;
 
     QWidget *contentContainer = nullptr;
     QWidget *playerPanel = nullptr;

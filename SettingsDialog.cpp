@@ -85,7 +85,7 @@ void SettingsDialog::setupUi()
     m_exePathEdit->setFixedHeight(32);
 
     m_browseExeBtn = new QPushButton(QStringLiteral("浏览"), this);
-    m_browseExeBtn->setFixedSize(80, 32);
+    m_browseExeBtn->setFixedSize(100, 36);
 
     groupLayout->addWidget(pathLabel);
     groupLayout->addWidget(m_exePathEdit, 1);
@@ -98,12 +98,12 @@ void SettingsDialog::setupUi()
     btnLayout->addStretch();
 
     m_saveBtn = new QPushButton(QStringLiteral("保存"), this);
-    m_saveBtn->setFixedSize(100, 32);
+    m_saveBtn->setFixedSize(100, 36);
     m_saveBtn->setDefault(true);
     btnLayout->addWidget(m_saveBtn);
 
     m_cancelBtn = new QPushButton(QStringLiteral("取消"), this);
-    m_cancelBtn->setFixedSize(100, 32);
+    m_cancelBtn->setFixedSize(100, 36);
     btnLayout->addWidget(m_cancelBtn);
 
     mainLayout->addLayout(btnLayout);
@@ -123,7 +123,7 @@ void SettingsDialog::loadSettings()
 
     // 按路径文字宽度加宽窗口，打开时尽量完整显示
     const int textWidth = m_exePathEdit->fontMetrics().horizontalAdvance(displayPath);
-    const int chromeWidth = 24 * 2 + 16 * 2 + 100 + 80 + 8 * 2 + 48;
+    const int chromeWidth = 24 * 2 + 16 * 2 + 100 + 100 + 8 * 2 + 48;
     const int desiredWidth = qBound(chromeWidth + textWidth, 960, 1400);
     resize(desiredWidth, height());
 }
@@ -152,7 +152,7 @@ void SettingsDialog::onBrowseExe()
         m_exePathEdit->setToolTip(filePath);
 
         const int textWidth = m_exePathEdit->fontMetrics().horizontalAdvance(filePath);
-        const int chromeWidth = 24 * 2 + 16 * 2 + 100 + 80 + 8 * 2 + 48;
+        const int chromeWidth = 24 * 2 + 16 * 2 + 100 + 100 + 8 * 2 + 48;
         const int desiredWidth = qBound(chromeWidth + textWidth, 960, 1400);
         resize(desiredWidth, height());
     }

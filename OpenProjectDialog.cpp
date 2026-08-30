@@ -47,6 +47,8 @@ void OpenProjectDialog::setupUi()
 
     browseBtn = new QPushButton(QStringLiteral("浏览工作区"));
     browseBtn->setCursor(Qt::PointingHandCursor);
+    browseBtn->setFixedHeight(36);
+    browseBtn->setMinimumWidth(100);
     connect(browseBtn, &QPushButton::clicked, this, [this]() {
         const QString dir = QFileDialog::getExistingDirectory(this, QStringLiteral("选择工程所在的父级文件夹"), rootPathEdit->text());
         if (!dir.isEmpty()) {
@@ -97,12 +99,12 @@ void OpenProjectDialog::setupUi()
 
     cancelBtn = new QPushButton(QStringLiteral("取消"));
     cancelBtn->setObjectName(QStringLiteral("CancelBtn"));
-    cancelBtn->setFixedSize(100, 35);
+    cancelBtn->setFixedSize(100, 36);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
 
     openBtn = new QPushButton(QStringLiteral("打开选中工程"));
     openBtn->setObjectName(QStringLiteral("OpenBtn"));
-    openBtn->setFixedSize(140, 35);
+    openBtn->setFixedSize(140, 36);
     openBtn->setEnabled(false);
     connect(openBtn, &QPushButton::clicked, this, &QDialog::accept);
 
