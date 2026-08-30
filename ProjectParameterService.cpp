@@ -54,6 +54,8 @@ bool ProjectParameterService::loadAll(
     ProjectParameters &parameters,
     QString &errorMessage)
 {
+    parameters = ProjectParameters();
+
     if (!StructureConfigManager::load(projectPath, parameters.structure)) {
         errorMessage = QStringLiteral("请先填写并保存结构参数。");
         return false;

@@ -26,14 +26,12 @@ QString sectionTitleStyle()
 SimulationMonitorWidget::SimulationMonitorWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
-    applyOpaqueWhitePage();
     applyCommonStyles();
 
     QVBoxLayout *mainLayout = createMainLayout(this);
     setupHeader(QStringLiteral("Abaqus固化仿真监控"), false);
 
     QScrollArea *scrollArea = createScrollArea(this);
-    applyOpaqueWhiteScrollArea(scrollArea);
 
     QWidget *content = new QWidget();
     content->setStyleSheet(QStringLiteral("background-color: #ffffff;"));

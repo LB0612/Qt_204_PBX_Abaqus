@@ -40,15 +40,18 @@ QString formatSimulationTime(double value)
     return QString::number(value, 'f', 2);
 }
 
-QString buildParameterSectionHtml(const QString &projectPath)
+bool buildParameterSectionHtml(
+    const QString &projectPath,
+    QString &html,
+    QString &errorMessage)
 {
     ProjectParameters parameters;
-    QString loadError;
-    ProjectParameterService::loadAvailable(
-        projectPath,
-        parameters,
-        loadError
-    );
+    if (!ProjectParameterService::loadAll(
+            projectPath,
+            parameters,
+            errorMessage)) {
+        return false;
+    }
 
     const StructureConfig &structure = parameters.structure;
     const ExplosiveConfig &explosive = parameters.explosive;
@@ -56,7 +59,7 @@ QString buildParameterSectionHtml(const QString &projectPath)
     const BoundaryConfig &boundary = parameters.boundary;
     const SimulationConfig &simulation = parameters.simulation;
 
-    QString html;
+    html.clear();
     html += QStringLiteral("<h2>输入参数</h2>");
 
     html += QStringLiteral("<h3>结构参数</h3><table border='1' cellspacing='0' cellpadding='6'>");
@@ -117,7 +120,7 @@ QString buildParameterSectionHtml(const QString &projectPath)
         .arg(formatNumber(simulation.timeLength));
     html += QStringLiteral("</table>");
 
-    return html;
+    return true;
 }
 
 QString buildResultImageSectionHtml(
@@ -288,7 +291,14 @@ bool SimulationReportGenerator::generate(
     html += QStringLiteral("<p>报告生成时间：%1</p>").arg(generatedAt);
     html += QStringLiteral("<p>QT_PBX_204_ABAQUS</p>");
 
-    html += buildParameterSectionHtml(projectPath);
+    QString parameterHtml;
+    if (!buildParameterSectionHtml(
+            projectPath,
+            parameterHtml,
+            errorMessage)) {
+        return false;
+    }
+    html += parameterHtml;
 
     html += QStringLiteral("<h2>仿真结果</h2>");
     html += buildResultImageSectionHtml(

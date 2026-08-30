@@ -1308,12 +1308,9 @@ void MainWindow::structureParams()
     StructureConfig config;
 
     const QString filePath =
-        QDir(currentProject.projectPath)
-            .filePath(
-                QStringLiteral(
-                    "config/structure.json"
-                )
-            );
+        ProjectParameterService::structureConfigPath(
+            currentProject.projectPath
+        );
 
     if (QFileInfo::exists(filePath)) {
 
@@ -1408,8 +1405,9 @@ void MainWindow::explosiveParams()
     ExplosiveConfig config;
 
     const QString filePath =
-        QDir(currentProject.projectPath)
-            .filePath(QStringLiteral("config/explosive.json"));
+        ProjectParameterService::explosiveConfigPath(
+            currentProject.projectPath
+        );
 
     if (QFileInfo::exists(filePath)) {
         if (!ExplosiveConfigManager::load(currentProject.projectPath, config)) {
@@ -1490,8 +1488,9 @@ void MainWindow::moldParams()
     MoldConfig config;
 
     const QString filePath =
-        QDir(currentProject.projectPath)
-            .filePath(QStringLiteral("config/mold.json"));
+        ProjectParameterService::moldConfigPath(
+            currentProject.projectPath
+        );
 
     if (QFileInfo::exists(filePath)) {
         if (!MoldConfigManager::load(currentProject.projectPath, config)) {
@@ -1572,8 +1571,9 @@ void MainWindow::boundaryParams()
     BoundaryConfig config;
 
     const QString filePath =
-        QDir(currentProject.projectPath)
-            .filePath(QStringLiteral("config/boundary.json"));
+        ProjectParameterService::boundaryConfigPath(
+            currentProject.projectPath
+        );
 
     if (QFileInfo::exists(filePath)) {
         if (!BoundaryConfigManager::load(currentProject.projectPath, config)) {
@@ -1654,8 +1654,9 @@ void MainWindow::simulationParams()
     SimulationConfig config;
 
     const QString filePath =
-        QDir(currentProject.projectPath)
-            .filePath(QStringLiteral("config/simulation.json"));
+        ProjectParameterService::simulationConfigPath(
+            currentProject.projectPath
+        );
 
     if (QFileInfo::exists(filePath)) {
         if (!SimulationConfigManager::load(currentProject.projectPath, config)) {

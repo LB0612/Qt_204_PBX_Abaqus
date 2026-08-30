@@ -73,14 +73,12 @@ QString reasonBodyStyle()
 SimulationPrepareWidget::SimulationPrepareWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
-    applyOpaqueWhitePage();
     applyCommonStyles();
 
     QVBoxLayout *mainLayout = createMainLayout(this);
     setupHeader(QStringLiteral("Abaqus仿真准备"), false);
 
     QScrollArea *scrollArea = createScrollArea(this);
-    applyOpaqueWhiteScrollArea(scrollArea);
 
     QWidget *content = new QWidget();
     content->setStyleSheet(QStringLiteral("background-color: #ffffff;"));

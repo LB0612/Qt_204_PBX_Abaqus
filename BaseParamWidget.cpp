@@ -92,21 +92,23 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
     m_paramEdits.append(edit);
 }
 
-void BaseParamWidget::applyCommonStyles() { 
-    this->setStyleSheet("background-color: white;"); 
-} 
+void BaseParamWidget::applyCommonStyles()
+{
+    applyOpaqueWhitePage();
+}
 
-QVBoxLayout* BaseParamWidget::createMainLayout(QWidget* parent) { 
-    QVBoxLayout* layout = new QVBoxLayout(parent); 
-    layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(0); 
-    return layout; 
-} 
+QVBoxLayout* BaseParamWidget::createMainLayout(QWidget* parent) {
+    QVBoxLayout* layout = new QVBoxLayout(parent);
+    layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(0);
+    return layout;
+}
 
-QScrollArea* BaseParamWidget::createScrollArea(QWidget* parent) { 
-    QScrollArea* scroll = new QScrollArea(parent); 
-    scroll->setWidgetResizable(true); 
-    scroll->setFrameShape(QFrame::NoFrame); 
-    return scroll; 
+QScrollArea* BaseParamWidget::createScrollArea(QWidget* parent) {
+    QScrollArea* scroll = new QScrollArea(parent);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    applyOpaqueWhiteScrollArea(scroll);
+    return scroll;
 } 
 
 QVBoxLayout* BaseParamWidget::createScrollContentLayout(QWidget* contentWidget) { 

@@ -82,7 +82,6 @@ const char *kPrimaryButtonStyle =
 ResultViewerWidget::ResultViewerWidget(QWidget *parent)
     : BaseParamWidget(parent)
 {
-    applyOpaqueWhitePage();
     applyCommonStyles();
 
     playTimer = new QTimer(this);
