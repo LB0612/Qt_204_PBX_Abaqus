@@ -247,7 +247,7 @@ void MainWindow::setupUi()
     titleLabel->setWordWrap(false);
 
     QFont titleFont(QStringLiteral("Microsoft YaHei UI"));
-    titleFont.setPixelSize(61);
+    titleFont.setPixelSize(66);
     titleFont.setWeight(QFont::DemiBold);
     titleFont.setLetterSpacing(QFont::PercentageSpacing, 100.0);
     titleLabel->setFont(titleFont);
