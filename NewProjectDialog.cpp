@@ -12,7 +12,7 @@
 NewProjectDialog::NewProjectDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(QStringLiteral("新建工程向导"));
+    setWindowTitle(QStringLiteral("新建工程"));
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
     resize(500, 280);
     setFixedSize(500, 280);
