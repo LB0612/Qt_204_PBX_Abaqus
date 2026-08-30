@@ -6,6 +6,7 @@
 #include "ProjectManager.h"
 #include "ProjectParameterService.h"
 #include "SimulationArtifactStateService.h"
+#include "SimulationConfigManager.h"
 
 #include <QDateTime>
 #include <QDir>
