@@ -370,8 +370,7 @@ QString paragraphStyled(
 QString captionParagraph(
     const QString &text,
     bool keepNext = false,
-    int spaceAfterTwips = 0,
-    bool pageBreakBefore = false)
+    int spaceAfterTwips = 0)
 {
     return paragraphStyled(
         text,
@@ -384,8 +383,7 @@ QString captionParagraph(
         true,
         0,
         spaceAfterTwips,
-        keepNext,
-        pageBreakBefore
+        keepNext
     );
 }
 
@@ -512,11 +510,10 @@ QString coverInfoBlockXml(
 
 QString tableXml(
     const QString &caption,
-    const SimulationReportTable &table,
-    bool pageBreakBefore = false)
+    const SimulationReportTable &table)
 {
     QString xml;
-    xml += captionParagraph(caption, true, 0, pageBreakBefore);
+    xml += captionParagraph(caption, true);
 
     const int tableWidthTwips = mmToTwips(
         (PageWidthMm - MarginLeftMm - MarginRightMm)
