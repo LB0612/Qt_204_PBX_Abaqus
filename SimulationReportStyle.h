@@ -43,7 +43,8 @@ constexpr double TableColumn1Pct = 0.34;
 constexpr double TableColumn2Pct = 0.42;
 constexpr double TableColumn3Pct = 0.24;
 
-constexpr double TableRulePt = 1.5;
+constexpr double TableBorderPt = 0.5;
+constexpr double TableHeaderBottomPt = 1.0;
 
 constexpr double TableRowMinPt = 38.10;
 constexpr double TableHeaderRowMinPt = 38.65;
