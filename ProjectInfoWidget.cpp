@@ -16,7 +16,7 @@ ProjectInfoWidget::ProjectInfoWidget(QWidget *parent)
 void ProjectInfoWidget::setupUi()
 {
     QVBoxLayout *mainLayout = createMainLayout(this);
-    setupHeader(QStringLiteral("工程基本信息"));
+    setupHeader(QStringLiteral("工程信息"));
 
     QScrollArea *scrollArea = createScrollArea(this);
     QWidget *content = new QWidget();
