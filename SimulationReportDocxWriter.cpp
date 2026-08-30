@@ -421,20 +421,20 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
                       const QString &c3,
                       bool header,
                       bool keepWithNext) {
-        const QString bold = header
-            ? QStringLiteral("<w:b/><w:bCs/>")
-            : QString();
         const QString headerBottom = header
             ? QStringLiteral(
                 "<w:tcBorders>"
-                "<w:bottom w:val=\"single\" w:sz=\"6\" "
-                "w:space=\"0\" w:color=\"555555\"/>"
+                "<w:bottom w:val=\"single\" w:sz=\"12\" "
+                "w:space=\"0\" w:color=\"222222\"/>"
                 "</w:tcBorders>"
             )
             : QString();
         const QString keepNextXml = keepWithNext
             ? QStringLiteral("<w:keepNext/>")
             : QString();
+        const int rowHeightTwips = qRound(
+            (header ? TableHeaderRowMinPt : TableRowMinPt) * 20.0
+        );
 
         auto cell = [&](const QString &text) {
             return QStringLiteral(
@@ -443,22 +443,24 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
                 "<w:tcW w:w=\"0\" w:type=\"auto\"/>"
                 "<w:vAlign w:val=\"center\"/>"
                 "<w:tcMar>"
-                "<w:top w:w=\"85\" w:type=\"dxa\"/>"
-                "<w:left w:w=\"100\" w:type=\"dxa\"/>"
-                "<w:bottom w:w=\"85\" w:type=\"dxa\"/>"
-                "<w:right w:w=\"100\" w:type=\"dxa\"/>"
+                "<w:top w:w=\"0\" w:type=\"dxa\"/>"
+                "<w:left w:w=\"108\" w:type=\"dxa\"/>"
+                "<w:bottom w:w=\"0\" w:type=\"dxa\"/>"
+                "<w:right w:w=\"108\" w:type=\"dxa\"/>"
                 "</w:tcMar>"
                 "%1"
                 "</w:tcPr>"
                 "<w:p>"
                 "<w:pPr>"
                 "<w:jc w:val=\"center\"/>"
+                "<w:spacing w:line=\"360\" w:lineRule=\"auto\" "
+                "w:before=\"120\" w:after=\"120\"/>"
                 "%2"
                 "</w:pPr>"
                 "<w:r>"
-                "<w:rPr>%3%4"
-                "<w:sz w:val=\"%5\"/><w:szCs w:val=\"%5\"/></w:rPr>"
-                "<w:t xml:space=\"preserve\">%6</w:t>"
+                "<w:rPr>%3"
+                "<w:sz w:val=\"%4\"/><w:szCs w:val=\"%4\"/></w:rPr>"
+                "<w:t xml:space=\"preserve\">%5</w:t>"
                 "</w:r>"
                 "</w:p>"
                 "</w:tc>"
@@ -466,7 +468,6 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
                 headerBottom,
                 keepNextXml,
                 bodyFonts(),
-                bold,
                 QString::number(tableHalfPts),
                 xmlEscape(text)
             );
@@ -474,8 +475,11 @@ QString tableXml(const QString &caption, const SimulationReportTable &table)
 
         xml += QStringLiteral(
             "<w:tr>"
-            "<w:trPr><w:cantSplit/></w:trPr>"
-        );
+            "<w:trPr>"
+            "<w:cantSplit/>"
+            "<w:trHeight w:val=\"%1\" w:hRule=\"atLeast\"/>"
+            "</w:trPr>"
+        ).arg(rowHeightTwips);
         xml += cell(c1);
         xml += cell(c2);
         xml += cell(c3);
@@ -760,6 +764,11 @@ bool SimulationReportDocxWriter::write(
                 .arg(table.title),
             table
         );
+
+        if (i == 1
+            && i + 1 < model.parameterTables.size()) {
+            body += pageBreakParagraph();
+        }
     }
 
     // 3/4/5 figures
@@ -909,7 +918,9 @@ bool SimulationReportDocxWriter::write(
             "<w:name w:val=\"heading 1\"/>"
             "<w:basedOn w:val=\"Normal\"/>"
             "<w:qFormat/>"
-            "<w:pPr><w:spacing w:before=\"240\" w:after=\"120\"/>"
+            "<w:pPr>"
+            "<w:spacing w:line=\"360\" w:lineRule=\"auto\" "
+            "w:before=\"50\" w:after=\"50\"/>"
             "<w:jc w:val=\"left\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(CoverTitlePt))
@@ -922,7 +933,8 @@ bool SimulationReportDocxWriter::write(
             "<w:name w:val=\"heading 2\"/>"
             "<w:basedOn w:val=\"Normal\"/>"
             "<w:qFormat/>"
-            "<w:pPr><w:spacing w:before=\"160\" w:after=\"80\"/>"
+            "<w:pPr>"
+            "<w:spacing w:line=\"360\" w:lineRule=\"auto\"/>"
             "<w:jc w:val=\"left\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(Heading1Pt))
@@ -935,7 +947,8 @@ bool SimulationReportDocxWriter::write(
             "<w:name w:val=\"heading 3\"/>"
             "<w:basedOn w:val=\"Normal\"/>"
             "<w:qFormat/>"
-            "<w:pPr><w:spacing w:before=\"120\" w:after=\"60\"/>"
+            "<w:pPr>"
+            "<w:spacing w:line=\"360\" w:lineRule=\"auto\"/>"
             "<w:jc w:val=\"left\"/></w:pPr>"
             "<w:rPr>"
         ).arg(ptToHalfPoints(Heading2Pt))
@@ -958,7 +971,8 @@ bool SimulationReportDocxWriter::write(
         "</w:pBdr>"
         "</w:pPr>"
         "<w:r>"
-        "<w:rPr>%1<w:b/><w:bCs/>"
+        "<w:rPr>%1"
+        "<w:spacing w:val=\"20\"/>"
         "<w:sz w:val=\"%2\"/><w:szCs w:val=\"%2\"/></w:rPr>"
         "<w:t xml:space=\"preserve\">浇注PBX固化仿真分析报告</w:t>"
         "</w:r>"

@@ -28,6 +28,11 @@ qreal mmToPx(qreal mm)
     return mm * static_cast<qreal>(kPdfDpi) / 25.4;
 }
 
+qreal ptToPx(qreal pt)
+{
+    return pt * static_cast<qreal>(kPdfDpi) / 72.0;
+}
+
 QFont makeFont(
     const QString &family,
     qreal pointSize,
@@ -190,9 +195,13 @@ void drawHeaderFooter(PdfDrawContext &ctx, bool isCover)
     const PageGeom &geom = ctx.geom;
 
     painter.save();
-    painter.setFont(
-        makeFont(QStringLiteral("SimHei"), HeaderPt, true)
+    QFont headerFont =
+        makeFont(QStringLiteral("SimHei"), HeaderPt, false);
+    headerFont.setLetterSpacing(
+        QFont::AbsoluteSpacing,
+        ptToPx(1.0)
     );
+    painter.setFont(headerFont);
     painter.setPen(QColor(QStringLiteral("#222222")));
 
     const qreal headerY = mmToPx(HeaderMm) - mmToPx(8.0);
@@ -203,7 +212,9 @@ void drawHeaderFooter(PdfDrawContext &ctx, bool isCover)
     );
 
     const qreal lineY = mmToPx(HeaderMm) - mmToPx(2.0);
-    painter.setPen(QPen(QColor(QStringLiteral("#333333")), 1.0));
+    painter.setPen(
+        QPen(QColor(QStringLiteral("#333333")), ptToPx(0.75))
+    );
     painter.drawLine(
         QPointF(geom.left, lineY),
         QPointF(geom.pageW - geom.right, lineY)
@@ -375,14 +386,13 @@ bool drawTable(
         metricsFor(ctx, captionFont);
 
     const qreal captionH = captionMetrics.height() + mmToPx(1.5);
-    const qreal cellPadY = mmToPx(1.5);
     const qreal tableW = ctx.geom.contentW * TableWidthPct;
     const qreal tableLeft =
         ctx.geom.left + (ctx.geom.contentW - tableW) / 2.0;
     const qreal col1 = tableW * 0.34;
     const qreal col2 = tableW * 0.42;
     const qreal col3 = tableW * 0.24;
-    const qreal cellPadX = mmToPx(1.8);
+    const qreal cellPadX = mmToPx(1.9);
 
     auto drawTableLine = [&](qreal widthMm, const QColor &color) {
         if (ctx.dryRun || !ctx.painter) {
@@ -403,22 +413,20 @@ bool drawTable(
     };
 
     auto drawTableTopLine = [&]() {
-        drawTableLine(0.35, QColor(QStringLiteral("#222222")));
+        drawTableLine(TableLineMm, QColor(QStringLiteral("#222222")));
     };
     auto drawTableHeaderLine = [&]() {
-        drawTableLine(0.18, QColor(QStringLiteral("#555555")));
+        drawTableLine(TableLineMm, QColor(QStringLiteral("#222222")));
     };
     auto drawTableBottomLine = [&]() {
-        drawTableLine(0.35, QColor(QStringLiteral("#222222")));
+        drawTableLine(TableLineMm, QColor(QStringLiteral("#222222")));
     };
 
     auto measureRowHeight = [&](const QString &c1,
                                 const QString &c2,
                                 const QString &c3,
                                 bool header) -> qreal {
-        QFont rowFont = tableFont;
-        rowFont.setBold(header);
-        const QFontMetricsF metrics = metricsFor(ctx, rowFont);
+        const QFontMetricsF metrics = metricsFor(ctx, tableFont);
         const int wrapFlags =
             Qt::TextWordWrap | Qt::TextWrapAnywhere;
 
@@ -438,7 +446,11 @@ bool drawTable(
             c3
         ).height();
 
-        return qMax(h1, qMax(h2, h3)) + cellPadY * 2.0;
+        const qreal contentHeight = qMax(h1, qMax(h2, h3));
+        const qreal minimumHeight = ptToPx(
+            header ? TableHeaderRowMinPt : TableRowMinPt
+        );
+        return qMax(contentHeight, minimumHeight);
     };
 
     auto drawRow = [&](const QString &c1,
@@ -471,9 +483,7 @@ bool drawTable(
                 rowH
             );
 
-            QFont rowFont = tableFont;
-            rowFont.setBold(header);
-            painter.setFont(rowFont);
+            painter.setFont(tableFont);
             painter.setPen(QColor(QStringLiteral("#222222")));
             const int flags =
                 Qt::TextWordWrap
@@ -674,6 +684,16 @@ bool layoutReport(
                 errorMessage =
                     QStringLiteral("无法绘制输入参数表格。");
                 return false;
+            }
+
+            if (i == 1
+                && i + 1 < model.parameterTables.size()) {
+                if (!beginBodyPage(ctx)) {
+                    errorMessage =
+                        QStringLiteral("无法创建 PDF 新页。");
+                    return false;
+                }
+                y = ctx.geom.top;
             }
         }
     }
