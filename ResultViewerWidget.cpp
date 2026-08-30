@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QPixmap>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QSlider>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -109,8 +110,8 @@ ResultViewerWidget::ResultViewerWidget(QWidget *parent)
 void ResultViewerWidget::buildUi()
 {
     QVBoxLayout *rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(24, 20, 24, 20);
-    rootLayout->setSpacing(16);
+    rootLayout->setContentsMargins(20, 16, 20, 16);
+    rootLayout->setSpacing(12);
 
     titleLabel = new QLabel(QStringLiteral("仿真结果"), this);
     titleLabel->setStyleSheet(
@@ -124,13 +125,17 @@ void ResultViewerWidget::buildUi()
     rootLayout->addWidget(titleLabel);
 
     QHBoxLayout *centerLayout = new QHBoxLayout();
-    centerLayout->addStretch();
+    centerLayout->setContentsMargins(0, 0, 0, 0);
+    centerLayout->setSpacing(0);
 
     contentContainer = new QWidget(this);
-    contentContainer->setMaximumWidth(1100);
+    contentContainer->setSizePolicy(
+        QSizePolicy::Expanding,
+        QSizePolicy::Expanding
+    );
     QVBoxLayout *contentLayout = new QVBoxLayout(contentContainer);
     contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(16);
+    contentLayout->setSpacing(12);
 
     emptyStatePanel = new QWidget(contentContainer);
     QVBoxLayout *emptyLayout = new QVBoxLayout(emptyStatePanel);
@@ -205,7 +210,7 @@ void ResultViewerWidget::buildUi()
     playerPanel = new QWidget(contentContainer);
     QVBoxLayout *playerLayout = new QVBoxLayout(playerPanel);
     playerLayout->setContentsMargins(0, 0, 0, 0);
-    playerLayout->setSpacing(16);
+    playerLayout->setSpacing(10);
 
     QHBoxLayout *typeLayout = new QHBoxLayout();
     typeLayout->setSpacing(12);
@@ -315,16 +320,17 @@ void ResultViewerWidget::buildUi()
             ).arg(QString::fromUtf8(kUiFontFamily))
         );
     }
-    playerLayout->addWidget(infoPrimaryLabel);
-    playerLayout->addWidget(infoSecondaryLabel);
 
     QHBoxLayout *bottomLayout = new QHBoxLayout();
+    bottomLayout->setSpacing(18);
     openDirButton = new QPushButton(QStringLiteral("打开结果目录"), playerPanel);
     reportButton = new QPushButton(QStringLiteral("生成PDF报告"), playerPanel);
     openDirButton->setStyleSheet(QString::fromUtf8(kSecondaryButtonStyle));
     reportButton->setStyleSheet(QString::fromUtf8(kPrimaryButtonStyle));
-    bottomLayout->addWidget(openDirButton);
+    bottomLayout->addWidget(infoPrimaryLabel);
+    bottomLayout->addWidget(infoSecondaryLabel);
     bottomLayout->addStretch();
+    bottomLayout->addWidget(openDirButton);
     bottomLayout->addWidget(reportButton);
     playerLayout->addLayout(bottomLayout);
 
@@ -340,7 +346,6 @@ void ResultViewerWidget::buildUi()
 
     contentLayout->addWidget(playerPanel);
     centerLayout->addWidget(contentContainer, 1);
-    centerLayout->addStretch();
     rootLayout->addLayout(centerLayout, 1);
 
     setResultUiVisible(false);
@@ -542,16 +547,16 @@ void ResultViewerWidget::updateFrameInfo()
         SimulationResultService::descriptorFor(currentType);
 
     infoPrimaryLabel->setText(
-        QStringLiteral("当前结果：%1      Frame：%2 / %3")
+        QStringLiteral("当前结果：%1   Frame:%2/%3")
             .arg(desc.displayName)
             .arg(currentFrame + 1)
             .arg(totalFrames)
     );
 
-    QString simulationTimeText = QStringLiteral("仿真时间：-");
+    QString simulationTimeText = QStringLiteral("仿真时间:-");
     if (validation.manifest.frameTimes.size() == totalFrames) {
         simulationTimeText =
-            QStringLiteral("仿真时间：%1 s")
+            QStringLiteral("仿真时间:%1s")
                 .arg(
                     validation.manifest.frameTimes.at(currentFrame),
                     0,
@@ -561,7 +566,7 @@ void ResultViewerWidget::updateFrameInfo()
     }
 
     infoSecondaryLabel->setText(
-        QStringLiteral("%1                  %2 FPS")
+        QStringLiteral("%1   %2FPS")
             .arg(simulationTimeText)
             .arg(fps)
     );

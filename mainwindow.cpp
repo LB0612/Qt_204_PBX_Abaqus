@@ -2159,6 +2159,8 @@ void MainWindow::showSimulationResults()
     resultViewerWidget->stopPlayback();
     resultViewerWidget->setProjectPath(currentProject.projectPath);
     resultViewerWidget->refreshResults();
+
+    selectTreeItem(QStringLiteral("仿真结果"));
     stackedWidget->setCurrentWidget(resultViewerWidget);
 }
 
