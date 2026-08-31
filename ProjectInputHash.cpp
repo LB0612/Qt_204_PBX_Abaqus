@@ -12,6 +12,8 @@
 #include <QJsonArray>
 #include <QSaveFile>
 
+#include <cmath>
+
 namespace ProjectInputHash {
 
 namespace {
@@ -325,15 +327,37 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         && manifest.temperatureVideoBytes > 0
         && manifest.stressVideoBytes > 0;
 
-    const bool frameTimesMatch =
-        manifest.frameTimes.size() == manifest.odbFrames;
+    const bool frameTimesValid = [&manifest]() {
+        if (manifest.frameTimes.size() != manifest.odbFrames) {
+            return false;
+        }
+
+        for (int i = 0; i < manifest.frameTimes.size(); ++i) {
+            const double value = manifest.frameTimes.at(i);
+
+            if (!std::isfinite(value) || value < 0.0) {
+                return false;
+            }
+
+            if (i > 0
+                && value < manifest.frameTimes.at(i - 1)) {
+                return false;
+            }
+        }
+
+        return true;
+    }();
+
+    const bool videoFpsValid =
+        manifest.videoFps > 0;
 
     manifest.valid =
         manifest.version == 3
         && !manifest.postSha256.isEmpty()
         && countsMatch
         && bytesRecorded
-        && frameTimesMatch;
+        && videoFpsValid
+        && frameTimesValid;
 
     return manifest;
 }

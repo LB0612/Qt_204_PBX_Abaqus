@@ -9,6 +9,8 @@
 #include <QJsonParseError>
 #include <QSaveFile>
 
+#include <cmath>
+
 namespace {
 const int STRUCTURE_SCHEMA_VERSION = 1;
 }
@@ -17,18 +19,21 @@ bool StructureConfigManager::validate(
     const StructureConfig &config,
     QString &errorMessage)
 {
-    if (config.chargeRadius <= 0.0) {
-        errorMessage = QStringLiteral("药柱半径必须大于 0。");
+    if (!std::isfinite(config.chargeRadius)
+        || config.chargeRadius <= 0.0) {
+        errorMessage = QStringLiteral("药柱半径必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.chargeHeight <= 0.0) {
-        errorMessage = QStringLiteral("药柱高度必须大于 0。");
+    if (!std::isfinite(config.chargeHeight)
+        || config.chargeHeight <= 0.0) {
+        errorMessage = QStringLiteral("药柱高度必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.shellThickness <= 0.0) {
-        errorMessage = QStringLiteral("外壳厚度必须大于 0。");
+    if (!std::isfinite(config.shellThickness)
+        || config.shellThickness <= 0.0) {
+        errorMessage = QStringLiteral("外壳厚度必须是有限数值且大于 0。");
         return false;
     }
 

@@ -6,7 +6,7 @@
 #include <QPushButton>
 #include <QTableWidget>
 
-#include "ProjectManager.h"
+#include <QStringList>
 
 class OpenProjectDialog : public QDialog
 {

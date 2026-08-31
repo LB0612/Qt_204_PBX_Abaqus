@@ -147,7 +147,7 @@ void SimulationMonitorWidget::clearLog()
 
 void SimulationMonitorWidget::setLogText(const QString &text)
 {
-    logEdit->document()->setMaximumBlockCount(0);
+    logEdit->document()->setMaximumBlockCount(10000);
     logEdit->setPlainText(text);
 }
 

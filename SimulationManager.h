@@ -83,6 +83,12 @@ private:
         const QByteArray &data,
         bool isError
     );
+    void updateT2ProgressFromLine(const QString &line);
+    void flushT2ProgressPending();
+    void flushAbaqusLogPending(
+        const QString &tag,
+        QByteArray &pendingData
+    );
     void drainProcessOutput(const QString &logPath);
 
     void startT0Stage();
@@ -156,11 +162,11 @@ private:
 
     QString simulationMsgPath;
     QString simulationStaPath;
-    QString simulationDatPath;
     qint64 simulationMsgReadOffset = 0;
     qint64 simulationStaReadOffset = 0;
     QByteArray simulationMsgPending;
     QByteArray simulationStaPending;
+    QByteArray t2ProgressPending;
     double simulationTotalTime = 0.0;
 
     QString t0LogPath;

@@ -293,12 +293,6 @@ inline QString currentJobDatPath(const QString &projectPath)
         .filePath(currentJobName(projectPath) + QStringLiteral(".dat"));
 }
 
-inline QString stopFlagPath(const QString &projectPath)
-{
-    return QDir(abaqusDirectoryPath(projectPath))
-        .filePath(QStringLiteral("stop.flag"));
-}
-
 } // namespace ProjectPaths
 
 #endif

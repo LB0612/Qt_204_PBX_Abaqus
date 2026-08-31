@@ -79,6 +79,7 @@ private:
     void setParameterPagesReadOnly(bool readOnly);
     bool reloadParameterPagesFromSavedConfig(QString &errorMessage);
     void removeProjectTreeItemByPath(const QString &path);
+    void resetCurrentProjectUiState();
 
     QMessageBox::StandardButton showCenteredMessageBox(
         QWidget *parent,
@@ -154,7 +155,6 @@ private slots:
     void onSimulationErrorOccurred(const QString &title, const QString &text);
     void onSimulationFinished();
 
-    void onTreeItemDoubleClicked(QTreeWidgetItem *item, int column);
     void onTreeItemClicked(QTreeWidgetItem *item, int column);
     void onProjectDirectoryChanged();
 };

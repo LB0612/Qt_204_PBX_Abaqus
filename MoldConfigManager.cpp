@@ -9,36 +9,51 @@
 #include <QJsonParseError>
 #include <QSaveFile>
 
+#include <cmath>
+
 namespace {
 const int MOLD_SCHEMA_VERSION = 1;
+
+bool isPositiveFinite(double value)
+{
+    return std::isfinite(value) && value > 0.0;
 }
+
+bool isValidPoissonRatio(double value)
+{
+    return std::isfinite(value)
+        && value > 0.0
+        && value < 0.5;
+}
+
+} // namespace
 
 bool MoldConfigManager::validate(
     const MoldConfig &config,
     QString &errorMessage)
 {
-    if (config.density <= 0.0) {
-        errorMessage = QStringLiteral("模具密度必须大于 0。");
+    if (!isPositiveFinite(config.density)) {
+        errorMessage = QStringLiteral("模具密度必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.elasticModulus <= 0.0) {
-        errorMessage = QStringLiteral("模具弹性模量必须大于 0。");
+    if (!isPositiveFinite(config.elasticModulus)) {
+        errorMessage = QStringLiteral("模具弹性模量必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.poissonRatio <= 0.0 || config.poissonRatio >= 0.5) {
-        errorMessage = QStringLiteral("模具泊松比必须大于 0 且小于 0.5。");
+    if (!isValidPoissonRatio(config.poissonRatio)) {
+        errorMessage = QStringLiteral("模具泊松比必须是有限数值，且大于 0 并小于 0.5。");
         return false;
     }
 
-    if (config.thermalConductivity <= 0.0) {
-        errorMessage = QStringLiteral("模具热导率必须大于 0。");
+    if (!isPositiveFinite(config.thermalConductivity)) {
+        errorMessage = QStringLiteral("模具热导率必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.specificHeat <= 0.0) {
-        errorMessage = QStringLiteral("模具比热容必须大于 0。");
+    if (!isPositiveFinite(config.specificHeat)) {
+        errorMessage = QStringLiteral("模具比热容必须是有限数值且大于 0。");
         return false;
     }
 

@@ -9,56 +9,71 @@
 #include <QJsonParseError>
 #include <QSaveFile>
 
+#include <cmath>
+
 namespace {
 const int EXPLOSIVE_SCHEMA_VERSION = 1;
+
+bool isPositiveFinite(double value)
+{
+    return std::isfinite(value) && value > 0.0;
 }
+
+bool isValidPoissonRatio(double value)
+{
+    return std::isfinite(value)
+        && value > 0.0
+        && value < 0.5;
+}
+
+} // namespace
 
 bool ExplosiveConfigManager::validate(
     const ExplosiveConfig &config,
     QString &errorMessage)
 {
-    if (config.density <= 0.0) {
-        errorMessage = QStringLiteral("炸药密度必须大于 0。");
+    if (!isPositiveFinite(config.density)) {
+        errorMessage = QStringLiteral("炸药密度必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.initialElasticModulus <= 0.0) {
-        errorMessage = QStringLiteral("固化初始杨氏模量必须大于 0。");
+    if (!isPositiveFinite(config.initialElasticModulus)) {
+        errorMessage = QStringLiteral("固化初始杨氏模量必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.initialPoissonRatio <= 0.0 || config.initialPoissonRatio >= 0.5) {
-        errorMessage = QStringLiteral("固化初始泊松比必须大于 0 且小于 0.5。");
+    if (!isValidPoissonRatio(config.initialPoissonRatio)) {
+        errorMessage = QStringLiteral("固化初始泊松比必须是有限数值，且大于 0 并小于 0.5。");
         return false;
     }
 
-    if (config.finalElasticModulus <= 0.0) {
-        errorMessage = QStringLiteral("固化结束杨氏模量必须大于 0。");
+    if (!isPositiveFinite(config.finalElasticModulus)) {
+        errorMessage = QStringLiteral("固化结束杨氏模量必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.finalPoissonRatio <= 0.0 || config.finalPoissonRatio >= 0.5) {
-        errorMessage = QStringLiteral("固化结束泊松比必须大于 0 且小于 0.5。");
+    if (!isValidPoissonRatio(config.finalPoissonRatio)) {
+        errorMessage = QStringLiteral("固化结束泊松比必须是有限数值，且大于 0 并小于 0.5。");
         return false;
     }
 
-    if (config.thermalConductivity <= 0.0) {
-        errorMessage = QStringLiteral("炸药传导率必须大于 0。");
+    if (!isPositiveFinite(config.thermalConductivity)) {
+        errorMessage = QStringLiteral("炸药传导率必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.yieldStress <= 0.0) {
-        errorMessage = QStringLiteral("炸药屈服应力必须大于 0。");
+    if (!isPositiveFinite(config.yieldStress)) {
+        errorMessage = QStringLiteral("炸药屈服应力必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.specificHeat <= 0.0) {
-        errorMessage = QStringLiteral("炸药比热必须大于 0。");
+    if (!isPositiveFinite(config.specificHeat)) {
+        errorMessage = QStringLiteral("炸药比热必须是有限数值且大于 0。");
         return false;
     }
 
-    if (config.expansionCoefficient <= 0.0) {
-        errorMessage = QStringLiteral("炸药膨胀系数必须大于 0。");
+    if (!isPositiveFinite(config.expansionCoefficient)) {
+        errorMessage = QStringLiteral("炸药膨胀系数必须是有限数值且大于 0。");
         return false;
     }
 

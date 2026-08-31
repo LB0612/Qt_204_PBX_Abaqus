@@ -2,6 +2,7 @@
 
 #include <QDoubleValidator>
 #include <QHBoxLayout>
+#include <QLocale>
 #include <QPalette>
 #include <QPushButton>
 #include <QScrollArea>
@@ -256,8 +257,18 @@ void BaseParamWidget::addSaveButton(QVBoxLayout* layout, const QString& text, st
 QLineEdit* BaseParamWidget::createSciEdit(const QString &text) { 
     QLineEdit *edit = new QLineEdit(text);
     // 允许科学计数法输入，例如 1.23E-4
-    QDoubleValidator *validator = new QDoubleValidator(edit);
-    validator->setNotation(QDoubleValidator::ScientificNotation);
+    QDoubleValidator *validator =
+        new QDoubleValidator(edit);
+
+    QLocale numberLocale = QLocale::c();
+    numberLocale.setNumberOptions(
+        QLocale::RejectGroupSeparator
+    );
+
+    validator->setLocale(numberLocale);
+    validator->setNotation(
+        QDoubleValidator::ScientificNotation
+    );
     edit->setValidator(validator);
     return edit;
 } 

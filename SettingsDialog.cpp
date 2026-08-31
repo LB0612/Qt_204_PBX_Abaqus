@@ -2,7 +2,6 @@
 
 #include "AppInfo.h"
 
-#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontMetrics>
@@ -117,8 +116,7 @@ void SettingsDialog::setupUi()
 
 void SettingsDialog::loadSettings()
 {
-    const QString path = SettingsDialog::getAbaqusPath();
-    const QString displayPath = path.isEmpty() ? DEFAULT_ABAQUS_PATH : path;
+    const QString displayPath = SettingsDialog::getAbaqusPath();
     m_exePathEdit->setText(displayPath);
     m_exePathEdit->setCursorPosition(0);
     m_exePathEdit->setToolTip(displayPath);

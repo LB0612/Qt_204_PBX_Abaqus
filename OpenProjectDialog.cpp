@@ -1,6 +1,7 @@
 #include "OpenProjectDialog.h"
 
 #include "AppInfo.h"
+#include "ProjectManager.h"
 
 #include <QDir>
 #include <QFileDialog>

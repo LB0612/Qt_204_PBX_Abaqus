@@ -575,7 +575,6 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
         ProjectPaths::t0FinishedFlagPath(projectDir),
         ProjectInputHash::t1FinishedFlagPath(projectDir),
         ProjectInputHash::t2FinishedFlagPath(projectDir),
-        ProjectPaths::stopFlagPath(projectDir),
         ProjectPaths::currentJobMsgPath(projectDir),
         ProjectPaths::currentJobStaPath(projectDir),
         ProjectPaths::currentJobDatPath(projectDir),
@@ -602,6 +601,73 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
 
     errorMessage.clear();
     return true;
+}
+
+void SimulationManager::updateT2ProgressFromLine(const QString &line)
+{
+    if (line.isEmpty()) {
+        return;
+    }
+
+    const QRegularExpression framePattern(
+        QStringLiteral("exported frame (\\d+) / (\\d+)")
+    );
+
+    const QRegularExpressionMatch match = framePattern.match(line);
+
+    if (match.hasMatch()) {
+        const int current = match.captured(1).toInt();
+        const int total = match.captured(2).toInt();
+
+        if (total <= 0) {
+            return;
+        }
+
+        int basePercent = 70;
+        int maxPercent = 78;
+
+        if (line.contains(QStringLiteral("[POST] NT11:"))) {
+            basePercent = 79;
+            maxPercent = 87;
+        } else if (line.contains(QStringLiteral("[POST] S:"))) {
+            basePercent = 88;
+            maxPercent = 96;
+        }
+
+        const int percent =
+            basePercent
+            + static_cast<int>(
+                (static_cast<double>(current + 1)
+                 / static_cast<double>(total + 1))
+                    * static_cast<double>(maxPercent - basePercent)
+            );
+        emit progressUpdated(
+            qBound(basePercent, percent, maxPercent)
+        );
+    }
+
+    if (line.contains(QStringLiteral("AVI generated"))
+        || line.contains(QStringLiteral("Skip existing valid AVI"))) {
+        if (line.contains(QStringLiteral("guhuadu"), Qt::CaseInsensitive)) {
+            emit progressUpdated(97);
+        } else if (line.contains(QStringLiteral("wendu"), Qt::CaseInsensitive)) {
+            emit progressUpdated(98);
+        } else if (line.contains(QStringLiteral("yingli"), Qt::CaseInsensitive)) {
+            emit progressUpdated(99);
+        }
+    }
+}
+
+void SimulationManager::flushT2ProgressPending()
+{
+    if (t2ProgressPending.isEmpty()) {
+        return;
+    }
+
+    updateT2ProgressFromLine(
+        QString::fromLocal8Bit(t2ProgressPending).trimmed()
+    );
+    t2ProgressPending.clear();
 }
 
 void SimulationManager::appendProcessLog(
@@ -634,61 +700,21 @@ void SimulationManager::appendProcessLog(
         );
     }
 
-    if (simulationState == SimulationState::T2Running) {
-        const QRegularExpression framePattern(
-            QStringLiteral("exported frame (\\d+) / (\\d+)")
-        );
+    if (simulationState == SimulationState::T2Running && !isError) {
+        t2ProgressPending.append(data);
 
-        const QStringList lines = text.split(
-            QRegularExpression(QStringLiteral("[\\r\\n]+")),
-            Qt::SkipEmptyParts
-        );
+        QList<QByteArray> lines = t2ProgressPending.split('\n');
 
-        for (const QString &line : lines) {
-            const QRegularExpressionMatch match =
-                framePattern.match(line);
+        if (!t2ProgressPending.endsWith('\n')) {
+            t2ProgressPending = lines.takeLast();
+        } else {
+            t2ProgressPending.clear();
+        }
 
-            if (match.hasMatch()) {
-                const int current = match.captured(1).toInt();
-                const int total = match.captured(2).toInt();
-
-                if (total <= 0) {
-                    continue;
-                }
-
-                int basePercent = 70;
-                int maxPercent = 78;
-
-                if (line.contains(QStringLiteral("[POST] NT11:"))) {
-                    basePercent = 79;
-                    maxPercent = 87;
-                } else if (line.contains(QStringLiteral("[POST] S:"))) {
-                    basePercent = 88;
-                    maxPercent = 96;
-                }
-
-                const int percent =
-                    basePercent
-                    + static_cast<int>(
-                        (static_cast<double>(current + 1)
-                         / static_cast<double>(total + 1))
-                            * static_cast<double>(maxPercent - basePercent)
-                    );
-                emit progressUpdated(
-                    qBound(basePercent, percent, maxPercent)
-                );
-            }
-
-            if (line.contains(QStringLiteral("AVI generated"))
-                || line.contains(QStringLiteral("Skip existing valid AVI"))) {
-                if (line.contains(QStringLiteral("guhuadu"), Qt::CaseInsensitive)) {
-                    emit progressUpdated(97);
-                } else if (line.contains(QStringLiteral("wendu"), Qt::CaseInsensitive)) {
-                    emit progressUpdated(98);
-                } else if (line.contains(QStringLiteral("yingli"), Qt::CaseInsensitive)) {
-                    emit progressUpdated(99);
-                }
-            }
+        for (const QByteArray &rawLine : lines) {
+            updateT2ProgressFromLine(
+                QString::fromLocal8Bit(rawLine).trimmed()
+            );
         }
     }
 }
@@ -962,7 +988,7 @@ void SimulationManager::startT1Stage()
         ProjectPaths::currentJobMsgPath(projectDir);
     simulationStaPath =
         ProjectPaths::currentJobStaPath(projectDir);
-    simulationDatPath =
+    const QString simulationDatPath =
         ProjectPaths::currentJobDatPath(projectDir);
     simulationTotalTime = loadSimulationTotalTime();
     simulationMsgReadOffset = 0;
@@ -1064,6 +1090,15 @@ void SimulationManager::handleT1Finished(
 {
     drainProcessOutput(t1LogPath);
     updateAbaqusLog();
+
+    flushAbaqusLogPending(
+        QStringLiteral("[MSG]"),
+        simulationMsgPending
+    );
+    flushAbaqusLogPending(
+        QStringLiteral("[STA]"),
+        simulationStaPending
+    );
 
     if (simulationTimer) {
         simulationTimer->stop();
@@ -1187,6 +1222,17 @@ bool SimulationManager::preparePostProcessRun(QString &errorMessage)
         return false;
     }
 
+    const QString resultsDir =
+        ProjectPaths::resultsDirectoryPath(projectDir);
+
+    if (!QDir(resultsDir).exists()
+        && !QDir().mkpath(resultsDir)) {
+        errorMessage = QStringLiteral(
+            "无法创建后处理结果目录：\n%1"
+        ).arg(resultsDir);
+        return false;
+    }
+
     if (m_t2ResetRequested) {
         QFile::remove(
             ProjectInputHash::lastSuccessPostFingerprintPath(projectDir)
@@ -1236,6 +1282,8 @@ void SimulationManager::startT2Stage()
             ? QStringLiteral("[SYS] 启动 t2.py（重置后处理输出）")
             : QStringLiteral("[SYS] 启动 t2.py（续传后处理）")
     );
+
+    t2ProgressPending.clear();
 
     QFile t2LogFile(t2LogPath);
     if (t2LogFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -1319,6 +1367,7 @@ void SimulationManager::handleT2Finished(
     QProcess::ExitStatus exitStatus)
 {
     drainProcessOutput(t2LogPath);
+    flushT2ProgressPending();
 
     if (abaqusProcess) {
         abaqusProcess->deleteLater();
@@ -1499,12 +1548,12 @@ void SimulationManager::clearRunningSimulationContext(
 
     simulationMsgPath.clear();
     simulationStaPath.clear();
-    simulationDatPath.clear();
 
     simulationMsgReadOffset = 0;
     simulationStaReadOffset = 0;
     simulationMsgPending.clear();
     simulationStaPending.clear();
+    t2ProgressPending.clear();
     simulationTotalTime = 0.0;
 }
 
@@ -2173,6 +2222,18 @@ void SimulationManager::finishStopState(bool allowStaleLock)
         simulationTimer->stop();
     }
 
+    if (m_stopSourceState == SimulationState::T1Running) {
+        updateAbaqusLog();
+        flushAbaqusLogPending(
+            QStringLiteral("[MSG]"),
+            simulationMsgPending
+        );
+        flushAbaqusLogPending(
+            QStringLiteral("[STA]"),
+            simulationStaPending
+        );
+    }
+
     if (abaqusProcess) {
         abaqusProcess->deleteLater();
         abaqusProcess = nullptr;
@@ -2244,6 +2305,32 @@ void SimulationManager::updateAbaqusLog()
         simulationStaReadOffset,
         simulationStaPending
     );
+}
+
+void SimulationManager::flushAbaqusLogPending(
+    const QString &tag,
+    QByteArray &pendingData)
+{
+    if (pendingData.isEmpty()) {
+        return;
+    }
+
+    const QString line =
+        QString::fromLocal8Bit(pendingData).trimmed();
+
+    pendingData.clear();
+
+    if (line.isEmpty()) {
+        return;
+    }
+
+    emit logReceived(
+        tag + QStringLiteral(" ") + line
+    );
+
+    if (tag == QStringLiteral("[STA]")) {
+        updateProgressFromStaLine(line);
+    }
 }
 
 void SimulationManager::readAbaqusLogFile(

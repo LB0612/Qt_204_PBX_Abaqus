@@ -72,6 +72,44 @@ constexpr int kHomeTitleResizeDelayMs = 120;
 
 const QColor kHomeTitleShadowColor(18, 32, 50, 32);
 
+constexpr qint64 kPreviousLogTailBytes = 4 * 1024 * 1024;
+
+QString readLogTail(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return QString();
+    }
+
+    const qint64 size = file.size();
+    const bool truncated = size > kPreviousLogTailBytes;
+
+    if (truncated) {
+        file.seek(size - kPreviousLogTailBytes);
+    }
+
+    QByteArray data = file.readAll();
+
+    if (truncated) {
+        const int firstLineEnd = data.indexOf('\n');
+        if (firstLineEnd >= 0) {
+            data.remove(0, firstLineEnd + 1);
+        }
+    }
+
+    QString text = QString::fromLocal8Bit(data);
+
+    if (truncated) {
+        text.prepend(
+            QStringLiteral(
+                "[SYS] 日志文件过大，仅显示末尾部分。\n"
+            )
+        );
+    }
+
+    return text;
+}
+
 // ===== 工程树 / 工具栏导航图标 =====
 const QString kIconProjectInfo =
     QStringLiteral(":/toolbar/information.png");
@@ -313,7 +351,6 @@ MainWindow::MainWindow(QWidget *parent)
     debounceTimer->setInterval(100);
 
     connect(fileWatcher, &QFileSystemWatcher::directoryChanged, this, [this]() { debounceTimer->start(); });
-    connect(fileWatcher, &QFileSystemWatcher::fileChanged, this, [this]() { debounceTimer->start(); });
     connect(debounceTimer, &QTimer::timeout, this, &MainWindow::onProjectDirectoryChanged);
 
     simulationManager = new SimulationManager(this);
@@ -513,11 +550,6 @@ void MainWindow::setupUi()
 
 void MainWindow::createPureStyleToolBar()
 {
-    QToolBar *oldBar = findChild<QToolBar *>();
-    if (oldBar) {
-        delete oldBar;
-    }
-
     toolBar = addToolBar(tr("工具栏"));
     toolBar->setMovable(false);
     toolBar->setIconSize(QSize(40, 40));
@@ -659,7 +691,6 @@ void MainWindow::createTreeWidget()
         "QTreeWidget::item:selected { background-color: #e6f7ff; color: #1890ff; border-left: 3px solid #1890ff; }"
     );
 
-    connect(treeWidget, &QTreeWidget::itemDoubleClicked, this, &MainWindow::onTreeItemDoubleClicked);
     connect(treeWidget, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
 
     QTreeWidgetItem *rootItem = new QTreeWidgetItem(treeWidget);
@@ -970,6 +1001,29 @@ void MainWindow::clearAllParamPageDirty()
     dirtyParamPages.clear();
 }
 
+void MainWindow::resetCurrentProjectUiState()
+{
+    clearAllParamPageDirty();
+    projectDirectoryMissing = false;
+
+    if (resultViewerWidget) {
+        resultViewerWidget->stopPlayback();
+        resultViewerWidget->setProjectPath(QString());
+    }
+
+    isProjectLoaded = false;
+    currentProject = ProjectConfig();
+
+    stackedWidget->setCurrentIndex(0);
+    setWindowTitle(kApplicationTitle);
+
+    if (treeWidget) {
+        treeWidget->clearSelection();
+    }
+
+    updateUIStates();
+}
+
 bool MainWindow::ensureNoUnsavedParameters()
 {
     if (dirtyParamPages.isEmpty()) {
@@ -1263,11 +1317,7 @@ void MainWindow::exitProject()
 
     if (!hasAnyProject) {
         stopWatchingProject();
-        isProjectLoaded = false;
-        currentProject = ProjectConfig();
-        stackedWidget->setCurrentIndex(0);
-        setWindowTitle(kApplicationTitle);
-        treeWidget->clearSelection();
+        resetCurrentProjectUiState();
     } else if (root && root->childCount() > 0) {
         QTreeWidgetItem *nextProject = root->child(0);
 
@@ -1878,17 +1928,7 @@ void MainWindow::onSimulationStateChanged(SimulationState state)
                 missingProjectPath
             );
 
-            isProjectLoaded = false;
-            currentProject = ProjectConfig();
-            projectDirectoryMissing = false;
-
-            stackedWidget->setCurrentIndex(0);
-
-            setWindowTitle(kApplicationTitle);
-
-            treeWidget->clearSelection();
-
-            updateUIStates();
+            resetCurrentProjectUiState();
             startWatchingProject();
         }
     }
@@ -2439,20 +2479,10 @@ void MainWindow::showPreviousSimulationLogs()
 
     auto loadLog =
         [&logSections](const QString &title, const QString &path) {
-            QFile file(path);
-
-            if (!file.exists()) {
+            const QString content = readLogTail(path);
+            if (content.isEmpty()) {
                 return;
             }
-
-            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                return;
-            }
-
-            const QString content =
-                QString::fromLocal8Bit(file.readAll());
-
-            file.close();
 
             logSections
                 << QStringLiteral("========== %1 ==========").arg(title)
@@ -2561,11 +2591,6 @@ void MainWindow::closeEvent(QCloseEvent *event)
     } else {
         event->ignore();
     }
-}
-
-void MainWindow::onTreeItemDoubleClicked(QTreeWidgetItem *item, int column)
-{
-    onTreeItemClicked(item, column);
 }
 
 void MainWindow::onTreeItemClicked(
@@ -2826,11 +2851,7 @@ void MainWindow::onProjectDirectoryChanged()
 
     if (currentProjectDeleted && !simulationManager->isActive()) {
         stopWatchingProject();
-        isProjectLoaded = false;
-        currentProject = ProjectConfig();
-        stackedWidget->setCurrentIndex(0);
-        setWindowTitle(kApplicationTitle);
-        updateUIStates();
+        resetCurrentProjectUiState();
         startWatchingProject();
     }
 }

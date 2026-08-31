@@ -9,6 +9,8 @@
 #include <QJsonParseError>
 #include <QSaveFile>
 
+#include <cmath>
+
 namespace {
 const int SIMULATION_SCHEMA_VERSION = 1;
 }
@@ -17,8 +19,9 @@ bool SimulationConfigManager::validate(
     const SimulationConfig &config,
     QString &errorMessage)
 {
-    if (config.timeLength <= 0.0) {
-        errorMessage = QStringLiteral("时间长度必须大于 0。");
+    if (!std::isfinite(config.timeLength)
+        || config.timeLength <= 0.0) {
+        errorMessage = QStringLiteral("时间长度必须是有限数值且大于 0。");
         return false;
     }
 
