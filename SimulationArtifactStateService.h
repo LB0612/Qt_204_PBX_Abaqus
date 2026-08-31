@@ -25,6 +25,10 @@ public:
     static bool solverFingerprintMatches(const QString &projectPath);
     static bool hasValidSolverResult(const QString &projectPath);
     static bool hasCompletePostProcess(const QString &projectPath);
+    static bool validateCompletePostProcess(
+        const QString &projectPath,
+        QString &errorMessage
+    );
 
     static ProjectInputHash::PostProcessManifest postProcessManifest(
         const QString &projectPath

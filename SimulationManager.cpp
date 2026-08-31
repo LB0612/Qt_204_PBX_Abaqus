@@ -7,6 +7,7 @@
 #include "ProjectParameterService.h"
 #include "ProjectPaths.h"
 #include "SimulationArtifactStateService.h"
+#include "SimulationIntegrityService.h"
 #include "SimulationConfigManager.h"
 
 #include <QDateTime>
@@ -616,6 +617,7 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
         ProjectPaths::lastSuccessInputFingerprintPath(projectDir),
         ProjectPaths::runningPostFingerprintPath(projectDir),
         ProjectPaths::lastSuccessPostFingerprintPath(projectDir),
+        ProjectPaths::solverResultIntegrityPath(projectDir),
     };
 
     for (const QString &path : removePaths) {
@@ -1232,6 +1234,38 @@ void SimulationManager::handleT1Finished(
         return;
     }
 
+    QString integrityError;
+    if (!SimulationIntegrityService::
+            writeSolverResultIntegrity(
+                projectDir,
+                currentInputFingerprint,
+                integrityError)) {
+
+        setSimulationState(SimulationState::Failed);
+
+        emit statusChanged(
+            QStringLiteral("求解结果校验信息保存失败")
+        );
+
+        emit logReceived(
+            QStringLiteral(
+                "[ERROR] ODB integrity record failed"
+            )
+        );
+
+        emit errorOccurred(
+            QStringLiteral("求解结果保存异常"),
+            QStringLiteral(
+                "Abaqus ODB 已生成并保留，"
+                "但结果完整性记录保存失败。\n\n%1"
+            ).arg(integrityError)
+        );
+
+        clearRunningPostContext(true);
+        clearRunningSimulationContext(false);
+        return;
+    }
+
     const bool promoted =
         promoteRunningInputFingerprint(projectDir);
     if (!promoted) {
@@ -1642,6 +1676,27 @@ void SimulationManager::handleT2Finished(
                 "再次开始仿真时将仅继续后处理，"
                 "不会重新进行 Abaqus 求解。"
             ).arg(outputError)
+        );
+        return;
+    }
+
+    QString integrityError;
+    if (!SimulationIntegrityService::
+            writePostProcessIntegrity(
+                projectDir,
+                currentPost,
+                integrityError)) {
+        failPostProcessStage(
+            QStringLiteral("后处理完整性记录失败"),
+            QStringLiteral(
+                "[ERROR] Post-process integrity record failed."
+            ),
+            QStringLiteral(
+                "Abaqus 求解已经成功，后处理输出已保留，"
+                "但完整性记录保存失败。\n\n%1\n\n"
+                "再次开始仿真时将仅继续后处理，"
+                "不会重新进行 Abaqus 求解。"
+            ).arg(integrityError)
         );
         return;
     }

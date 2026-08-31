@@ -91,9 +91,10 @@ ResultValidationResult SimulationResultService::validate(
     }
 
     QString outputError;
-    if (!ProjectInputHash::validatePostProcessOutputs(
-            projectPath,
-            outputError)) {
+    if (!SimulationArtifactStateService::
+            validateCompletePostProcess(
+                projectPath,
+                outputError)) {
         result.state = ResultValidationState::OutputsInvalid;
         result.message = outputError.isEmpty()
             ? QStringLiteral("仿真结果文件不完整或已损坏。")

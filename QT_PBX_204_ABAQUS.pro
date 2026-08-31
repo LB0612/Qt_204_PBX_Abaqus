@@ -34,6 +34,7 @@ SOURCES += \
     SimulationPrepareWidget.cpp \
     ResultViewerWidget.cpp \
     SimulationArtifactStateService.cpp \
+    SimulationIntegrityService.cpp \
     SimulationResultService.cpp \
     SimulationReportGenerator.cpp \
     SimulationReportDocxWriter.cpp \
@@ -53,6 +54,7 @@ HEADERS += \
     OpenProjectDialog.h \
     SettingsDialog.h \
     SimulationArtifactStateService.h \
+    SimulationIntegrityService.h \
     StructureConfig.h \
     StructureConfigManager.h \
     StructureParamWidget.h \

@@ -582,7 +582,9 @@ void ResultViewerWidget::updateFrameInfo()
     }
 
     infoSecondaryLabel->setText(
-        QStringLiteral("%1   %2FPS")
+        QStringLiteral(
+            "%1   播放帧率:%2 FPS"
+        )
             .arg(simulationTimeText)
             .arg(fps)
     );

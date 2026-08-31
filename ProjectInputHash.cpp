@@ -540,6 +540,15 @@ bool clearPostProcessOutputs(
         return false;
     }
 
+    const QString integrityPath =
+        ProjectPaths::postProcessIntegrityPath(projectPath);
+    if (QFileInfo::exists(integrityPath) && !QFile::remove(integrityPath)) {
+        errorMessage =
+            QStringLiteral("无法删除后处理完整性记录：\n%1")
+                .arg(integrityPath);
+        return false;
+    }
+
     const QString t2FlagPath =
         ProjectPaths::t2FinishedFlagPath(projectPath);
     if (QFileInfo::exists(t2FlagPath) && !QFile::remove(t2FlagPath)) {

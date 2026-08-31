@@ -209,6 +209,28 @@ inline QString postProcessManifestPath(const QString &projectPath)
         .filePath(QStringLiteral("postprocess_manifest.json"));
 }
 
+inline QString solverResultIntegrityPath(
+    const QString &projectPath)
+{
+    return QDir(abaqusDirectoryPath(projectPath))
+        .filePath(
+            QStringLiteral(
+                "solver_result_integrity.json"
+            )
+        );
+}
+
+inline QString postProcessIntegrityPath(
+    const QString &projectPath)
+{
+    return QDir(resultsDirectoryPath(projectPath))
+        .filePath(
+            QStringLiteral(
+                "postprocess_integrity.json"
+            )
+        );
+}
+
 inline QString t0FinishedFlagPath(const QString &projectPath)
 {
     return QDir(abaqusDirectoryPath(projectPath))

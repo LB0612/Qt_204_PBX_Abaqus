@@ -1,6 +1,8 @@
 #include "SimulationArtifactStateService.h"
 
+#include "ProjectInputHash.h"
 #include "ProjectPaths.h"
+#include "SimulationIntegrityService.h"
 
 #include <QCryptographicHash>
 #include <QFile>
@@ -128,7 +130,22 @@ bool SimulationArtifactStateService::hasValidSolverResult(
         return false;
     }
 
-    return solverFingerprintMatches(projectPath);
+    if (!solverFingerprintMatches(projectPath)) {
+        return false;
+    }
+
+    const QString currentInput =
+        ProjectInputHash::hashSolverInput(projectPath);
+
+    QString integrityError;
+
+    return SimulationIntegrityService::
+        validateSolverResultIntegrity(
+            projectPath,
+            currentInput,
+            integrityError,
+            true
+        );
 }
 
 ProjectInputHash::PostProcessManifest
@@ -136,6 +153,33 @@ SimulationArtifactStateService::postProcessManifest(
     const QString &projectPath)
 {
     return ProjectInputHash::readPostProcessManifest(projectPath);
+}
+
+bool SimulationArtifactStateService::validateCompletePostProcess(
+    const QString &projectPath,
+    QString &errorMessage)
+{
+    if (!ProjectInputHash::validatePostProcessOutputs(
+            projectPath,
+            errorMessage)) {
+        return false;
+    }
+
+    const QString currentPost =
+        ProjectInputHash::hashPostProcessInput(projectPath);
+    if (currentPost.isEmpty()) {
+        errorMessage =
+            QStringLiteral("无法计算后处理输入指纹。");
+        return false;
+    }
+
+    return SimulationIntegrityService::
+        validatePostProcessIntegrity(
+            projectPath,
+            currentPost,
+            errorMessage,
+            true
+        );
 }
 
 bool SimulationArtifactStateService::hasCompletePostProcess(
@@ -164,11 +208,5 @@ bool SimulationArtifactStateService::hasCompletePostProcess(
     }
 
     QString outputError;
-    if (!ProjectInputHash::validatePostProcessOutputs(
-            projectPath,
-            outputError)) {
-        return false;
-    }
-
-    return true;
+    return validateCompletePostProcess(projectPath, outputError);
 }
