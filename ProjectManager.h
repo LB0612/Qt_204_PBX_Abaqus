@@ -20,6 +20,8 @@ struct ProjectConfig
 class ProjectManager
 {
 public:
+    static constexpr int MaxProjectNameLength = 48;
+
     static bool isValidProjectName(
         const QString &projectName,
         QString &errorMessage

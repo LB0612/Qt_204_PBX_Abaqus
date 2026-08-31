@@ -1,5 +1,6 @@
 #include "ProjectManager.h"
 
+#include "ProjectParameterService.h"
 #include "ProjectPaths.h"
 
 #include <QDateTime>
@@ -19,6 +20,13 @@ bool ProjectManager::isValidProjectName(
 
     if (name.isEmpty()) {
         errorMessage = QStringLiteral("工程名称不能为空。");
+        return false;
+    }
+
+    if (name.size() > MaxProjectNameLength) {
+        errorMessage = QStringLiteral(
+            "工程名称不能超过 %1 个字符。"
+        ).arg(MaxProjectNameLength);
         return false;
     }
 
@@ -85,6 +93,13 @@ bool ProjectManager::createProject(
     if (!saveProject(projectPath, config)) {
         QDir(projectPath).removeRecursively();
         errorMessage = QStringLiteral("工程配置文件创建失败。");
+        return false;
+    }
+
+    if (!ProjectParameterService::initializeDefaults(
+            projectPath,
+            errorMessage)) {
+        QDir(projectPath).removeRecursively();
         return false;
     }
 

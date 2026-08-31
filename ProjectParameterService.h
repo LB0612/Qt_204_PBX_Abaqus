@@ -27,6 +27,11 @@ public:
     static QString boundaryConfigPath(const QString &projectPath);
     static QString simulationConfigPath(const QString &projectPath);
 
+    static bool initializeDefaults(
+        const QString &projectPath,
+        QString &errorMessage
+    );
+
     // All five configs must load successfully.
     static bool loadAll(
         const QString &projectPath,

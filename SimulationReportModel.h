@@ -6,7 +6,7 @@
 #include <QStringList>
 #include <QVector>
 
-constexpr int REPORT_FORMAT_VERSION = 4;
+constexpr int REPORT_FORMAT_VERSION = 5;
 
 struct SimulationReportRow
 {

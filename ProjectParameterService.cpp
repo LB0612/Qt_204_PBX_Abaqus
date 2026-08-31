@@ -39,6 +39,59 @@ QString ProjectParameterService::simulationConfigPath(
     return ProjectPaths::simulationConfigPath(projectPath);
 }
 
+bool ProjectParameterService::initializeDefaults(
+    const QString &projectPath,
+    QString &errorMessage)
+{
+    if (!StructureConfigManager::save(
+            projectPath,
+            StructureConfig())) {
+        errorMessage = QStringLiteral(
+            "默认结构参数初始化失败。"
+        );
+        return false;
+    }
+
+    if (!ExplosiveConfigManager::save(
+            projectPath,
+            ExplosiveConfig())) {
+        errorMessage = QStringLiteral(
+            "默认炸药参数初始化失败。"
+        );
+        return false;
+    }
+
+    if (!MoldConfigManager::save(
+            projectPath,
+            MoldConfig())) {
+        errorMessage = QStringLiteral(
+            "默认模具参数初始化失败。"
+        );
+        return false;
+    }
+
+    if (!BoundaryConfigManager::save(
+            projectPath,
+            BoundaryConfig())) {
+        errorMessage = QStringLiteral(
+            "默认边界条件初始化失败。"
+        );
+        return false;
+    }
+
+    if (!SimulationConfigManager::save(
+            projectPath,
+            SimulationConfig())) {
+        errorMessage = QStringLiteral(
+            "默认仿真设置初始化失败。"
+        );
+        return false;
+    }
+
+    errorMessage.clear();
+    return true;
+}
+
 bool ProjectParameterService::loadAll(
     const QString &projectPath,
     ProjectParameters &parameters,

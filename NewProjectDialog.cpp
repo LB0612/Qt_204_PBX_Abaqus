@@ -50,6 +50,9 @@ void NewProjectDialog::setupUi()
     QLabel *nameLabel = new QLabel(QStringLiteral("工程名称:"));
     nameLabel->setObjectName(QStringLiteral("FormLabel"));
     nameEdit = new QLineEdit();
+    nameEdit->setMaxLength(
+        ProjectManager::MaxProjectNameLength
+    );
     nameEdit->setPlaceholderText(QStringLiteral("例如：PBX_Test_01"));
     nameEdit->setClearButtonEnabled(true);
 

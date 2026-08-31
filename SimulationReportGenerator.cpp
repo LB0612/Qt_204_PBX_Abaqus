@@ -21,6 +21,8 @@
 #include <QSaveFile>
 #include <QVector>
 
+#include <cmath>
+
 namespace {
 
 QString formatNumber(double value)
@@ -34,7 +36,9 @@ struct RepresentativeFrame
     QString label;
 };
 
-QVector<RepresentativeFrame> representativeFrames(int frameCount)
+QVector<RepresentativeFrame> representativeFrames(
+    int frameCount,
+    const QVector<double> &frameTimes)
 {
     QVector<RepresentativeFrame> result;
 
@@ -53,8 +57,30 @@ QVector<RepresentativeFrame> representativeFrames(int frameCount)
         return result;
     }
 
+    int middleIndex = (frameCount - 1) / 2;
+
+    if (frameTimes.size() == frameCount) {
+        const double targetTime =
+            (frameTimes.first() + frameTimes.last()) * 0.5;
+
+        double bestDistance =
+            std::abs(frameTimes.at(1) - targetTime);
+
+        middleIndex = 1;
+
+        for (int i = 2; i < frameCount - 1; ++i) {
+            const double distance =
+                std::abs(frameTimes.at(i) - targetTime);
+
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                middleIndex = i;
+            }
+        }
+    }
+
     result.append({0, QStringLiteral("初始时刻")});
-    result.append({(frameCount - 1) / 2, QStringLiteral("中间时刻")});
+    result.append({middleIndex, QStringLiteral("中间时刻")});
     result.append({frameCount - 1, QStringLiteral("最终时刻")});
     return result;
 }
@@ -72,7 +98,7 @@ bool buildResultSection(
 
     const int frameCount = manifest.odbFrames;
     const QVector<RepresentativeFrame> frames =
-        representativeFrames(frameCount);
+        representativeFrames(frameCount, manifest.frameTimes);
 
     for (const RepresentativeFrame &frame : frames) {
         const QString imagePath =
