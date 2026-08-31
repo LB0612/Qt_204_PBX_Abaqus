@@ -87,7 +87,6 @@ bool BoundaryConfigManager::load(
     }
 
     BoundaryConfig loaded;
-    loaded.schemaVersion = schemaVersion;
     loaded.ambientTemperature = jsonObj.value(QStringLiteral("ambientTemperature")).toDouble();
 
     QString errorMessage;

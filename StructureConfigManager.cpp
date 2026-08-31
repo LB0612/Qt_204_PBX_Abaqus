@@ -103,7 +103,6 @@ bool StructureConfigManager::load(
     }
 
     StructureConfig loaded;
-    loaded.schemaVersion = schemaVersion;
     loaded.chargeRadius = jsonObj.value(QStringLiteral("chargeRadius")).toDouble();
     loaded.chargeHeight = jsonObj.value(QStringLiteral("chargeHeight")).toDouble();
     loaded.shellThickness = jsonObj.value(QStringLiteral("shellThickness")).toDouble();

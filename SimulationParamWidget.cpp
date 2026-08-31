@@ -49,6 +49,5 @@ SimulationConfig SimulationParamWidget::getConfig() const
 {
     SimulationConfig config;
     config.timeLength = timeLengthEdit->text().trimmed().toDouble();
-    config.schemaVersion = 1;
     return config;
 }

@@ -15,8 +15,6 @@ struct ExplosiveConfig
     double yieldStress = 60.0;
     double specificHeat = 1330000000.0;
     double expansionCoefficient = 1.21e-05;
-
-    int schemaVersion = 1;
 };
 
 #endif

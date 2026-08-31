@@ -65,6 +65,5 @@ StructureConfig StructureParamWidget::getConfig() const
     config.chargeRadius = radiusEdit->text().trimmed().toDouble();
     config.chargeHeight = heightEdit->text().trimmed().toDouble();
     config.shellThickness = shellThicknessEdit->text().trimmed().toDouble();
-    config.schemaVersion = 1;
     return config;
 }

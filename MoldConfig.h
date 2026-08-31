@@ -8,8 +8,6 @@ struct MoldConfig
     double poissonRatio = 0.3;
     double thermalConductivity = 45.0;
     double specificHeat = 480000000.0;
-
-    int schemaVersion = 1;
 };
 
 #endif

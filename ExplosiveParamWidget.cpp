@@ -77,6 +77,5 @@ ExplosiveConfig ExplosiveParamWidget::getConfig() const
     config.yieldStress = yieldStressEdit->text().trimmed().toDouble();
     config.specificHeat = specificHeatEdit->text().trimmed().toDouble();
     config.expansionCoefficient = expansionCoefficientEdit->text().trimmed().toDouble();
-    config.schemaVersion = 1;
     return config;
 }

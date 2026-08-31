@@ -306,10 +306,21 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
     manifest.videoFps =
         json.value(QStringLiteral("videoFps")).toInt();
 
+    const QJsonValue frameTimesValue =
+        json.value(QStringLiteral("frameTimes"));
+
+    if (!frameTimesValue.isArray()) {
+        return manifest;
+    }
+
     const QJsonArray frameTimesJson =
-        json.value(QStringLiteral("frameTimes")).toArray();
+        frameTimesValue.toArray();
     manifest.frameTimes.clear();
     for (const QJsonValue &value : frameTimesJson) {
+        if (!value.isDouble()) {
+            return manifest;
+        }
+
         manifest.frameTimes.append(value.toDouble());
     }
 

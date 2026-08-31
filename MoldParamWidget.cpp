@@ -61,6 +61,5 @@ MoldConfig MoldParamWidget::getConfig() const
     config.poissonRatio = poissonRatioEdit->text().trimmed().toDouble();
     config.thermalConductivity = thermalConductivityEdit->text().trimmed().toDouble();
     config.specificHeat = specificHeatEdit->text().trimmed().toDouble();
-    config.schemaVersion = 1;
     return config;
 }

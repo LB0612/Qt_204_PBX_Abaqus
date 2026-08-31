@@ -133,7 +133,6 @@ bool MoldConfigManager::load(
     }
 
     MoldConfig loaded;
-    loaded.schemaVersion = schemaVersion;
     loaded.density = jsonObj.value(QStringLiteral("density")).toDouble();
     loaded.elasticModulus = jsonObj.value(QStringLiteral("elasticModulus")).toDouble();
     loaded.poissonRatio = jsonObj.value(QStringLiteral("poissonRatio")).toDouble();

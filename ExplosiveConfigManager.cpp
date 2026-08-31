@@ -161,7 +161,6 @@ bool ExplosiveConfigManager::load(
     }
 
     ExplosiveConfig loaded;
-    loaded.schemaVersion = schemaVersion;
     loaded.density = jsonObj.value(QStringLiteral("density")).toDouble();
     loaded.initialElasticModulus = jsonObj.value(QStringLiteral("initialElasticModulus")).toDouble();
     loaded.initialPoissonRatio = jsonObj.value(QStringLiteral("initialPoissonRatio")).toDouble();

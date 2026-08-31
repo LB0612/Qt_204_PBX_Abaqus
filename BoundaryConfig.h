@@ -4,8 +4,6 @@
 struct BoundaryConfig
 {
     double ambientTemperature = 335.0;
-
-    int schemaVersion = 1;
 };
 
 #endif

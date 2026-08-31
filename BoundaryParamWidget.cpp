@@ -49,6 +49,5 @@ BoundaryConfig BoundaryParamWidget::getConfig() const
 {
     BoundaryConfig config;
     config.ambientTemperature = ambientTemperatureEdit->text().trimmed().toDouble();
-    config.schemaVersion = 1;
     return config;
 }

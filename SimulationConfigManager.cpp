@@ -87,7 +87,6 @@ bool SimulationConfigManager::load(
     }
 
     SimulationConfig loaded;
-    loaded.schemaVersion = schemaVersion;
     loaded.timeLength = jsonObj.value(QStringLiteral("timeLength")).toDouble();
 
     QString errorMessage;
