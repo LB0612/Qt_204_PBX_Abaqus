@@ -97,10 +97,13 @@ private:
     void startT1Stage();
     void handleT1Finished(int exitCode, QProcess::ExitStatus exitStatus);
 
-    void startT2Stage();
+    void startT2Stage(const QString &postFingerprint);
     void handleT2Finished(int exitCode, QProcess::ExitStatus exitStatus);
     void updateT2ResetRequestForPostProcessOnly();
-    bool preparePostProcessRun(QString &errorMessage);
+    bool preparePostProcessRun(
+        QString &postFingerprint,
+        QString &errorMessage
+    );
 
     void finishSimulationSuccess(bool postPromoted);
     void failSolverStage(const QString &statusText, const QString &logText, const QString &errorText);
@@ -149,7 +152,9 @@ private:
     bool hasCompletePostProcess() const;
     bool readSuccessFlag(const QString &flagPath) const;
 
-    QProcessEnvironment buildT2ProcessEnvironment() const;
+    QProcessEnvironment buildT2ProcessEnvironment(
+        const QString &postFingerprint
+    ) const;
 
     QString activeProjectPath() const;
     QString activeJobLockPath() const;

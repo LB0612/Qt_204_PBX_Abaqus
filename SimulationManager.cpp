@@ -348,32 +348,66 @@ bool SimulationManager::commitRunningInputFingerprintFromPrepare(
     }
 
     const QString preparePath =
-        ProjectPaths::runningInputPrepareFingerprintPath(m_projectPath);
+        ProjectPaths::runningInputPrepareFingerprintPath(
+            m_projectPath
+        );
     const QString runningPath =
-        ProjectPaths::runningInputFingerprintPath(m_projectPath);
+        ProjectPaths::runningInputFingerprintPath(
+            m_projectPath
+        );
 
     QFile prepareFile(preparePath);
-    if (!prepareFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        errorMessage = QStringLiteral("无法读取仿真输入准备指纹。");
+    if (!prepareFile.open(
+            QIODevice::ReadOnly | QIODevice::Text)) {
+        errorMessage =
+            QStringLiteral("无法读取仿真输入准备指纹。");
         return false;
     }
 
-    const QByteArray content = prepareFile.readAll().trimmed();
+    const QByteArray content =
+        prepareFile.readAll().trimmed();
     prepareFile.close();
 
     if (content.isEmpty()) {
-        errorMessage = QStringLiteral("仿真输入准备指纹为空。");
+        errorMessage =
+            QStringLiteral("仿真输入准备指纹为空。");
+        return false;
+    }
+
+    const QString preparedFingerprint =
+        QString::fromLatin1(content);
+
+    const QString currentFingerprint =
+        calculateInputFingerprint();
+
+    if (currentFingerprint.isEmpty()) {
+        errorMessage =
+            QStringLiteral(
+                "无法重新计算当前仿真输入指纹。"
+            );
+        return false;
+    }
+
+    if (preparedFingerprint != currentFingerprint) {
+        errorMessage =
+            QStringLiteral(
+                "仿真输入在启动准备期间发生变化，"
+                "为避免结果与输入不一致，"
+                "本次仿真已取消。"
+            );
         return false;
     }
 
     if (!saveRunFingerprint(
             runningPath,
-            QString::fromLatin1(content))) {
-        errorMessage = QStringLiteral("无法提交仿真输入指纹。");
+            preparedFingerprint)) {
+        errorMessage =
+            QStringLiteral("无法提交仿真输入指纹。");
         return false;
     }
 
     QFile::remove(preparePath);
+
     errorMessage.clear();
     return true;
 }
@@ -579,6 +613,7 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
         ProjectPaths::currentJobStaPath(projectDir),
         ProjectPaths::currentJobDatPath(projectDir),
         ProjectPaths::runningInputFingerprintPath(projectDir),
+        ProjectPaths::lastSuccessInputFingerprintPath(projectDir),
         ProjectPaths::runningPostFingerprintPath(projectDir),
         ProjectPaths::lastSuccessPostFingerprintPath(projectDir),
     };
@@ -773,8 +808,12 @@ void SimulationManager::startTaskInternal()
 
         updateT2ResetRequestForPostProcessOnly();
 
+        QString postFingerprint;
         QString postProcessError;
-        if (!preparePostProcessRun(postProcessError)) {
+
+        if (!preparePostProcessRun(
+                postFingerprint,
+                postProcessError)) {
             emit errorOccurred(
                 QStringLiteral("仿真无法启动"),
                 postProcessError
@@ -783,7 +822,7 @@ void SimulationManager::startTaskInternal()
             return;
         }
 
-        startT2Stage();
+        startT2Stage(postFingerprint);
         return;
     }
 
@@ -1150,6 +1189,49 @@ void SimulationManager::handleT1Finished(
         return;
     }
 
+    const QString currentInputFingerprint =
+        calculateInputFingerprint();
+
+    const QString runningInputFingerprintPath =
+        ProjectPaths::runningInputFingerprintPath(
+            projectDir
+        );
+
+    if (currentInputFingerprint.isEmpty()
+        || !fingerprintMatchesStored(
+            runningInputFingerprintPath,
+            currentInputFingerprint)) {
+
+        setSimulationState(SimulationState::Failed);
+
+        emit statusChanged(
+            QStringLiteral("仿真输入已发生变化")
+        );
+
+        emit logReceived(
+            QStringLiteral(
+                "[ERROR] Abaqus 求解期间输入文件发生变化，"
+                "本次 ODB 不会被标记为当前输入的有效结果"
+            )
+        );
+
+        emit errorOccurred(
+            QStringLiteral("仿真输入已变化"),
+            QStringLiteral(
+                "检测到 Abaqus 求解期间工程输入文件发生变化。\n\n"
+                "本次 ODB 已保留，但不会被错误标记为"
+                "当前输入对应的有效结果。\n\n"
+                "如果恢复到本次仿真启动时的原输入，"
+                "软件仍可重新识别该 ODB；"
+                "否则请重新生成 Abaqus 文件并完整仿真。"
+            )
+        );
+
+        clearRunningPostContext(true);
+        clearRunningSimulationContext(false);
+        return;
+    }
+
     const bool promoted =
         promoteRunningInputFingerprint(projectDir);
     if (!promoted) {
@@ -1171,31 +1253,41 @@ void SimulationManager::handleT1Finished(
 
     m_t2ResetRequested = true;
 
+    QString postFingerprint;
     QString postProcessError;
-    if (!preparePostProcessRun(postProcessError)) {
+
+    if (!preparePostProcessRun(
+            postFingerprint,
+            postProcessError)) {
         failPostProcessStage(
             QStringLiteral("无法准备后处理"),
-            QStringLiteral("[SYS] 无法准备后处理输出"),
+            QStringLiteral(
+                "[SYS] 无法准备后处理输出"
+            ),
             postProcessError
         );
         return;
     }
 
-    startT2Stage();
+    startT2Stage(postFingerprint);
 }
 
-QProcessEnvironment SimulationManager::buildT2ProcessEnvironment() const
+QProcessEnvironment SimulationManager::buildT2ProcessEnvironment(
+    const QString &postFingerprint) const
 {
     QProcessEnvironment env =
         QProcessEnvironment::systemEnvironment();
 
     env.insert(
         QStringLiteral("PBX_POST_SHA256"),
-        calculatePostFingerprint()
+        postFingerprint
     );
+
     env.insert(
         QStringLiteral("PBX_T2_RESET"),
-        m_t2ResetRequested ? QStringLiteral("1") : QStringLiteral("0")
+        m_t2ResetRequested
+            ? QStringLiteral("1")
+            : QStringLiteral("0")
     );
 
     return env;
@@ -1214,11 +1306,37 @@ void SimulationManager::updateT2ResetRequestForPostProcessOnly()
     }
 }
 
-bool SimulationManager::preparePostProcessRun(QString &errorMessage)
+bool SimulationManager::preparePostProcessRun(
+    QString &postFingerprint,
+    QString &errorMessage)
 {
+    postFingerprint.clear();
+
     const QString projectDir = activeProjectPath();
+
     if (projectDir.isEmpty()) {
-        errorMessage = QStringLiteral("当前未打开工程。");
+        errorMessage =
+            QStringLiteral("当前未打开工程。");
+        return false;
+    }
+
+    if (!SimulationArtifactStateService::hasValidSolverResult(
+            projectDir)) {
+        errorMessage =
+            QStringLiteral(
+                "当前 Abaqus 求解结果已经不能确认"
+                "与当前输入一致，无法开始后处理。"
+            );
+        return false;
+    }
+
+    postFingerprint = calculatePostFingerprint();
+
+    if (postFingerprint.isEmpty()) {
+        errorMessage =
+            QStringLiteral(
+                "无法计算本次后处理输入指纹。"
+            );
         return false;
     }
 
@@ -1227,15 +1345,19 @@ bool SimulationManager::preparePostProcessRun(QString &errorMessage)
 
     if (!QDir(resultsDir).exists()
         && !QDir().mkpath(resultsDir)) {
-        errorMessage = QStringLiteral(
-            "无法创建后处理结果目录：\n%1"
-        ).arg(resultsDir);
+        errorMessage =
+            QStringLiteral(
+                "无法创建后处理结果目录：\n%1"
+            ).arg(resultsDir);
         return false;
     }
 
     if (m_t2ResetRequested) {
         QFile::remove(
-            ProjectPaths::lastSuccessPostFingerprintPath(projectDir)
+            ProjectPaths::
+                lastSuccessPostFingerprintPath(
+                    projectDir
+                )
         );
 
         if (!ProjectInputHash::clearPostProcessOutputs(
@@ -1245,16 +1367,16 @@ bool SimulationManager::preparePostProcessRun(QString &errorMessage)
         }
     }
 
-    const QString postFingerprint = calculatePostFingerprint();
-    if (postFingerprint.isEmpty()) {
-        errorMessage = QStringLiteral("无法计算本次后处理输入指纹。");
-        return false;
-    }
-
     if (!saveRunFingerprint(
-            ProjectPaths::runningPostFingerprintPath(projectDir),
+            ProjectPaths::
+                runningPostFingerprintPath(
+                    projectDir
+                ),
             postFingerprint)) {
-        errorMessage = QStringLiteral("无法记录本次后处理输入指纹。");
+        errorMessage =
+            QStringLiteral(
+                "无法记录本次后处理输入指纹。"
+            );
         return false;
     }
 
@@ -1262,9 +1384,67 @@ bool SimulationManager::preparePostProcessRun(QString &errorMessage)
     return true;
 }
 
-void SimulationManager::startT2Stage()
+void SimulationManager::startT2Stage(
+    const QString &postFingerprint)
 {
     const QString projectDir = activeProjectPath();
+
+    const QString currentPostFingerprint =
+        calculatePostFingerprint();
+
+    const QString runningPostFingerprintPath =
+        ProjectPaths::runningPostFingerprintPath(
+            projectDir
+        );
+
+    const bool solverStillValid =
+        SimulationArtifactStateService::
+            hasValidSolverResult(projectDir);
+
+    const bool postStillMatches =
+        !postFingerprint.isEmpty()
+        && !currentPostFingerprint.isEmpty()
+        && currentPostFingerprint == postFingerprint
+        && fingerprintMatchesStored(
+            runningPostFingerprintPath,
+            postFingerprint
+        );
+
+    if (!solverStillValid || !postStillMatches) {
+        setSimulationState(
+            SimulationState::PostProcessFailed
+        );
+
+        emit statusChanged(
+            QStringLiteral(
+                "后处理输入已发生变化"
+            )
+        );
+
+        emit logReceived(
+            QStringLiteral(
+                "[ERROR] 后处理启动前检测到"
+                "工程输入发生变化"
+            )
+        );
+
+        emit errorOccurred(
+            QStringLiteral("后处理无法启动"),
+            QStringLiteral(
+                "后处理启动前检测到工程输入已经变化，"
+                "为避免旧 ODB 与新输入产生错误关联，"
+                "本次后处理已取消。\n\n"
+                "请重新进入仿真准备页面，"
+                "软件会根据当前输入自动判断"
+                "继续后处理还是重新完整仿真。"
+            )
+        );
+
+        clearRunningPostContext(true);
+        clearRunningSimulationContext(false);
+        return;
+    }
+
     const QString abaqusDir =
         ProjectPaths::abaqusDirectoryPath(projectDir);
     const QString t2Path =
@@ -1297,7 +1477,11 @@ void SimulationManager::startT2Stage()
 
     abaqusProcess = new QProcess(this);
     abaqusProcess->setWorkingDirectory(abaqusDir);
-    abaqusProcess->setProcessEnvironment(buildT2ProcessEnvironment());
+    abaqusProcess->setProcessEnvironment(
+        buildT2ProcessEnvironment(
+            postFingerprint
+        )
+    );
 
     connect(
         abaqusProcess,

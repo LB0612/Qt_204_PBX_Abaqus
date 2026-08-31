@@ -1294,40 +1294,83 @@ void MainWindow::exitProject()
         return;
     }
 
-    const QString message = QStringLiteral("确认退出工程 \"%1\"？").arg(currentProject.projectName);
-    if (showCenteredMessageBox(this, QMessageBox::Question, QStringLiteral("退出工程"), message, QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) {
+    const QString message =
+        QStringLiteral(
+            "确认退出工程 \"%1\"？"
+        ).arg(currentProject.projectName);
+
+    if (showCenteredMessageBox(
+            this,
+            QMessageBox::Question,
+            QStringLiteral("退出工程"),
+            message,
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No)
+        != QMessageBox::Yes) {
         return;
     }
 
-    QTreeWidgetItem *root = treeWidget->topLevelItem(0);
+    const QString closingProjectPath =
+        currentProject.projectPath;
+
+    stopWatchingProject();
+
+    QTreeWidgetItem *root =
+        treeWidget->topLevelItem(0);
+
     if (root) {
-        for (int i = 0; i < root->childCount(); ++i) {
-            QTreeWidgetItem *projectItem = root->child(i);
-            if (projectItem->data(0, Qt::UserRole).toString() == currentProject.projectPath) {
+        for (int i = 0;
+             i < root->childCount();
+             ++i) {
+
+            QTreeWidgetItem *projectItem =
+                root->child(i);
+
+            if (projectItem
+                    ->data(0, Qt::UserRole)
+                    .toString()
+                == closingProjectPath) {
+
                 delete projectItem;
                 break;
             }
         }
     }
 
-    bool hasAnyProject = false;
-    if (root) {
-        hasAnyProject = root->childCount() > 0;
+    // 先彻底清除刚关闭工程的运行/UI状态。
+    resetCurrentProjectUiState();
+
+    // 再尝试从工程树中选择一个仍然有效的工程。
+    while (root && root->childCount() > 0) {
+        QTreeWidgetItem *nextProject =
+            root->child(0);
+
+        const QString nextPath =
+            nextProject
+                ->data(0, Qt::UserRole)
+                .toString();
+
+        ProjectConfig nextConfig;
+
+        if (nextPath.isEmpty()
+            || !ProjectManager::loadProject(
+                nextPath,
+                nextConfig)) {
+
+            // 工程树中的记录已经失效，直接清除，
+            // 再继续寻找下一个有效工程。
+            delete nextProject;
+            continue;
+        }
+
+        currentProject = nextConfig;
+        isProjectLoaded = true;
+
+        loadProjectToUi();
+        break;
     }
 
-    if (!hasAnyProject) {
-        stopWatchingProject();
-        resetCurrentProjectUiState();
-    } else if (root && root->childCount() > 0) {
-        QTreeWidgetItem *nextProject = root->child(0);
-
-        treeWidget->setCurrentItem(nextProject);
-        onTreeItemClicked(nextProject, 0);
-
-        // 工程树发生变化后重新构建目录监控
-        startWatchingProject();
-    }
-
+    startWatchingProject();
     adjustProjectPaneToContents();
     updateUIStates();
 }

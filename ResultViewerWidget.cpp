@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QPixmap>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QSizePolicy>
 #include <QSlider>
 #include <QTimer>
@@ -320,7 +321,10 @@ void ResultViewerWidget::setProjectPath(const QString &path)
     if (projectPath != path) {
         stopPlayback();
         projectPath = path;
+
+        currentPixmap = QPixmap();
         imageLabel->clear();
+
         currentFrame = 0;
         totalFrames = 0;
     }
@@ -500,19 +504,18 @@ void ResultViewerWidget::loadFrame(int frameIndex)
             frameIndex
         );
 
-    QPixmap pixmap(pngPath);
-    if (pixmap.isNull()) {
+    currentPixmap = QPixmap(pngPath);
+
+    if (currentPixmap.isNull()) {
+        imageLabel->clear();
         imageLabel->setText(
-            QStringLiteral("无法加载当前帧：%1").arg(pngPath)
+            QStringLiteral(
+                "无法加载当前帧：%1"
+            ).arg(pngPath)
         );
     } else {
-        imageLabel->setPixmap(
-            pixmap.scaled(
-                imageLabel->size(),
-                Qt::KeepAspectRatio,
-                Qt::SmoothTransformation
-            )
-        );
+        imageLabel->setText(QString());
+        updateScaledPixmap();
     }
 
     if (frameSlider->value() != currentFrame) {
@@ -520,6 +523,38 @@ void ResultViewerWidget::loadFrame(int frameIndex)
     }
 
     updateFrameInfo();
+}
+
+void ResultViewerWidget::updateScaledPixmap()
+{
+    if (!imageLabel
+        || currentPixmap.isNull()) {
+        return;
+    }
+
+    const QSize targetSize =
+        imageLabel->contentsRect().size();
+
+    if (targetSize.width() <= 0
+        || targetSize.height() <= 0) {
+        return;
+    }
+
+    imageLabel->setPixmap(
+        currentPixmap.scaled(
+            targetSize,
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        )
+    );
+}
+
+void ResultViewerWidget::resizeEvent(
+    QResizeEvent *event)
+{
+    BaseParamWidget::resizeEvent(event);
+
+    updateScaledPixmap();
 }
 
 void ResultViewerWidget::updateFrameInfo()

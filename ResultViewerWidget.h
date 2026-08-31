@@ -4,8 +4,11 @@
 #include "BaseParamWidget.h"
 #include "SimulationResultService.h"
 
+#include <QPixmap>
+
 class QLabel;
 class QPushButton;
+class QResizeEvent;
 class QSlider;
 class QTimer;
 class QButtonGroup;
@@ -22,6 +25,9 @@ public:
     void updateReportButtonText();
     void stopPlayback();
 
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+
 signals:
     void generateReportRequested();
     void openResultsDirectoryRequested();
@@ -33,6 +39,7 @@ private:
     void showEmptyState(const ResultValidationResult &result);
     void switchResultType(ResultType type);
     void loadFrame(int frameIndex);
+    void updateScaledPixmap();
     void updateFrameInfo();
     void togglePlayback();
     void stepFrame(int delta);
@@ -59,6 +66,7 @@ private:
     QPushButton *continueButton = nullptr;
 
     QLabel *imageLabel = nullptr;
+    QPixmap currentPixmap;
     QLabel *infoPrimaryLabel = nullptr;
     QLabel *infoSecondaryLabel = nullptr;
 
