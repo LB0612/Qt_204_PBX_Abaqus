@@ -6,6 +6,8 @@
 #include <QStringList>
 #include <QVector>
 
+constexpr int REPORT_FORMAT_VERSION = 4;
+
 struct SimulationReportRow
 {
     QString name;
@@ -36,7 +38,7 @@ struct SimulationReportResultSection
 
 struct SimulationReportModel
 {
-    int reportFormatVersion = 4;
+    int reportFormatVersion = REPORT_FORMAT_VERSION;
 
     QString reportTitle;
     QString productName;

@@ -1188,7 +1188,7 @@ stress_video_frames, stress_video_bytes = _generate_avi(
 
 post_sha = _post_sha256()
 manifest = {
-    'version': 3,
+    'version': {{POSTPROCESS_MANIFEST_VERSION}},
     'postSha256': post_sha,
     'step': STEP_NAME,
     'odbFrames': expected_frames,

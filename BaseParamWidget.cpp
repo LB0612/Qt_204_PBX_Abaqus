@@ -87,9 +87,6 @@ void BaseParamWidget::applyOpaqueWhiteScrollArea(QScrollArea *scrollArea)
     );
 } 
 
-// ================================================================= 
-// 1. 添加参数行 (高度增加至 40px，更舒展) 
-// ================================================================= 
 void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLineEdit* edit, const QString& unit) 
 { 
     QHBoxLayout *hLayout = new QHBoxLayout(); 
@@ -103,14 +100,12 @@ void BaseParamWidget::addParamRow(QBoxLayout* layout, const QString& name, QLine
     QLabel *lblName = new QLabel(displayName + QStringLiteral("："));
     lblName->setFixedWidth(240); 
     lblName->setAlignment(Qt::AlignRight | Qt::AlignVCenter); 
-    // 【修改】高度改为 40 
     lblName->setMinimumHeight(40); 
     // 字体保持微软雅黑黑体 
     lblName->setStyleSheet("font-family: 'Microsoft YaHei'; font-size: 16px; color: #000000; font-weight: bold;"); 
     
     hLayout->addWidget(lblName); 
     
-    // 【修改】输入框高度也改为 40 
     edit->setMinimumHeight(40); 
     edit->setStyleSheet("QLineEdit { font-family: 'Microsoft YaHei'; font-size: 16px; margin-left: 10px; padding-left: 5px; border: 1px solid #ccc; border-radius: 4px; } QLineEdit:focus { border: 1px solid #1890ff; }"); 
     
