@@ -363,7 +363,7 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         manifest.videoFps > 0;
 
     manifest.valid =
-        manifest.version == 3
+        manifest.version == POSTPROCESS_MANIFEST_VERSION
         && !manifest.postSha256.isEmpty()
         && countsMatch
         && bytesRecorded
@@ -371,11 +371,6 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         && frameTimesValid;
 
     return manifest;
-}
-
-QString resultsDirectory(const QString &projectPath)
-{
-    return ProjectPaths::resultsDirectoryPath(projectPath);
 }
 
 bool validatePostProcessOutputs(
@@ -395,7 +390,8 @@ bool validatePostProcessOutputs(
         return false;
     }
 
-    const QString resultsDir = resultsDirectory(projectPath);
+    const QString resultsDir =
+        ProjectPaths::resultsDirectoryPath(projectPath);
     const QString cureBase =
         QDir(resultsDir).filePath(QStringLiteral("guhuadu"));
     const QString tempBase =
@@ -480,7 +476,8 @@ bool clearPostProcessOutputs(
     const QString &projectPath,
     QString &errorMessage)
 {
-    const QString resultsDir = resultsDirectory(projectPath);
+    const QString resultsDir =
+        ProjectPaths::resultsDirectoryPath(projectPath);
     const QStringList baseNames = {
         QStringLiteral("guhuadu"),
         QStringLiteral("wendu"),
@@ -543,7 +540,8 @@ bool clearPostProcessOutputs(
         return false;
     }
 
-    const QString t2FlagPath = t2FinishedFlagPath(projectPath);
+    const QString t2FlagPath =
+        ProjectPaths::t2FinishedFlagPath(projectPath);
     if (QFileInfo::exists(t2FlagPath) && !QFile::remove(t2FlagPath)) {
         errorMessage =
             QStringLiteral("无法删除后处理完成标志：\n%1").arg(t2FlagPath);
@@ -552,56 +550,6 @@ bool clearPostProcessOutputs(
 
     errorMessage.clear();
     return true;
-}
-
-QString runningInputFingerprintPath(const QString &projectPath)
-{
-    return ProjectPaths::runningInputFingerprintPath(projectPath);
-}
-
-QString runningInputPrepareFingerprintPath(const QString &projectPath)
-{
-    return ProjectPaths::runningInputPrepareFingerprintPath(projectPath);
-}
-
-QString lastSuccessInputFingerprintPath(const QString &projectPath)
-{
-    return ProjectPaths::lastSuccessInputFingerprintPath(projectPath);
-}
-
-QString runningPostFingerprintPath(const QString &projectPath)
-{
-    return ProjectPaths::runningPostFingerprintPath(projectPath);
-}
-
-QString lastSuccessPostFingerprintPath(const QString &projectPath)
-{
-    return ProjectPaths::lastSuccessPostFingerprintPath(projectPath);
-}
-
-QString t1FinishedFlagPath(const QString &projectPath)
-{
-    return ProjectPaths::t1FinishedFlagPath(projectPath);
-}
-
-QString t2FinishedFlagPath(const QString &projectPath)
-{
-    return ProjectPaths::t2FinishedFlagPath(projectPath);
-}
-
-QString solverOdbPath(const QString &projectPath)
-{
-    return ProjectPaths::solverOdbPath(projectPath);
-}
-
-QString currentJobName(const QString &projectPath)
-{
-    return ProjectPaths::currentJobName(projectPath);
-}
-
-QString currentJobLockPath(const QString &projectPath)
-{
-    return ProjectPaths::currentJobLockPath(projectPath);
 }
 
 } // namespace ProjectInputHash

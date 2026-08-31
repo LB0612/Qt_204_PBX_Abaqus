@@ -1,6 +1,9 @@
 #include "SimulationResultService.h"
 
 #include "SimulationArtifactStateService.h"
+#include "SimulationReportModel.h"
+
+#include "ProjectPaths.h"
 
 #include <QDir>
 #include <QFile>
@@ -28,7 +31,7 @@ ResultValidationResult SimulationResultService::validate(
 
     const bool t2Finished =
         SimulationArtifactStateService::readSuccessFlag(
-            ProjectInputHash::t2FinishedFlagPath(projectPath)
+            ProjectPaths::t2FinishedFlagPath(projectPath)
         );
 
     if (!t2Finished) {
@@ -154,7 +157,7 @@ QString SimulationResultService::framePngPath(
 QString SimulationResultService::resultsDirectoryPath(
     const QString &projectPath)
 {
-    return ProjectInputHash::resultsDirectory(projectPath);
+    return ProjectPaths::resultsDirectoryPath(projectPath);
 }
 
 QString SimulationResultService::reportDirectoryPath(
@@ -222,7 +225,8 @@ bool SimulationResultService::isReportCurrent(const QString &projectPath)
 
     const QJsonObject json = document.object();
 
-    if (json.value(QStringLiteral("version")).toInt() != 4) {
+    if (json.value(QStringLiteral("version")).toInt()
+        != REPORT_FORMAT_VERSION) {
         return false;
     }
 

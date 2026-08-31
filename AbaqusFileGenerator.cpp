@@ -204,6 +204,7 @@ bool AbaqusFileGenerator::generate(
         QStringLiteral("{{RESULT_STRESS_PATH}}"),
         QStringLiteral("{{RESULT_TEMP_PATH}}"),
         QStringLiteral("{{RESULT_CURE_PATH}}"),
+        QStringLiteral("{{POSTPROCESS_MANIFEST_VERSION}}"),
     };
 
     for (const QString &placeholder : t2RequiredPlaceholders) {
@@ -247,7 +248,7 @@ bool AbaqusFileGenerator::generate(
             QDir(resultsDir).filePath(QStringLiteral("guhuadu"))
         );
 
-    QString jobName = ProjectInputHash::currentJobName(projectPath);
+    QString jobName = ProjectPaths::currentJobName(projectPath);
     jobName.replace(QStringLiteral("'"), QStringLiteral("\\'"));
 
     abaqusWorkDir.replace(QStringLiteral("'"), QStringLiteral("\\'"));
@@ -267,6 +268,12 @@ bool AbaqusFileGenerator::generate(
     t2Content.replace(QStringLiteral("{{RESULT_STRESS_PATH}}"), resultStressPath);
     t2Content.replace(QStringLiteral("{{RESULT_TEMP_PATH}}"), resultTempPath);
     t2Content.replace(QStringLiteral("{{RESULT_CURE_PATH}}"), resultCurePath);
+    t2Content.replace(
+        QStringLiteral("{{POSTPROCESS_MANIFEST_VERSION}}"),
+        QString::number(
+            ProjectInputHash::POSTPROCESS_MANIFEST_VERSION
+        )
+    );
 
     if (t1Content.contains(QLatin1String("{{"))) {
         errorMessage = QStringLiteral("t1 模板占位符替换失败。");

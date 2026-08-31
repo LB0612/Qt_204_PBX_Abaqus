@@ -3,6 +3,7 @@
 #include "AppInfo.h"
 #include "ProjectInputHash.h"
 #include "ProjectManager.h"
+#include "ProjectPaths.h"
 #include "ProjectParameterService.h"
 #include "SimulationArtifactStateService.h"
 #include "SimulationReportDocxWriter.h"
@@ -152,7 +153,7 @@ bool buildReportModel(
         QCoreApplication::applicationVersion();
     model.projectName = project.projectName;
     model.jobName =
-        ProjectInputHash::currentJobName(projectPath);
+        ProjectPaths::currentJobName(projectPath);
     model.generatedAt =
         QDateTime::currentDateTime().toString(
             QStringLiteral("yyyy-MM-dd HH:mm:ss")
@@ -479,7 +480,7 @@ bool writeReportManifest(
     const QFileInfo docxInfo(docxPath);
 
     const QJsonObject json = {
-        {QStringLiteral("version"), 4},
+        {QStringLiteral("version"), model.reportFormatVersion},
         {QStringLiteral("postSha256"), model.postSha256},
         {QStringLiteral("t2CompletedAt"), model.t2CompletedAt},
         {QStringLiteral("generatedAt"), model.generatedAt},
@@ -568,7 +569,8 @@ bool reportFinalsMatchManifest(const QString &projectPath)
     }
 
     const QJsonObject json = document.object();
-    if (json.value(QStringLiteral("version")).toInt() != 4) {
+    if (json.value(QStringLiteral("version")).toInt()
+        != REPORT_FORMAT_VERSION) {
         return false;
     }
 

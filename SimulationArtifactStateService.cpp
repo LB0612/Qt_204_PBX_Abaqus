@@ -1,5 +1,7 @@
 #include "SimulationArtifactStateService.h"
 
+#include "ProjectPaths.h"
+
 #include <QCryptographicHash>
 #include <QFile>
 #include <QFileInfo>
@@ -55,7 +57,7 @@ QString SimulationArtifactStateService::t2CompletionStampUtc(
     const QString &projectPath)
 {
     const QFileInfo info(
-        ProjectInputHash::t2FinishedFlagPath(projectPath)
+        ProjectPaths::t2FinishedFlagPath(projectPath)
     );
 
     if (!info.exists() || !info.isFile()) {
@@ -91,13 +93,13 @@ bool SimulationArtifactStateService::solverFingerprintMatches(
         ProjectInputHash::hashSolverInput(projectPath);
 
     return fingerprintFileMatches(
-               ProjectInputHash::lastSuccessInputFingerprintPath(
+               ProjectPaths::lastSuccessInputFingerprintPath(
                    projectPath
                ),
                current
            )
         || fingerprintFileMatches(
-               ProjectInputHash::runningInputFingerprintPath(
+               ProjectPaths::runningInputFingerprintPath(
                    projectPath
                ),
                current
@@ -112,17 +114,17 @@ bool SimulationArtifactStateService::hasValidSolverResult(
     }
 
     if (!readSuccessFlag(
-            ProjectInputHash::t1FinishedFlagPath(projectPath))) {
+            ProjectPaths::t1FinishedFlagPath(projectPath))) {
         return false;
     }
 
     if (!isNonEmptyRegularFile(
-            ProjectInputHash::solverOdbPath(projectPath))) {
+            ProjectPaths::solverOdbPath(projectPath))) {
         return false;
     }
 
     if (QFile::exists(
-            ProjectInputHash::currentJobLockPath(projectPath))) {
+            ProjectPaths::currentJobLockPath(projectPath))) {
         return false;
     }
 
@@ -144,7 +146,7 @@ bool SimulationArtifactStateService::hasCompletePostProcess(
     }
 
     if (!readSuccessFlag(
-            ProjectInputHash::t2FinishedFlagPath(projectPath))) {
+            ProjectPaths::t2FinishedFlagPath(projectPath))) {
         return false;
     }
 

@@ -75,7 +75,7 @@ QString SimulationManager::activeJobLockPath() const
         return QString();
     }
 
-    return ProjectInputHash::currentJobLockPath(projectPath);
+    return ProjectPaths::currentJobLockPath(projectPath);
 }
 
 void SimulationManager::setProjectContext(
@@ -155,9 +155,9 @@ bool SimulationManager::hasValidPreviousResult(QString &message)
     }
 
     const QString projectDir = m_projectPath;
-    const QString odbPath = ProjectInputHash::solverOdbPath(projectDir);
+    const QString odbPath = ProjectPaths::solverOdbPath(projectDir);
     const QString t2FlagPath =
-        ProjectInputHash::t2FinishedFlagPath(projectDir);
+        ProjectPaths::t2FinishedFlagPath(projectDir);
 
     const QFileInfo flagInfo(t2FlagPath);
     const QDateTime completedTime = flagInfo.lastModified();
@@ -256,7 +256,7 @@ bool SimulationManager::fingerprintMatchesStored(
 bool SimulationManager::fingerprintsMatch() const
 {
     return fingerprintMatchesStored(
-        ProjectInputHash::lastSuccessInputFingerprintPath(m_projectPath),
+        ProjectPaths::lastSuccessInputFingerprintPath(m_projectPath),
         calculateInputFingerprint()
     );
 }
@@ -264,7 +264,7 @@ bool SimulationManager::fingerprintsMatch() const
 bool SimulationManager::postFingerprintsMatch() const
 {
     return fingerprintMatchesStored(
-        ProjectInputHash::lastSuccessPostFingerprintPath(m_projectPath),
+        ProjectPaths::lastSuccessPostFingerprintPath(m_projectPath),
         calculatePostFingerprint()
     );
 }
@@ -273,9 +273,9 @@ bool SimulationManager::promoteRunningInputFingerprint(
     const QString &projectPath) const
 {
     const QString runningPath =
-        ProjectInputHash::runningInputFingerprintPath(projectPath);
+        ProjectPaths::runningInputFingerprintPath(projectPath);
     const QString lastPath =
-        ProjectInputHash::lastSuccessInputFingerprintPath(projectPath);
+        ProjectPaths::lastSuccessInputFingerprintPath(projectPath);
 
     QFile runningFile(runningPath);
     if (!runningFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -308,9 +308,9 @@ bool SimulationManager::promoteRunningPostFingerprint(
     const QString &projectPath) const
 {
     const QString runningPath =
-        ProjectInputHash::runningPostFingerprintPath(projectPath);
+        ProjectPaths::runningPostFingerprintPath(projectPath);
     const QString lastPath =
-        ProjectInputHash::lastSuccessPostFingerprintPath(projectPath);
+        ProjectPaths::lastSuccessPostFingerprintPath(projectPath);
 
     QFile runningFile(runningPath);
     if (!runningFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -348,9 +348,9 @@ bool SimulationManager::commitRunningInputFingerprintFromPrepare(
     }
 
     const QString preparePath =
-        ProjectInputHash::runningInputPrepareFingerprintPath(m_projectPath);
+        ProjectPaths::runningInputPrepareFingerprintPath(m_projectPath);
     const QString runningPath =
-        ProjectInputHash::runningInputFingerprintPath(m_projectPath);
+        ProjectPaths::runningInputFingerprintPath(m_projectPath);
 
     QFile prepareFile(preparePath);
     if (!prepareFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -385,7 +385,7 @@ bool SimulationManager::recoverSuccessFingerprintIfPossible()
     }
 
     const QString runningPath =
-        ProjectInputHash::runningInputFingerprintPath(m_projectPath);
+        ProjectPaths::runningInputFingerprintPath(m_projectPath);
 
     if (!fingerprintMatchesStored(
             runningPath,
@@ -403,7 +403,7 @@ bool SimulationManager::recoverSuccessPostFingerprintIfPossible()
     }
 
     const QString runningPath =
-        ProjectInputHash::runningPostFingerprintPath(m_projectPath);
+        ProjectPaths::runningPostFingerprintPath(m_projectPath);
 
     if (!fingerprintMatchesStored(
             runningPath,
@@ -521,7 +521,7 @@ void SimulationManager::prepareRunContext()
     t1LogPath = ProjectPaths::t1LogPath(projectDir);
     t2LogPath = ProjectPaths::t2LogPath(projectDir);
 
-    currentJobName = ProjectInputHash::currentJobName(projectDir);
+    currentJobName = ProjectPaths::currentJobName(projectDir);
 
     simulationUserStopped = false;
 
@@ -573,14 +573,14 @@ bool SimulationManager::clearRunArtifactsForFullRun(QString &errorMessage)
 
     const QStringList removePaths = {
         ProjectPaths::t0FinishedFlagPath(projectDir),
-        ProjectInputHash::t1FinishedFlagPath(projectDir),
-        ProjectInputHash::t2FinishedFlagPath(projectDir),
+        ProjectPaths::t1FinishedFlagPath(projectDir),
+        ProjectPaths::t2FinishedFlagPath(projectDir),
         ProjectPaths::currentJobMsgPath(projectDir),
         ProjectPaths::currentJobStaPath(projectDir),
         ProjectPaths::currentJobDatPath(projectDir),
-        ProjectInputHash::runningInputFingerprintPath(projectDir),
-        ProjectInputHash::runningPostFingerprintPath(projectDir),
-        ProjectInputHash::lastSuccessPostFingerprintPath(projectDir),
+        ProjectPaths::runningInputFingerprintPath(projectDir),
+        ProjectPaths::runningPostFingerprintPath(projectDir),
+        ProjectPaths::lastSuccessPostFingerprintPath(projectDir),
     };
 
     for (const QString &path : removePaths) {
@@ -799,7 +799,7 @@ void SimulationManager::startTaskInternal()
     }
 
     const QString prepareFingerprintPath =
-        ProjectInputHash::runningInputPrepareFingerprintPath(m_projectPath);
+        ProjectPaths::runningInputPrepareFingerprintPath(m_projectPath);
     if (!saveRunFingerprint(prepareFingerprintPath, inputFingerprint)) {
         emit errorOccurred(
             QStringLiteral("仿真无法启动"),
@@ -982,7 +982,7 @@ void SimulationManager::startT1Stage()
         QStringLiteral("Abaqus 求解中")
     );
 
-    currentJobName = ProjectInputHash::currentJobName(projectDir);
+    currentJobName = ProjectPaths::currentJobName(projectDir);
 
     simulationMsgPath =
         ProjectPaths::currentJobMsgPath(projectDir);
@@ -1125,9 +1125,9 @@ void SimulationManager::handleT1Finished(
     }
 
     const QString projectDir = activeProjectPath();
-    const QString odbPath = ProjectInputHash::solverOdbPath(projectDir);
+    const QString odbPath = ProjectPaths::solverOdbPath(projectDir);
     const QString t1FlagPath =
-        ProjectInputHash::t1FinishedFlagPath(projectDir);
+        ProjectPaths::t1FinishedFlagPath(projectDir);
 
     if (!isNonEmptyRegularFile(odbPath)) {
         failSolverStage(
@@ -1205,7 +1205,7 @@ void SimulationManager::updateT2ResetRequestForPostProcessOnly()
 {
     const QString currentPost = calculatePostFingerprint();
     const QString runningPath =
-        ProjectInputHash::runningPostFingerprintPath(m_projectPath);
+        ProjectPaths::runningPostFingerprintPath(m_projectPath);
 
     m_t2ResetRequested = true;
 
@@ -1235,7 +1235,7 @@ bool SimulationManager::preparePostProcessRun(QString &errorMessage)
 
     if (m_t2ResetRequested) {
         QFile::remove(
-            ProjectInputHash::lastSuccessPostFingerprintPath(projectDir)
+            ProjectPaths::lastSuccessPostFingerprintPath(projectDir)
         );
 
         if (!ProjectInputHash::clearPostProcessOutputs(
@@ -1252,7 +1252,7 @@ bool SimulationManager::preparePostProcessRun(QString &errorMessage)
     }
 
     if (!saveRunFingerprint(
-            ProjectInputHash::runningPostFingerprintPath(projectDir),
+            ProjectPaths::runningPostFingerprintPath(projectDir),
             postFingerprint)) {
         errorMessage = QStringLiteral("无法记录本次后处理输入指纹。");
         return false;
@@ -1395,7 +1395,7 @@ void SimulationManager::handleT2Finished(
 
     const QString projectDir = activeProjectPath();
     const QString t2FlagPath =
-        ProjectInputHash::t2FinishedFlagPath(projectDir);
+        ProjectPaths::t2FinishedFlagPath(projectDir);
 
     if (!readSuccessFlag(t2FlagPath)) {
         failPostProcessStage(
@@ -1535,10 +1535,10 @@ void SimulationManager::clearRunningSimulationContext(
     const QString projectPath = activeProjectPath();
     if (removeRunningFingerprint && !projectPath.isEmpty()) {
         QFile::remove(
-            ProjectInputHash::runningInputFingerprintPath(projectPath)
+            ProjectPaths::runningInputFingerprintPath(projectPath)
         );
         QFile::remove(
-            ProjectInputHash::runningInputPrepareFingerprintPath(projectPath)
+            ProjectPaths::runningInputPrepareFingerprintPath(projectPath)
         );
     }
 
@@ -1563,7 +1563,7 @@ void SimulationManager::clearRunningPostContext(
     const QString projectPath = activeProjectPath();
     if (removeRunningPostFingerprint && !projectPath.isEmpty()) {
         QFile::remove(
-            ProjectInputHash::runningPostFingerprintPath(projectPath)
+            ProjectPaths::runningPostFingerprintPath(projectPath)
         );
     }
 }
@@ -1643,7 +1643,7 @@ QString SimulationManager::currentJobLockPath() const
         return QString();
     }
 
-    return ProjectInputHash::currentJobLockPath(m_projectPath);
+    return ProjectPaths::currentJobLockPath(m_projectPath);
 }
 
 bool SimulationManager::clearCurrentJobLock(QString &errorMessage) const
@@ -1838,7 +1838,7 @@ void SimulationManager::sendAbaqusTerminateCommand()
             }
 
             const QString lockPath =
-                ProjectInputHash::currentJobLockPath(projectPath);
+                ProjectPaths::currentJobLockPath(projectPath);
 
             waitForJobLockRelease(lockPath);
         }
@@ -2244,17 +2244,17 @@ void SimulationManager::finishStopState(bool allowStaleLock)
 
     if (!projectPath.isEmpty()
         && readSuccessFlag(
-            ProjectInputHash::t1FinishedFlagPath(projectPath))
+            ProjectPaths::t1FinishedFlagPath(projectPath))
         && isNonEmptyRegularFile(
-            ProjectInputHash::solverOdbPath(projectPath))) {
+            ProjectPaths::solverOdbPath(projectPath))) {
         const QString currentSolverSha = calculateInputFingerprint();
         if (!currentSolverSha.isEmpty()) {
             const bool lastMatches = fingerprintMatchesStored(
-                ProjectInputHash::lastSuccessInputFingerprintPath(projectPath),
+                ProjectPaths::lastSuccessInputFingerprintPath(projectPath),
                 currentSolverSha
             );
             const bool runningMatches = fingerprintMatchesStored(
-                ProjectInputHash::runningInputFingerprintPath(projectPath),
+                ProjectPaths::runningInputFingerprintPath(projectPath),
                 currentSolverSha
             );
 

@@ -9,6 +9,7 @@ namespace ProjectInputHash {
 constexpr int GENERATION_MANIFEST_VERSION = 7;
 constexpr int CALCULATION_PIPELINE_VERSION = 2;
 constexpr int POSTPROCESS_PIPELINE_VERSION = 4;
+constexpr int POSTPROCESS_MANIFEST_VERSION = 3;
 
 QString hashConfigFiles(const QString &projectPath);
 QString hashGeneratedFiles(const QString &projectPath);
@@ -57,20 +58,6 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath);
 bool validatePostProcessOutputs(const QString &projectPath, QString &errorMessage);
 
 bool clearPostProcessOutputs(const QString &projectPath, QString &errorMessage);
-
-QString resultsDirectory(const QString &projectPath);
-QString runningInputFingerprintPath(const QString &projectPath);
-QString runningInputPrepareFingerprintPath(const QString &projectPath);
-QString lastSuccessInputFingerprintPath(const QString &projectPath);
-QString runningPostFingerprintPath(const QString &projectPath);
-QString lastSuccessPostFingerprintPath(const QString &projectPath);
-
-QString t1FinishedFlagPath(const QString &projectPath);
-QString t2FinishedFlagPath(const QString &projectPath);
-QString solverOdbPath(const QString &projectPath);
-
-QString currentJobName(const QString &projectPath);
-QString currentJobLockPath(const QString &projectPath);
 
 } // namespace ProjectInputHash
 
