@@ -20,6 +20,7 @@ MIN_PNG_SIZE = 64
 ODML_PLACEHOLDER_SIZE = 32768
 RIFF_SEGMENT_LIMIT = 1024 * 1024 * 1024
 VIEW_MARGIN = 1.25
+EXPORT_IMAGE_SIZE = (1280, 720)
 
 work_dir = '{{ABAQUS_WORK_DIR}}'
 job_name = '{{JOB_NAME}}'
@@ -1027,6 +1028,10 @@ def _setup_viewport(odb, expected_frames):
     vp.setValues(displayedObject=odb)
     vp.makeCurrent()
     vp.maximize()
+
+    session.pngOptions.setValues(
+        imageSize=EXPORT_IMAGE_SIZE
+    )
 
     leaf = dgo.LeafFromOdbElementMaterials(
         elementMaterials=('PBX', )

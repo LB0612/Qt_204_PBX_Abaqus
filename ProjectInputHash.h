@@ -6,9 +6,9 @@
 
 namespace ProjectInputHash {
 
-constexpr int GENERATION_MANIFEST_VERSION = 7;
+constexpr int GENERATION_MANIFEST_VERSION = 8;
 constexpr int CALCULATION_PIPELINE_VERSION = 2;
-constexpr int POSTPROCESS_PIPELINE_VERSION = 4;
+constexpr int POSTPROCESS_PIPELINE_VERSION = 5;
 constexpr int POSTPROCESS_MANIFEST_VERSION = 3;
 
 QString hashConfigFiles(const QString &projectPath);
