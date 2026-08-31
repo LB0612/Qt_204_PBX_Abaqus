@@ -20,6 +20,7 @@ MIN_PNG_SIZE = 64
 ODML_PLACEHOLDER_SIZE = 32768
 RIFF_SEGMENT_LIMIT = 1024 * 1024 * 1024
 VIEW_MARGIN = 1.25
+VIEW_OFFSET_Y_RATIO = -0.093
 EXPORT_IMAGE_SIZE = (1280, 720)
 
 work_dir = '{{ABAQUS_WORK_DIR}}'
@@ -1065,9 +1066,14 @@ def _setup_viewport(odb, expected_frames):
             'Automatic viewport fitting produced invalid dimensions.'
         )
 
+    final_width = fitted_width * VIEW_MARGIN
+    final_height = fitted_height * VIEW_MARGIN
+
     vp.view.setValues(
-        width=fitted_width * VIEW_MARGIN,
-        height=fitted_height * VIEW_MARGIN
+        width=final_width,
+        height=final_height,
+        viewOffsetX=0.0,
+        viewOffsetY=final_height * VIEW_OFFSET_Y_RATIO
     )
 
     print(
