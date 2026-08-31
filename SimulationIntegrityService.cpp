@@ -190,7 +190,8 @@ QJsonObject buildPngIntegrityObject(
 bool validatePngIntegrityObject(
     const QString &projectPath,
     ResultType type,
-    const QJsonObject &stored,
+    QJsonObject &stored,
+    bool &metadataChanged,
     QString &errorMessage)
 {
     const int storedCount =
@@ -235,6 +236,13 @@ bool validatePngIntegrityObject(
         return false;
     }
 
+    // 内容完全相同，只是 size/mtime 等元数据发生过变化。
+    // 刷新 metadata，避免下次再次完整计算所有 PNG 的 SHA。
+    stored[QStringLiteral("metadataSha256")] =
+        currentMetadataSha;
+
+    metadataChanged = true;
+
     return true;
 }
 
@@ -271,7 +279,8 @@ QJsonObject buildAviIntegrityObject(
 
 bool validateAviIntegrityObject(
     const QString &aviPath,
-    const QJsonObject &stored,
+    QJsonObject &stored,
+    bool &metadataChanged,
     QString &errorMessage)
 {
     const qint64 storedBytes =
@@ -315,6 +324,19 @@ bool validateAviIntegrityObject(
             QStringLiteral("AVI 完整性校验失败：\n%1").arg(aviPath);
         return false;
     }
+
+    // SHA 相同，说明文件内容没有变化，
+    // 只是文件时间等元数据发生变化。
+    // 刷新快速校验信息。
+    stored[QStringLiteral("bytes")] =
+        static_cast<double>(info.size());
+
+    stored[QStringLiteral("lastModifiedMs")] =
+        QString::number(
+            info.lastModified().toMSecsSinceEpoch()
+        );
+
+    metadataChanged = true;
 
     return true;
 }
@@ -474,6 +496,26 @@ bool SimulationIntegrityService::validateSolverResultIntegrity(
         return false;
     }
 
+    // SHA 一致，说明 ODB 内容实际没有变化。
+    // 刷新元数据，让之后重新回到快速校验路径。
+    json[QStringLiteral("odbBytes")] =
+        static_cast<double>(odbInfo.size());
+
+    json[QStringLiteral("odbLastModifiedMs")] =
+        QString::number(
+            odbInfo.lastModified().toMSecsSinceEpoch()
+        );
+
+    // 这里只是刷新缓存元数据。
+    // 即使写回失败，也不能把一个已经通过 SHA
+    // 验证的正确 ODB 判成损坏。
+    QString refreshError;
+    writeJsonFile(
+        integrityPath,
+        json,
+        refreshError
+    );
+
     errorMessage.clear();
     return true;
 }
@@ -618,10 +660,43 @@ bool SimulationIntegrityService::validatePostProcessIntegrity(
         return false;
     }
 
+    bool metadataChanged = false;
+
+    QJsonObject curePng =
+        json.value(
+            QStringLiteral("curePng")
+        ).toObject();
+
+    QJsonObject temperaturePng =
+        json.value(
+            QStringLiteral("temperaturePng")
+        ).toObject();
+
+    QJsonObject stressPng =
+        json.value(
+            QStringLiteral("stressPng")
+        ).toObject();
+
+    QJsonObject cureAvi =
+        json.value(
+            QStringLiteral("cureAvi")
+        ).toObject();
+
+    QJsonObject temperatureAvi =
+        json.value(
+            QStringLiteral("temperatureAvi")
+        ).toObject();
+
+    QJsonObject stressAvi =
+        json.value(
+            QStringLiteral("stressAvi")
+        ).toObject();
+
     if (!validatePngIntegrityObject(
             projectPath,
             ResultType::Cure,
-            json.value(QStringLiteral("curePng")).toObject(),
+            curePng,
+            metadataChanged,
             errorMessage)) {
         return false;
     }
@@ -629,7 +704,8 @@ bool SimulationIntegrityService::validatePostProcessIntegrity(
     if (!validatePngIntegrityObject(
             projectPath,
             ResultType::Temperature,
-            json.value(QStringLiteral("temperaturePng")).toObject(),
+            temperaturePng,
+            metadataChanged,
             errorMessage)) {
         return false;
     }
@@ -637,30 +713,73 @@ bool SimulationIntegrityService::validatePostProcessIntegrity(
     if (!validatePngIntegrityObject(
             projectPath,
             ResultType::Stress,
-            json.value(QStringLiteral("stressPng")).toObject(),
+            stressPng,
+            metadataChanged,
             errorMessage)) {
         return false;
     }
 
     if (!validateAviIntegrityObject(
-            aviPathForBase(projectPath, QStringLiteral("guhuadu")),
-            json.value(QStringLiteral("cureAvi")).toObject(),
+            aviPathForBase(
+                projectPath,
+                QStringLiteral("guhuadu")
+            ),
+            cureAvi,
+            metadataChanged,
             errorMessage)) {
         return false;
     }
 
     if (!validateAviIntegrityObject(
-            aviPathForBase(projectPath, QStringLiteral("wendu")),
-            json.value(QStringLiteral("temperatureAvi")).toObject(),
+            aviPathForBase(
+                projectPath,
+                QStringLiteral("wendu")
+            ),
+            temperatureAvi,
+            metadataChanged,
             errorMessage)) {
         return false;
     }
 
     if (!validateAviIntegrityObject(
-            aviPathForBase(projectPath, QStringLiteral("yingli")),
-            json.value(QStringLiteral("stressAvi")).toObject(),
+            aviPathForBase(
+                projectPath,
+                QStringLiteral("yingli")
+            ),
+            stressAvi,
+            metadataChanged,
             errorMessage)) {
         return false;
+    }
+
+    if (metadataChanged) {
+        json[QStringLiteral("curePng")] =
+            curePng;
+
+        json[QStringLiteral("temperaturePng")] =
+            temperaturePng;
+
+        json[QStringLiteral("stressPng")] =
+            stressPng;
+
+        json[QStringLiteral("cureAvi")] =
+            cureAvi;
+
+        json[QStringLiteral("temperatureAvi")] =
+            temperatureAvi;
+
+        json[QStringLiteral("stressAvi")] =
+            stressAvi;
+
+        // 元数据刷新属于性能缓存更新。
+        // 文件内容已经通过 SHA 校验，因此写回失败
+        // 不应该把正确结果判为损坏。
+        QString refreshError;
+        writeJsonFile(
+            integrityPath,
+            json,
+            refreshError
+        );
     }
 
     errorMessage.clear();
