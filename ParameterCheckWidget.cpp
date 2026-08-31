@@ -9,7 +9,6 @@
 #include "SimulationConfigManager.h"
 #include "StructureConfigManager.h"
 
-#include <QDir>
 #include <QFileInfo>
 #include <QGroupBox>
 #include <QHBoxLayout>
