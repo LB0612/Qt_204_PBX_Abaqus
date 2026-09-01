@@ -2250,7 +2250,7 @@ void MainWindow::stopSimulation()
         confirmText =
             QStringLiteral(
                 "确定终止当前后处理吗？\n"
-                "Abaqus 求解结果和已生成的结果图片将保留。"
+                "Abaqus 求解结果和已生成的后处理结果将保留。"
             );
     }
 
