@@ -70,9 +70,17 @@ job = mdb.jobs[job_name]
 job.submit()
 job.waitForCompletion()
 
-if job.status != COMPLETED:
+sta_path = os.path.join(work_dir, job_name + '.sta')
+
+if not os.path.isfile(sta_path):
+    raise IOError('STA not found after Job: %s' % sta_path)
+
+with open(sta_path, 'r') as handle:
+    sta_content = handle.read()
+
+if 'THE ANALYSIS HAS COMPLETED SUCCESSFULLY' not in sta_content:
     raise RuntimeError(
-        'Abaqus Job failed, status = %s' % job.status
+        'Abaqus Job did not complete successfully.'
     )
 
 odb_path = os.path.join(work_dir, job_name + '.odb')
