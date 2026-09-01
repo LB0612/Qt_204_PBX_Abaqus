@@ -59,12 +59,6 @@ def _reset_postprocess_outputs():
         stress_output_base + '_frames',
     ]
     files_to_remove = [
-        cure_output_base + '.avi',
-        temp_output_base + '.avi',
-        stress_output_base + '.avi',
-        cure_output_base + '.tmp.avi',
-        temp_output_base + '.tmp.avi',
-        stress_output_base + '.tmp.avi',
         manifest_path,
         t2_flag_path,
     ]
@@ -78,14 +72,6 @@ def _reset_postprocess_outputs():
         if os.path.isfile(path):
             os.remove(path)
             print('[POST] Removed file: %s' % path)
-
-    if os.path.isdir(results_dir):
-        for name in os.listdir(results_dir):
-            if name.lower().endswith('.tmp.avi'):
-                extra_path = os.path.join(results_dir, name)
-                if os.path.isfile(extra_path):
-                    os.remove(extra_path)
-                    print('[POST] Removed file: %s' % extra_path)
 
 
 def _is_valid_png(path):

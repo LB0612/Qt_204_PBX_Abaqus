@@ -134,7 +134,7 @@ QString SimulationManager::resumeModeMessage(
     case SimulationResumeMode::PostProcessOnly:
         return QStringLiteral(
             "Abaqus 求解已完成，检测到后处理尚未完整完成。"
-            "继续运行将仅恢复图片/视频生成，不会重新进行 Abaqus 求解。");
+            "继续运行将仅恢复结果图片生成，不会重新进行 Abaqus 求解。");
     case SimulationResumeMode::AlreadyComplete:
         return QStringLiteral(
             "当前计算及后处理结果已经完整生成，无需重复运行。");

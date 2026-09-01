@@ -6,7 +6,6 @@
 #include "SimulationResultService.h"
 
 #include <QCryptographicHash>
-#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>

@@ -422,40 +422,6 @@ bool clearPostProcessOutputs(
                 return false;
             }
         }
-
-        const QStringList suffixes = {
-            QStringLiteral(".avi"),
-            QStringLiteral(".tmp.avi"),
-        };
-
-        for (const QString &suffix : suffixes) {
-            const QString path =
-                QDir(resultsDir).filePath(baseName + suffix);
-
-            if (QFileInfo::exists(path) && !QFile::remove(path)) {
-                errorMessage =
-                    QStringLiteral("无法删除后处理文件：\n%1").arg(path);
-                return false;
-            }
-        }
-    }
-
-    QDir resultsDirListing(resultsDir);
-    if (resultsDirListing.exists()) {
-        const QStringList tmpAviFiles =
-            resultsDirListing.entryList(
-                QStringList() << QStringLiteral("*.tmp.avi"),
-                QDir::Files);
-
-        for (const QString &name : tmpAviFiles) {
-            const QString path = resultsDirListing.filePath(name);
-
-            if (!QFile::remove(path)) {
-                errorMessage =
-                    QStringLiteral("无法删除后处理临时文件：\n%1").arg(path);
-                return false;
-            }
-        }
     }
 
     const QString manifestPath =
