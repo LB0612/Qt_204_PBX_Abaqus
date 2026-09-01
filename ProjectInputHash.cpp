@@ -287,24 +287,8 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         json.value(QStringLiteral("temperaturePngFrames")).toInt();
     manifest.stressPngFrames =
         json.value(QStringLiteral("stressPngFrames")).toInt();
-    manifest.cureVideoFrames =
-        json.value(QStringLiteral("cureVideoFrames")).toInt();
-    manifest.temperatureVideoFrames =
-        json.value(QStringLiteral("temperatureVideoFrames")).toInt();
-    manifest.stressVideoFrames =
-        json.value(QStringLiteral("stressVideoFrames")).toInt();
-    manifest.cureVideoBytes =
-        json.value(QStringLiteral("cureVideoBytes")).toVariant().toLongLong();
-    manifest.temperatureVideoBytes =
-        json.value(QStringLiteral("temperatureVideoBytes"))
-            .toVariant()
-            .toLongLong();
-    manifest.stressVideoBytes =
-        json.value(QStringLiteral("stressVideoBytes"))
-            .toVariant()
-            .toLongLong();
-    manifest.videoFps =
-        json.value(QStringLiteral("videoFps")).toInt();
+    manifest.playbackFps =
+        json.value(QStringLiteral("playbackFps")).toInt();
 
     const QJsonValue frameTimesValue =
         json.value(QStringLiteral("frameTimes"));
@@ -328,15 +312,7 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         manifest.odbFrames > 0
         && manifest.odbFrames == manifest.curePngFrames
         && manifest.odbFrames == manifest.temperaturePngFrames
-        && manifest.odbFrames == manifest.stressPngFrames
-        && manifest.odbFrames == manifest.cureVideoFrames
-        && manifest.odbFrames == manifest.temperatureVideoFrames
-        && manifest.odbFrames == manifest.stressVideoFrames;
-
-    const bool bytesRecorded =
-        manifest.cureVideoBytes > 0
-        && manifest.temperatureVideoBytes > 0
-        && manifest.stressVideoBytes > 0;
+        && manifest.odbFrames == manifest.stressPngFrames;
 
     const bool frameTimesValid = [&manifest]() {
         if (manifest.frameTimes.size() != manifest.odbFrames) {
@@ -359,15 +335,14 @@ PostProcessManifest readPostProcessManifest(const QString &projectPath)
         return true;
     }();
 
-    const bool videoFpsValid =
-        manifest.videoFps > 0;
+    const bool playbackFpsValid =
+        manifest.playbackFps > 0;
 
     manifest.valid =
         manifest.version == POSTPROCESS_MANIFEST_VERSION
         && !manifest.postSha256.isEmpty()
         && countsMatch
-        && bytesRecorded
-        && videoFpsValid
+        && playbackFpsValid
         && frameTimesValid;
 
     return manifest;
@@ -417,55 +392,6 @@ bool validatePostProcessOutputs(
                     QStringLiteral("PNG 缺失或无效：%1").arg(pngPath);
                 return false;
             }
-        }
-    }
-
-    const struct {
-        QString aviPath;
-        qint64 expectedBytes;
-        int expectedVideoFrames;
-    } aviSets[] = {
-        {
-            cureBase + QStringLiteral(".avi"),
-            manifest.cureVideoBytes,
-            manifest.cureVideoFrames,
-        },
-        {
-            tempBase + QStringLiteral(".avi"),
-            manifest.temperatureVideoBytes,
-            manifest.temperatureVideoFrames,
-        },
-        {
-            stressBase + QStringLiteral(".avi"),
-            manifest.stressVideoBytes,
-            manifest.stressVideoFrames,
-        },
-    };
-
-    for (const auto &aviSet : aviSets) {
-        const QFileInfo info(aviSet.aviPath);
-        if (!info.exists() || info.size() <= 0) {
-            errorMessage =
-                QStringLiteral("AVI 缺失或为空：%1").arg(aviSet.aviPath);
-            return false;
-        }
-
-        if (info.size() != aviSet.expectedBytes) {
-            errorMessage =
-                QStringLiteral(
-                    "AVI 文件大小不匹配：%1（期望 %2 字节，实际 %3 字节）"
-                ).arg(aviSet.aviPath)
-                    .arg(aviSet.expectedBytes)
-                    .arg(info.size());
-            return false;
-        }
-
-        if (aviSet.expectedVideoFrames != expectedFrames) {
-            errorMessage =
-                QStringLiteral(
-                    "AVI 帧数记录不匹配：%1（期望 %2）"
-                ).arg(aviSet.aviPath).arg(expectedFrames);
-            return false;
         }
     }
 

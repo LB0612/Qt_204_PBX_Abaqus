@@ -683,15 +683,9 @@ void SimulationManager::updateT2ProgressFromLine(const QString &line)
         );
     }
 
-    if (line.contains(QStringLiteral("AVI generated"))
-        || line.contains(QStringLiteral("Skip existing valid AVI"))) {
-        if (line.contains(QStringLiteral("guhuadu"), Qt::CaseInsensitive)) {
-            emit progressUpdated(97);
-        } else if (line.contains(QStringLiteral("wendu"), Qt::CaseInsensitive)) {
-            emit progressUpdated(98);
-        } else if (line.contains(QStringLiteral("yingli"), Qt::CaseInsensitive)) {
-            emit progressUpdated(99);
-        }
+    if (line.contains(
+            QStringLiteral("All ODB frames exported successfully"))) {
+        emit progressUpdated(99);
     }
 }
 

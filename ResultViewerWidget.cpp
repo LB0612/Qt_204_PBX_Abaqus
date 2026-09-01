@@ -369,8 +369,8 @@ void ResultViewerWidget::refreshResults()
     updateReportButtonText();
 
     totalFrames = validation.manifest.odbFrames;
-    fps = validation.manifest.videoFps > 0
-        ? validation.manifest.videoFps
+    fps = validation.manifest.playbackFps > 0
+        ? validation.manifest.playbackFps
         : 5;
 
     frameSlider->setMaximum(qMax(0, totalFrames - 1));

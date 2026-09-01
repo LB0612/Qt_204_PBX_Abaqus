@@ -16,7 +16,7 @@
 namespace {
 
 constexpr int kSolverIntegrityVersion = 1;
-constexpr int kPostProcessIntegrityVersion = 1;
+constexpr int kPostProcessIntegrityVersion = 2;
 
 bool writeJsonFile(
     const QString &path,
@@ -246,110 +246,6 @@ bool validatePngIntegrityObject(
     return true;
 }
 
-QJsonObject buildAviIntegrityObject(
-    const QString &aviPath,
-    QString &errorMessage)
-{
-    const QFileInfo info(aviPath);
-    if (!info.exists() || !info.isFile() || info.size() <= 0) {
-        errorMessage =
-            QStringLiteral("AVI 缺失或为空：\n%1").arg(aviPath);
-        return QJsonObject();
-    }
-
-    const QString sha = hashFileContent(aviPath);
-    if (sha.isEmpty()) {
-        errorMessage =
-            QStringLiteral("无法计算 AVI 校验值：\n%1").arg(aviPath);
-        return QJsonObject();
-    }
-
-    return {
-        {
-            QStringLiteral("bytes"),
-            static_cast<double>(info.size())
-        },
-        {
-            QStringLiteral("lastModifiedMs"),
-            QString::number(info.lastModified().toMSecsSinceEpoch())
-        },
-        {QStringLiteral("sha256"), sha},
-    };
-}
-
-bool validateAviIntegrityObject(
-    const QString &aviPath,
-    QJsonObject &stored,
-    bool &metadataChanged,
-    QString &errorMessage)
-{
-    const qint64 storedBytes =
-        static_cast<qint64>(
-            stored.value(QStringLiteral("bytes")).toDouble(-1)
-        );
-    const QString storedMtime =
-        stored.value(QStringLiteral("lastModifiedMs")).toString();
-    const QString storedSha =
-        stored.value(QStringLiteral("sha256")).toString();
-
-    if (storedBytes <= 0
-        || storedMtime.isEmpty()
-        || storedSha.isEmpty()) {
-        errorMessage = QStringLiteral("AVI 完整性记录无效。");
-        return false;
-    }
-
-    const QFileInfo info(aviPath);
-    if (!info.exists() || !info.isFile() || info.size() <= 0) {
-        errorMessage =
-            QStringLiteral("AVI 缺失或为空：\n%1").arg(aviPath);
-        return false;
-    }
-
-    if (info.size() == storedBytes
-        && QString::number(info.lastModified().toMSecsSinceEpoch())
-            == storedMtime) {
-        return true;
-    }
-
-    const QString currentSha = hashFileContent(aviPath);
-    if (currentSha.isEmpty()) {
-        errorMessage =
-            QStringLiteral("无法计算 AVI 校验值：\n%1").arg(aviPath);
-        return false;
-    }
-
-    if (currentSha != storedSha || info.size() != storedBytes) {
-        errorMessage =
-            QStringLiteral("AVI 完整性校验失败：\n%1").arg(aviPath);
-        return false;
-    }
-
-    // SHA 相同，说明文件内容没有变化，
-    // 只是文件时间等元数据发生变化。
-    // 刷新快速校验信息。
-    stored[QStringLiteral("bytes")] =
-        static_cast<double>(info.size());
-
-    stored[QStringLiteral("lastModifiedMs")] =
-        QString::number(
-            info.lastModified().toMSecsSinceEpoch()
-        );
-
-    metadataChanged = true;
-
-    return true;
-}
-
-QString aviPathForBase(
-    const QString &projectPath,
-    const QString &baseName)
-{
-    return QDir(
-        ProjectPaths::resultsDirectoryPath(projectPath)
-    ).filePath(baseName + QStringLiteral(".avi"));
-}
-
 } // namespace
 
 bool SimulationIntegrityService::writeSolverResultIntegrity(
@@ -573,42 +469,12 @@ bool SimulationIntegrityService::writePostProcessIntegrity(
         return false;
     }
 
-    QJsonObject cureAvi =
-        buildAviIntegrityObject(
-            aviPathForBase(projectPath, QStringLiteral("guhuadu")),
-            errorMessage
-        );
-    if (cureAvi.isEmpty()) {
-        return false;
-    }
-
-    QJsonObject temperatureAvi =
-        buildAviIntegrityObject(
-            aviPathForBase(projectPath, QStringLiteral("wendu")),
-            errorMessage
-        );
-    if (temperatureAvi.isEmpty()) {
-        return false;
-    }
-
-    QJsonObject stressAvi =
-        buildAviIntegrityObject(
-            aviPathForBase(projectPath, QStringLiteral("yingli")),
-            errorMessage
-        );
-    if (stressAvi.isEmpty()) {
-        return false;
-    }
-
     const QJsonObject json = {
         {QStringLiteral("version"), kPostProcessIntegrityVersion},
         {QStringLiteral("postSha256"), postSha256},
         {QStringLiteral("curePng"), curePng},
         {QStringLiteral("temperaturePng"), temperaturePng},
         {QStringLiteral("stressPng"), stressPng},
-        {QStringLiteral("cureAvi"), cureAvi},
-        {QStringLiteral("temperatureAvi"), temperatureAvi},
-        {QStringLiteral("stressAvi"), stressAvi},
     };
 
     return writeJsonFile(
@@ -677,21 +543,6 @@ bool SimulationIntegrityService::validatePostProcessIntegrity(
             QStringLiteral("stressPng")
         ).toObject();
 
-    QJsonObject cureAvi =
-        json.value(
-            QStringLiteral("cureAvi")
-        ).toObject();
-
-    QJsonObject temperatureAvi =
-        json.value(
-            QStringLiteral("temperatureAvi")
-        ).toObject();
-
-    QJsonObject stressAvi =
-        json.value(
-            QStringLiteral("stressAvi")
-        ).toObject();
-
     if (!validatePngIntegrityObject(
             projectPath,
             ResultType::Cure,
@@ -719,39 +570,6 @@ bool SimulationIntegrityService::validatePostProcessIntegrity(
         return false;
     }
 
-    if (!validateAviIntegrityObject(
-            aviPathForBase(
-                projectPath,
-                QStringLiteral("guhuadu")
-            ),
-            cureAvi,
-            metadataChanged,
-            errorMessage)) {
-        return false;
-    }
-
-    if (!validateAviIntegrityObject(
-            aviPathForBase(
-                projectPath,
-                QStringLiteral("wendu")
-            ),
-            temperatureAvi,
-            metadataChanged,
-            errorMessage)) {
-        return false;
-    }
-
-    if (!validateAviIntegrityObject(
-            aviPathForBase(
-                projectPath,
-                QStringLiteral("yingli")
-            ),
-            stressAvi,
-            metadataChanged,
-            errorMessage)) {
-        return false;
-    }
-
     if (metadataChanged) {
         json[QStringLiteral("curePng")] =
             curePng;
@@ -761,15 +579,6 @@ bool SimulationIntegrityService::validatePostProcessIntegrity(
 
         json[QStringLiteral("stressPng")] =
             stressPng;
-
-        json[QStringLiteral("cureAvi")] =
-            cureAvi;
-
-        json[QStringLiteral("temperatureAvi")] =
-            temperatureAvi;
-
-        json[QStringLiteral("stressAvi")] =
-            stressAvi;
 
         // 元数据刷新属于性能缓存更新。
         // 文件内容已经通过 SHA 校验，因此写回失败

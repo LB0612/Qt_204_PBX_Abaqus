@@ -265,8 +265,8 @@ bool buildReportModel(
             QStringLiteral("帧")
         },
         {
-            QStringLiteral("视频帧率"),
-            QString::number(validation.manifest.videoFps),
+            QStringLiteral("播放帧率"),
+            QString::number(validation.manifest.playbackFps),
             QStringLiteral("fps")
         }
     };
@@ -457,9 +457,9 @@ bool buildReportModel(
 
     model.notes = {
         QStringLiteral("本报告展示当前工程代表性结果帧。"),
-        QStringLiteral("固化度完整动态结果：guhuadu.avi"),
-        QStringLiteral("温度场完整动态结果：wendu.avi"),
-        QStringLiteral("Mises应力完整动态结果：yingli.avi"),
+        QStringLiteral("固化度完整动态结果：guhuadu_frames"),
+        QStringLiteral("温度场完整动态结果：wendu_frames"),
+        QStringLiteral("Mises应力完整动态结果：yingli_frames"),
         QStringLiteral(
             "完整动态过程请查看工程 results 目录。"
         )

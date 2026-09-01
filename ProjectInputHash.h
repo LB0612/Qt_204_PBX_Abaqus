@@ -8,8 +8,8 @@ namespace ProjectInputHash {
 
 constexpr int GENERATION_MANIFEST_VERSION = 9;
 constexpr int CALCULATION_PIPELINE_VERSION = 2;
-constexpr int POSTPROCESS_PIPELINE_VERSION = 6;
-constexpr int POSTPROCESS_MANIFEST_VERSION = 3;
+constexpr int POSTPROCESS_PIPELINE_VERSION = 7;
+constexpr int POSTPROCESS_MANIFEST_VERSION = 4;
 
 QString hashConfigFiles(const QString &projectPath);
 QString hashGeneratedFiles(const QString &projectPath);
@@ -34,13 +34,7 @@ struct PostProcessManifest
     int curePngFrames = 0;
     int temperaturePngFrames = 0;
     int stressPngFrames = 0;
-    int cureVideoFrames = 0;
-    int temperatureVideoFrames = 0;
-    int stressVideoFrames = 0;
-    qint64 cureVideoBytes = 0;
-    qint64 temperatureVideoBytes = 0;
-    qint64 stressVideoBytes = 0;
-    int videoFps = 0;
+    int playbackFps = 0;
     QVector<double> frameTimes;
     bool valid = false;
 };
