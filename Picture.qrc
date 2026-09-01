@@ -17,4 +17,8 @@
         <file alias="setup.png">toolbar_picture/setup.png</file>
         <file alias="start.png">toolbar_picture/start.png</file>
     </qresource>
+
+    <qresource prefix="/app">
+        <file alias="app.ico">app_icon/app.ico</file>
+    </qresource>
 </RCC>

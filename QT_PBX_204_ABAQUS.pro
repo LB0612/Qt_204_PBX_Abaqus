@@ -7,6 +7,10 @@ TEMPLATE = app
 VERSION = 1.0.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
+win32 {
+    RC_ICONS = app_icon/app.ico
+}
+
 SOURCES += \
     main.cpp \
     mainwindow.cpp \

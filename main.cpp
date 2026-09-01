@@ -3,6 +3,7 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QIcon>
 
 int main(int argc, char *argv[])
 {
@@ -12,6 +13,11 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication a(argc, argv);
+
+    a.setWindowIcon(
+        QIcon(QStringLiteral(":/app/app.ico"))
+    );
+
     a.setOrganizationName(AppInfo::OrganizationName);
     a.setApplicationName(AppInfo::ProductName);
     a.setApplicationVersion(QStringLiteral(APP_VERSION));
