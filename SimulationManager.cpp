@@ -923,7 +923,7 @@ void SimulationManager::startT0Stage()
         abaqusPath,
         QStringList()
             << QStringLiteral("cae")
-            << QStringLiteral("script=") + t0Path
+            << QStringLiteral("noGUI=") + t0Path
     );
 
     if (!t0Process->waitForStarted(10000)) {
@@ -1087,7 +1087,7 @@ void SimulationManager::startT1Stage()
         abaqusPath,
         QStringList()
             << QStringLiteral("cae")
-            << QStringLiteral("script=") + t1Path
+            << QStringLiteral("noGUI=") + t1Path
     );
 
     if (!abaqusProcess->waitForStarted(10000)) {
